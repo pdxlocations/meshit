@@ -1,5 +1,19 @@
 import {HttpTransport,BleTransport} from './transport.js';
 const $=id=>document.getElementById(id),utf8=s=>new TextEncoder().encode(s).length;
+const systemTheme=matchMedia('(prefers-color-scheme: dark)');
+function updateTheme(){
+  const dark=(document.documentElement.dataset.theme|| (systemTheme.matches?'dark':'light'))==='dark';
+  $('theme-toggle').setAttribute('aria-pressed',String(dark));
+  document.querySelector('meta[name="theme-color"]').content=dark?'#111a16':'#f4f4ed';
+}
+$('theme-toggle').onclick=()=>{
+  const theme=$('theme-toggle').getAttribute('aria-pressed')==='true'?'light':'dark';
+  document.documentElement.dataset.theme=theme;
+  try{localStorage.setItem('meshit.theme',theme);}catch{}
+  updateTheme();
+};
+systemTheme.addEventListener('change',updateTheme);
+updateTheme();
 let transport=new HttpTransport(globalThis.Capacitor?.isNativePlatform()?'http://meshit.local':''),state=null,messages=[],room=localStorage.getItem('meshit.room')||'general',sort='new',reply='',view='chat',loadedRevision=0,busy=false,polling=false;
 function saved(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
 let draftRooms=saved('meshit.rooms',[]).filter(s=>typeof s==='string').slice(0,20);
@@ -29,11 +43,11 @@ function render(){
     const children=sorted(list.filter(child=>child.parent===m.id));if(children.length&&depth<32){const box=element('div','children');for(const child of children)box.append(post(child,depth+1));content.append(box);}row.append(vote,content);return row;
   }
   const roots=sorted(list.filter(m=>!m.parent||!byId.has(m.parent)));for(const m of roots)$('feed').append(post(m));
-  if(!roots.length){const empty=element('div','empty');empty.append(element('h2',null,'Quiet, for now.'),element('p',null,'Say something. A conversation starts with one message.'));$('feed').append(empty);}
+  if(!roots.length){const empty=element('div','empty');empty.append(element('h2',null,'No messages'));$('feed').append(empty);}
   count();
 }
 function count(){const n=Array.from($('message').value).length;$('char-count').textContent=`${n} / 160`;$('send').disabled=busy||n>160||!$('message').value.trim()||!state?.ready;
-  const parent=messages.find(m=>m.id===reply);if(reply&&!parent)reply='';$('reply-context').hidden=!reply;$('cancel-reply').hidden=!reply;$('compose-label').textContent=reply?'Reply to the conversation':'Start a conversation';$('reply-context').textContent=parent?`${parent.nickname||'Anonymous'}: ${parent.text.slice(0,70)}`:'';$('send').textContent=reply?'Reply ↗':'Post to room ↗';}
+  const parent=messages.find(m=>m.id===reply);if(reply&&!parent)reply='';$('reply-context').hidden=!reply;$('cancel-reply').hidden=!reply;$('compose-label').textContent=reply?'Reply':'Message';$('reply-context').textContent=parent?`${parent.nickname||'Anonymous'}: ${parent.text.slice(0,70)}`:'';$('send').textContent=reply?'Reply':'Post';}
 async function act(action){if(busy)return;busy=true;count();try{notify();await action();}catch(e){notify(e.message);}finally{busy=false;count();}}
 async function refresh(){
   if(polling)return;polling=true;try{
