@@ -2,9 +2,9 @@
 
 ## Appearance
 
-The 💩 logo identifies Meshit. The interface uses the neutral Paper/Graphite palette, sans-serif fonts, and a compact layout. **Chat** opens conversations; **Settings** opens radio configuration.
+The 💩 logo identifies Meshit. The interface uses the neutral Paper/Graphite palette, sans-serif fonts, and a compact layout. The chat-bubble icon opens conversations; the gear icon opens settings. Message IDs are hidden in the client.
 
-**Dark mode** in the header toggles between light and dark themes. On first use, the app follows your device preference. After you toggle, that choice is saved locally and survives reloads; it applies to chat, settings, and dialogs. Each browser or companion keeps its own preference.
+In Settings, **Appearance** offers **Light**, **Dark**, and **System**. System is the default and follows device appearance changes automatically. Your selection is saved locally and survives reloads; it applies immediately to chat, settings, and dialogs, without saving radio settings. Each browser or companion keeps its own preference.
 
 ![Meshit chat in dark mode](../screenshots/chat-dark.png)
 

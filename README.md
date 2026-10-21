@@ -10,7 +10,7 @@ There are no locations, node advertisements, direct messages, explicit radio ack
 
 ## Screenshots
 
-The companion uses a compact sans-serif layout with a 💩 logo and Paper/Graphite colors and a saved light/dark preference. Use **Dark mode** in the header to switch themes.
+The companion uses a compact sans-serif layout with a 💩 logo and Paper/Graphite colors and a saved light/dark preference. Use the gear icon → **Appearance** to choose **Light**, **Dark**, or **System**.
 
 **Light mode**
 

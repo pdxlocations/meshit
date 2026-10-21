@@ -3,12 +3,13 @@ const $=id=>document.getElementById(id),utf8=s=>new TextEncoder().encode(s).leng
 const systemTheme=matchMedia('(prefers-color-scheme: dark)');
 function updateTheme(){
   const dark=(document.documentElement.dataset.theme|| (systemTheme.matches?'dark':'light'))==='dark';
-  $('theme-toggle').setAttribute('aria-pressed',String(dark));
+  $('appearance').value=document.documentElement.dataset.theme||'system';
   document.querySelector('meta[name="theme-color"]').content=dark?'#151515':'#fafafa';
 }
-$('theme-toggle').onclick=()=>{
-  const theme=$('theme-toggle').getAttribute('aria-pressed')==='true'?'light':'dark';
-  document.documentElement.dataset.theme=theme;
+$('appearance').onchange=()=>{
+  const theme=$('appearance').value;
+  if(theme==='system')delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme=theme;
   try{localStorage.setItem('meshit.theme',theme);}catch{}
   updateTheme();
 };
@@ -38,7 +39,7 @@ function render(){
   function post(m,depth=0){
     const row=element('article','post'),vote=element('div','vote'),up=element('button',null,'↑');up.setAttribute('aria-label',m.voted?'Remove upvote':'Upvote');up.setAttribute('aria-pressed',String(m.voted));up.onclick=()=>act(async()=>{await transport.request({op:'vote',target:m.id,up:!m.voted});loadedRevision=0;await refresh();});vote.append(up,element('span',null,String(m.votes)));
     const content=element('div'),meta=element('div','meta');meta.append(element('strong',null,m.nickname||'Anonymous'));if(m.mine)meta.append(element('span',null,'you'));if(m.acknowledged){const ack=element('span','ack','✓');ack.title='Your message was heard rebroadcast by another radio';ack.setAttribute('aria-label',ack.title);meta.append(ack);}
-    const actions=element('div','post-actions'),button=element('button',null,'↳ Reply');button.onclick=()=>{reply=m.id;count();$('message').focus();$('compose').scrollIntoView({behavior:'smooth',block:'center'});};actions.append(button);if(m.mine&&!m.acknowledged)actions.append(element('span',null,m.status));const id=element('span',null,m.id);id.title='Message number';actions.append(id);
+    const actions=element('div','post-actions'),button=element('button',null,'↳ Reply');button.onclick=()=>{reply=m.id;count();$('message').focus();$('compose').scrollIntoView({behavior:'smooth',block:'center'});};actions.append(button);if(m.mine&&!m.acknowledged)actions.append(element('span',null,m.status));
     content.append(meta,element('p','body',m.text),actions);
     const children=sorted(list.filter(child=>child.parent===m.id));if(children.length&&depth<32){const box=element('div','children');for(const child of children)box.append(post(child,depth+1));content.append(box);}row.append(vote,content);return row;
   }

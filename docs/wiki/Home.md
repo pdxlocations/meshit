@@ -4,7 +4,7 @@ Small, threaded LoRa chat on Heltec V3 and RAK4631, using nearby Meshtastic or M
 
 **[Install firmware](https://meshit.pdxlocs.com)** · **[Release downloads](https://github.com/pdxlocations/meshit/releases)**
 
-The companion has a compact sans-serif layout and Paper/Graphite light/dark themes. Use **Dark mode** in the header to switch; your choice is saved on that companion.
+The companion has a compact sans-serif layout and Paper/Graphite light/dark themes. Use the gear icon → **Appearance** to choose **Light**, **Dark**, or **System**; your choice is saved on that companion.
 
 ## Start here
 
