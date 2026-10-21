@@ -1,5 +1,7 @@
 # Meshit web flasher
 
+The Meshit installer will live at **https://meshit.pdxlocs.com**. For board-specific steps, see the [installation guide](../docs/wiki/Installation.md).
+
 Upload the **contents of this folder** to a PHP-enabled HTTPS host, as with the Form8 installer. Firmware is loaded automatically from published releases in **pdxlocations/meshit**; you do not re-upload binaries to the host for every release.
 
 ## Deploy

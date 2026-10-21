@@ -1,10 +1,28 @@
 # Meshit
 
+**[Install firmware → meshit.pdxlocs.com](https://meshit.pdxlocs.com)** · [GitHub Releases](https://github.com/pdxlocations/meshit/releases) · [Wiki](https://github.com/pdxlocations/meshit/wiki) · [Documentation source](docs/wiki/Home.md)
+
 Small, threaded LoRa chat for **Heltec V3 (ESP32-S3)** and **RAK4631 (nRF52840)**. Meshit originates encrypted application traffic on a selected Meshtastic or MeshCore network. Existing infrastructure supplies the relays; Meshit never forwards ordinary received traffic.
 
 Chat has rooms, replies, removable upvotes, New/Top sorting, and an optional nickname (Anonymous by default). Posts and replies accept **160 Unicode characters**. A green check means **another radio was heard rebroadcasting the message**, not that everyone received it. Without a check, the radio makes at most three retries after the initial send.
 
 There are no locations, node advertisements, direct messages, explicit radio acknowledgments, or periodic history broadcasts. The single exception to the no-forwarding rule is answering an explicit request for a retained message, with delayed response suppression.
+
+## Screenshots
+
+![Meshit chat with rooms, upvotes, and threaded replies](docs/screenshots/chat.png)
+
+![Meshit radio connection and network settings](docs/screenshots/settings.png)
+
+Captured from the local simulator with sample messages. Green checks are simulated rebroadcasts; screenshots do not establish hardware interoperability.
+
+## Get started
+
+1. Open **[meshit.pdxlocs.com](https://meshit.pdxlocs.com)** and [install the firmware for your board](docs/wiki/Installation.md). Heltec uses browser USB installation; RAK4631 uses a download matching its installed S140 SoftDevice.
+2. [Connect the companion](docs/wiki/Connection-and-Settings.md) over local Wi-Fi on ESP or Bluetooth on either board.
+3. Choose a matching network and preset, then [join a room and post](docs/wiki/Using-Meshit.md).
+
+See the [wiki](https://github.com/pdxlocations/meshit/wiki) for [hardware and presets](docs/wiki/Hardware-and-Presets.md), [mobile companions](docs/wiki/Mobile-Companions.md), [troubleshooting](docs/wiki/Troubleshooting.md), and [development and releases](docs/wiki/Development-and-Releases.md).
 
 ## Run the companion preview
 
@@ -37,7 +55,7 @@ The nRF builds reserve `0x80000–0xECFFF` for Meshit storage; linker limits pre
 
 ## Web flasher and GitHub releases
 
-The [web flasher](webflasher/README.md) installs ESP firmware over browser USB and provides verified RAK UF2/HEX downloads with explicit SoftDevice matching. Upload `webflasher/` to a PHP 8.1+ HTTPS host, as with Form8. It automatically discovers published builds from `pdxlocations/meshit`.
+The **[web flasher at meshit.pdxlocs.com](https://meshit.pdxlocs.com)** installs ESP firmware over browser USB and provides verified RAK UF2/HEX downloads with explicit SoftDevice matching. Deployment and self-hosting instructions are in [webflasher/README.md](webflasher/README.md). It automatically discovers published builds from `pdxlocations/meshit`.
 
 GitHub workflows run CI on pushes and pull requests, build all firmware plus Android/iOS companions, and package release downloads. **Release firmware → Run workflow** accepts a numeric version and publishes a beta named `vVERSION.COMMIT-beta` after all checks pass. Publishing an existing tagged release also builds and attaches its downloads. Only the publishing job receives repository write permission.
 

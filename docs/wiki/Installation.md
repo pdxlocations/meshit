@@ -1,0 +1,31 @@
+# Install firmware
+
+Use **[meshit.pdxlocs.com](https://meshit.pdxlocs.com)** for firmware installation and verified downloads. Published builds come from [GitHub Releases](https://github.com/pdxlocations/meshit/releases); enable **Show prereleases** for betas. If no builds are listed, a release containing `meshit-release.zip` must be published first.
+
+## Heltec WiFi LoRa 32 V3
+
+1. Open the flasher in desktop Chrome or Edge over HTTPS. Use a USB data cable and close serial monitors using the port.
+2. Choose a release and **Heltec WiFi LoRa 32 V3**.
+3. Choose **Update** for a compatible Meshit installation, or **First installation / start fresh** for a new installation.
+4. Confirm the board and data replacement when applicable, then choose **Download & verify firmware**.
+5. Choose **Connect USB & install**, select the radio, and complete installation.
+
+Update writes the application at `0x10000`. Preserve data only with a matching board/partition layout and **Erase device unchecked**. Fresh installation writes a complete 8 MiB image at `0x0` and replaces saved data regardless of the erase checkbox. The companion website is embedded; no filesystem upload is needed.
+
+## RAK4631
+
+1. Double-press Reset to mount the bootloader drive.
+2. Read the **SoftDevice** line in `INFO_UF2.TXT`. The bootloader version is a different number.
+3. Select the matching target below in the flasher, confirm the installed SoftDevice, and download the verified UF2.
+4. Copy that UF2 to the bootloader drive. After restart, [connect over Bluetooth](Connection-and-Settings.md).
+
+| Installed SoftDevice | Flasher target | Application file |
+| --- | --- | --- |
+| S140 6.1.1 | RAK4631 / stock S140 6.1.1 | `meshit-rak4631-s140-6-1-1.uf2` |
+| S140 7.3.0 | RAK4631 / S140 7.3.0 | `meshit-rak4631.uf2` |
+
+Stop if the SoftDevice is unknown or unsupported. These are application-only images and do not replace the bootloader or SoftDevice. HEX downloads are for programming tools that preserve both. RAK uses downloads and drag-and-drop installation, not the ESP USB installer.
+
+Next: [Connect and configure](Connection-and-Settings.md). See [flasher details](../../webflasher/README.md) for validation and packaging behavior.
+
+[Wiki home](Home.md)
