@@ -10,21 +10,17 @@ There are no locations, node advertisements, direct messages, explicit radio ack
 
 ## Screenshots
 
-The companion uses a compact sans-serif layout with a 💩 logo and Paper/Graphite colors and a saved light/dark preference. Use the gear icon → **Appearance** to choose **Light**, **Dark**, or **System**.
+Use the chat-bubble icon for conversations and the gear icon for Settings.
 
 **Light mode**
 
 ![Meshit chat with rooms, upvotes, and threaded replies](docs/screenshots/chat.png)
 
-**Dark mode**
-
-![Meshit chat in dark mode](docs/screenshots/chat-dark.png)
-
 **Settings**
 
 ![Meshit radio connection and network settings](docs/screenshots/settings.png)
 
-Captured from the local simulator with sample messages. Rebroadcast checks are simulated rebroadcasts; screenshots do not establish hardware interoperability.
+Captured from the local simulator with sample messages. Rebroadcast checks are simulated; screenshots do not establish hardware interoperability.
 
 ## Get started
 
@@ -81,10 +77,11 @@ This uses the packaged firmware above and creates `dist/meshit-release.zip`, its
 ## Connect
 
 - **ESP:** read the `Meshit-…` setup Wi-Fi name and eight-digit password on the radio’s OLED. The password is a four-digit PIN repeated twice (for example, `48214821`). If the display is absent or cannot initialize, join the `Meshit-…` Wi-Fi network with **`12345678`**. Open **http://192.168.4.1**; no serial monitor is needed. Choose the network, region, and preset. In Settings, supply your home Wi-Fi details, then restart the radio and visit **http://meshit.local**. The setup hotspot closes after one minute on the LAN; the display then shows `meshit.local` and the LAN IP.
-- **nRF or ESP:** use the companion's Bluetooth connection. The browser version can use Web Bluetooth in supported browsers; iPhone uses the native companion.
+- **Wi-Fi (ESP32):** join `Meshit-…` in device Wi-Fi settings. The native companion uses `192.168.4.1`; browsers use the radio’s own page.
+- **Bluetooth (ESP32 / nRF52):** in Settings choose **Find radios**, select a radio, then **Connect**. ESP32 pairing uses the last six digits of its setup Wi-Fi password (`345678` without a display). Disconnect Wi-Fi clients first; Bluetooth pauses ESP32 Wi-Fi until you choose **Disconnect**. iPhone uses the native companion.
 - **Mobile:** the UI is bundled locally, so it can open without an internet connection. Connect by Bluetooth or by local Wi-Fi on ESP. Local drafts and a bounded cached feed remain available while disconnected.
 
-The initial preset catalog covers US/Canada and EU 868 MHz, with Meshtastic LongFast, MeshCore narrow, and the user-supplied **MeshOregon: 918.5 MHz, BW125, SF8, CR4/5**. Meshtastic transport uses the standard public channel key; its channel name is editable. MeshOregon defaults to `LongFast` for that transport name because only its RF settings were supplied; match the local network's channel name when needed. All Meshit rooms share one transport channel. Switching network or preset starts a fresh radio history.
+The initial preset catalog covers US/Canada and EU 868 MHz, with Meshtastic LongFast, MeshCore narrow, and the user-supplied **MeshOregon: 918.5 MHz, BW125, SF8, CR4/5**. Meshtastic transport uses the standard public key and the preset’s built-in channel hash automatically; no channel name is entered during setup. All Meshit rooms share one transport channel. Switching network or preset starts a fresh radio history.
 
 ## Android and iOS framework
 

@@ -4,8 +4,6 @@ Small, threaded LoRa chat on Heltec V3 and RAK4631, using nearby Meshtastic or M
 
 **[Install firmware](https://meshit.pdxlocs.com)** · **[Release downloads](https://github.com/pdxlocations/meshit/releases)**
 
-The companion has a compact sans-serif layout and Paper/Graphite light/dark themes. Use the gear icon → **Appearance** to choose **Light**, **Dark**, or **System**; your choice is saved on that companion.
-
 ## Start here
 
 1. [Install firmware](Installation.md) for your board.
@@ -21,9 +19,3 @@ The companion has a compact sans-serif layout and Paper/Graphite light/dark them
 - [Development and releases](Development-and-Releases.md)
 - [Host the web flasher](../../webflasher/README.md)
 - [Verification record](../VALIDATION.md)
-
-![Meshit chat with rooms and a threaded reply](../screenshots/chat.png)
-
-![Meshit chat in dark mode](../screenshots/chat-dark.png)
-
-Screenshots from the local simulator with sample messages. Rebroadcast checks are simulated; this is not a hardware range test.

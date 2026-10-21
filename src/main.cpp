@@ -21,6 +21,7 @@ constexpr int RADIO_CS=8,RADIO_IRQ=14,RADIO_RESET=12,RADIO_BUSY=13;
 WebServer server(80);
 SetupDisplay setupDisplay;
 String setupName,setupPass;
+bool wifiSuspended=false;
 #else
 #include "../firmware/nrf52/Pins.h"
 constexpr int RADIO_CS=NRF_CS,RADIO_IRQ=NRF_IRQ,RADIO_RESET=NRF_RESET,RADIO_BUSY=NRF_BUSY;
@@ -74,7 +75,7 @@ void initRadio(){
   if(!radioError){ready=true;startRx();}
 }
 Bytes wrap(const Bytes& fragment){
-  auto p=preset();return network()==Network::Meshtastic?meshtasticPacket(fragment,identity,random32()|1,String(settings["channel"]|p["channel"].as<const char*>()).c_str()):meshcorePacket(fragment);
+  auto p=preset();return network()==Network::Meshtastic?meshtasticPacket(fragment,identity,random32()|1,String(p["channel"]|"LongFast").c_str()):meshcorePacket(fragment);
 }
 bool beginPacket(){
   if(txIndex>=txPackets.size())return false;
@@ -103,7 +104,7 @@ void pollRadio(){
   }
   if(radioFlag){
     radioFlag=false;size_t len=radio.getPacketLength();Bytes raw(std::min(size_t(255),len));int err=radio.readData(raw.data(),raw.size());startRx();
-    if(!err&&len<=255){Received rx;bool ok=network()==Network::Meshtastic?parseMeshtastic(raw,String(settings["channel"]|preset()["channel"].as<const char*>()).c_str(),rx):parseMeshcore(raw,rx);
+    if(!err&&len<=255){Received rx;bool ok=network()==Network::Meshtastic?parseMeshtastic(raw,String(preset()["channel"]|"LongFast").c_str(),rx):parseMeshcore(raw,rx);
       Bytes encrypted,plain;bool relayed=false;Event e;
       if(ok&&assembler.accept(rx.payload,millis(),rx.relayed,encrypted,relayed)&&open(encrypted,plain)&&decode(plain,e)){++rxCount;core.receive(e,millis(),relayed);changed();}
     }
@@ -115,8 +116,8 @@ String dispatch(const String& input){
   else {
     res["id"]=req["id"];String op=req["op"]|"";
     if(op=="state"){
-      res["version"]=FIRMWARE_VERSION;
-      res["revision"]=revision;res["count"]=core.messages.size();res["settings"]=settings;res["settings"].remove("password");res["settings"].remove("setupPassword");res["settings"]["wifiConfigured"]=String(settings["ssid"]|"").length()>0;
+      res["version"]=FIRMWARE_VERSION;res["node"]=String(identity,HEX);
+      res["revision"]=revision;res["count"]=core.messages.size();res["settings"]=settings;res["settings"].remove("password");res["settings"].remove("setupPassword");res["settings"].remove("channel");res["settings"]["wifiConfigured"]=String(settings["ssid"]|"").length()>0;
       res["presets"]=presets;res["ready"]=ready;res["radioError"]=radioError;res["storageReady"]=fsReady;res["identityReady"]=identityReady;res["rx"]=rxCount;res["tx"]=txCount;
       res["board"]=
 #if defined(MESHIT_ESP32)
@@ -137,11 +138,11 @@ String dispatch(const String& input){
     }else if(op=="settings"){
       String selected=req["preset"]|settings["preset"]|"",net=req["network"]|settings["network"]|"";JsonObjectConst p;
       for(JsonObjectConst v:presets.as<JsonArrayConst>())if(v["id"]==selected&&v["network"]==net)p=v;
-      std::string nick=req["nickname"]|settings["nickname"]|"",channel=req["channel"]|p["channel"]|"LongFast";
-      if(p.isNull()||!textValid(nick,MAX_NICK,MAX_NICK,true)||!textValid(channel,32,32)||channel.find('\n')!=std::string::npos)res["error"]="Choose a matching network preset; nickname must fit 16 UTF-8 bytes";
+      std::string nick=req["nickname"]|settings["nickname"]|"";
+      if(p.isNull()||!textValid(nick,MAX_NICK,MAX_NICK,true))res["error"]="Choose a matching network preset; nickname must fit 16 UTF-8 bytes";
       else if(txBusy||!txPackets.empty()||!core.pending.empty())res["error"]="Wait for queued transmissions before changing settings";
       else {
-        JsonDocument next;next.set(settings);next["network"]=net;next["preset"]=selected;next["nickname"]=nick;next["channel"]=channel;next["configured"]=true;
+        JsonDocument next;next.set(settings);next["network"]=net;next["preset"]=selected;next["nickname"]=nick;next.remove("channel");next["configured"]=true;
         if(req["ssid"].is<const char*>())next["ssid"]=req["ssid"];
         if(req["password"].is<const char*>()&&String(req["password"]).length())next["password"]=req["password"];
         String s;serializeJson(next,s);
@@ -194,6 +195,7 @@ void setupWifi(){
 void setup(){
   Serial.begin(115200);fsReady=storageBegin();deserializeJson(presets,PRESETS);
   if(fsReady)deserializeJson(settings,recoverFile("/settings.json"));
+  settings.remove("channel");
   JsonDocument id;bool have=fsReady&&!deserializeJson(id,recoverFile("/identity.json"));identity=have?id["sender"].as<uint32_t>():random32();if(!identity)identity=1;
   counter=reserved=have?id["reserved"].as<uint32_t>():0;identityReady=fsReady&&counter<=65535&&saveIdentity();core.allocate=allocateId;core.jitter=random32;restore();
 #if defined(MESHIT_ESP32)
@@ -201,17 +203,37 @@ void setup(){
 #else
   pinMode(37,OUTPUT);digitalWrite(37,HIGH);delay(10);SPI.begin();
 #endif
-  ble.begin("Meshit-"+String(identity&65535,HEX));initRadio();
+#if defined(MESHIT_ESP32)
+  ble.begin(setupName,setupPass.substring(2).toInt());
+#else
+  ble.begin("Meshit-"+String(identity&65535,HEX));
+#endif
+  initRadio();
 }
 void loop(){
 #if defined(MESHIT_ESP32)
-  server.handleClient();
+  ble.setAccessPointOccupied(!wifiSuspended&&WiFi.softAPgetStationNum()>0);
+  ble.maintain();
+  const bool bluetooth=ble.connected();
   static uint32_t connectedAt=0;
-  if(WiFi.status()==WL_CONNECTED){if(!connectedAt)connectedAt=millis();if(uint32_t(millis()-connectedAt)>60000)WiFi.softAPdisconnect(true);}else connectedAt=0;
+  if(bluetooth!=wifiSuspended){
+    wifiSuspended=bluetooth;connectedAt=0;
+    if(bluetooth){server.stop();MDNS.end();WiFi.softAPdisconnect(true);WiFi.disconnect();WiFi.mode(WIFI_OFF);}
+    else{
+      WiFi.mode(WIFI_AP_STA);WiFi.softAP(setupName.c_str(),setupPass.c_str());
+      const String ssid=settings["ssid"]|"";if(ssid.length())WiFi.begin(ssid.c_str(),settings["password"]|"");
+      MDNS.begin("meshit");MDNS.addService("http","tcp",80);server.begin();
+    }
+  }
+  if(!wifiSuspended){
+    server.handleClient();
+    if(WiFi.status()==WL_CONNECTED){if(!connectedAt)connectedAt=millis();if(uint32_t(millis()-connectedAt)>60000)WiFi.softAPdisconnect(true);}else connectedAt=0;
+  }
   static uint32_t lastDisplay=0;
   if(uint32_t(millis()-lastDisplay)>=1000){
     lastDisplay=millis();
-    if(WiFi.getMode()&WIFI_AP)setupDisplay.showAccessPoint(setupName,setupPass);
+    if(wifiSuspended)setupDisplay.showBluetooth(setupName,setupPass.substring(2));
+    else if(WiFi.getMode()&WIFI_AP)setupDisplay.showAccessPoint(setupName,setupPass);
     else setupDisplay.showNetwork(WiFi.status()==WL_CONNECTED,WiFi.localIP().toString());
   }
 #endif

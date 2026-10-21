@@ -1,5 +1,6 @@
-import {HttpTransport,BleTransport} from './transport.js';
+import {RadioConnection} from './transport.js';
 const $=id=>document.getElementById(id),utf8=s=>new TextEncoder().encode(s).length;
+try{const theme=localStorage.getItem('meshit.theme');if(theme==='dark'||theme==='light')document.documentElement.dataset.theme=theme;}catch{}
 const systemTheme=matchMedia('(prefers-color-scheme: dark)');
 function updateTheme(){
   const dark=(document.documentElement.dataset.theme|| (systemTheme.matches?'dark':'light'))==='dark';
@@ -15,7 +16,10 @@ $('appearance').onchange=()=>{
 };
 systemTheme.addEventListener('change',updateTheme);
 updateTheme();
-let transport=new HttpTransport(globalThis.Capacitor?.isNativePlatform()?'http://meshit.local':''),state=null,messages=[],room=localStorage.getItem('meshit.room')||'general',sort='new',reply='',view='chat',loadedRevision=0,busy=false,polling=false;
+const native=!!globalThis.Capacitor?.isNativePlatform();
+let rememberedMode='wifi';try{rememberedMode=localStorage.getItem('meshit.connection')==='ble'?'ble':'wifi';}catch{}
+const transport=new RadioConnection({mode:rememberedMode,wifiBase:native?'http://192.168.4.1':''});
+let state=null,messages=[],room=localStorage.getItem('meshit.room')||'general',sort='new',reply='',view='chat',loadedRevision=0,busy=false,polling=false;
 function saved(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
 let draftRooms=saved('meshit.rooms',[]).filter(s=>typeof s==='string').slice(0,20);
 const notify=(text='')=>{$('notice').textContent=text;};
@@ -24,11 +28,11 @@ function show(which){view=which;$('chat-view').hidden=which!=='chat';$('settings
 function chooseRoom(name){localStorage.setItem(`meshit.draft.${room}`,JSON.stringify({text:$('message').value,parent:reply}));room=name;localStorage.setItem('meshit.room',room);reply='';$('message').value='';try{const d=JSON.parse(localStorage.getItem(`meshit.draft.${room}`)||'{}');$('message').value=d.text||'';reply=d.parent||'';}catch{}render();count();}
 function regions(prefix,network){const select=$(prefix+'region');select.replaceChildren();for(const region of new Set(state.presets.filter(p=>p.network===network).map(p=>p.region))){const o=element('option',null,region==='US'?'US / Canada':region.replace('_',' '));o.value=region;select.append(o);}presets(prefix,network);}
 function presets(prefix,network){const select=$(prefix+'preset');select.replaceChildren();for(const p of state.presets.filter(p=>p.network===network&&p.region===$(prefix+'region').value)){const o=element('option',null,p.name);o.value=p.id;select.append(o);}details(prefix);}
-function details(prefix){const p=state.presets.find(p=>p.id===$(prefix+'preset').value);if(!p)return;$(prefix==='setup-'?'setup-detail':'preset-detail').textContent=`${p.frequency} MHz · BW ${p.bandwidth} kHz · SF${p.sf} · CR 4/${p.cr}`;if(!prefix){$('channel-label').hidden=p.network!=='meshtastic';$('channel').value=p.channel;}}
+function details(prefix){const p=state.presets.find(p=>p.id===$(prefix+'preset').value);if(!p)return;$(prefix==='setup-'?'setup-detail':'preset-detail').textContent=`${p.frequency} MHz · BW ${p.bandwidth} kHz · SF${p.sf} · CR 4/${p.cr}`;}
 function settingsUI(){
   const s=state.settings;$('nickname').value=s.nickname||'';$('ssid').value=s.ssid||'';$('wifi-settings').hidden=state.board!=='Heltec V3';$('radio-info').textContent=`${state.board} · ${state.ready?'radio ready':s.configured?'radio unavailable':'setup needed'}`;
   const network=s.network||'meshtastic';document.querySelector(`[name=network][value=${network}]`).checked=true;regions('',network);
-  const p=state.presets.find(p=>p.id===s.preset);if(p){$('region').value=p.region;presets('',network);$('preset').value=p.id;details('');}$('channel').value=s.channel||p?.channel||'LongFast';
+  const p=state.presets.find(p=>p.id===s.preset);if(p){$('region').value=p.region;presets('',network);$('preset').value=p.id;details('');}
 }
 function render(){
   const rooms=new Set([...messages.map(m=>m.room),...draftRooms]);if(!rooms.size)rooms.add('general');if(!rooms.has(room)){room=[...rooms][0];reply='';}
@@ -49,15 +53,16 @@ function render(){
 }
 function count(){const n=Array.from($('message').value).length;$('char-count').textContent=`${n} / 160`;$('send').disabled=busy||n>160||!$('message').value.trim()||!state?.ready;
   const parent=messages.find(m=>m.id===reply);if(reply&&!parent)reply='';$('reply-context').hidden=!reply;$('cancel-reply').hidden=!reply;$('compose-label').textContent=reply?'Reply':'Message';$('reply-context').textContent=parent?`${parent.nickname||'Anonymous'}: ${parent.text.slice(0,70)}`:'';$('send').textContent=reply?'Reply':'Post';}
-async function act(action){if(busy)return;busy=true;count();try{notify();await action();}catch(e){notify(e.message);}finally{busy=false;count();}}
+async function act(action){if(busy)return;busy=true;count();connectionControls();try{notify();await action();}catch(e){notify(e.message);}finally{busy=false;count();connectionControls();}}
 async function refresh(){
-  if(polling)return;polling=true;try{
-    const next=await transport.request({op:'state'}),first=!state;state=next;
-    if(next.revision!==loadedRevision){const result=[];let version=next.revision;for(let offset=0;offset<next.count;offset+=8){const p=await transport.request({op:'messages',offset});if(p.revision!==version){version=0;break;}result.push(...p.messages);}if(version){messages=result;loadedRevision=version;draftRooms=draftRooms.filter(r=>!messages.some(m=>m.room===r));localStorage.setItem('meshit.rooms',JSON.stringify(draftRooms));localStorage.setItem('meshit.cache',JSON.stringify({state:next,messages:messages.slice(-200)}));render();}}
+  if(polling)return;polling=true;const epoch=transport.generation;try{
+    const next=await transport.request({op:'state'});if(epoch!==transport.generation)return;const switched=!!(next.node&&state?.node&&next.node!==state.node),first=!state||switched;if(switched){messages=[];loadedRevision=0;reply='';}state=next;
+    if(next.revision!==loadedRevision){const result=[];let version=next.revision;for(let offset=0;offset<next.count;offset+=8){const p=await transport.request({op:'messages',offset});if(epoch!==transport.generation)return;if(p.revision!==version){version=0;break;}result.push(...p.messages);}if(version){messages=result;loadedRevision=version;draftRooms=draftRooms.filter(r=>!messages.some(m=>m.room===r));localStorage.setItem('meshit.rooms',JSON.stringify(draftRooms));localStorage.setItem('meshit.cache',JSON.stringify({state:next,messages:messages.slice(-200)}));render();}}
+    connectionStatus(`Connected via ${transport.mode==='wifi'?'Wi-Fi':'Bluetooth'}${transport.link?.label?' · '+transport.link.label:''}`);
     $('connection').textContent=`${next.settings.network||'Choose a network'} · ${next.ready?'connected':'radio not ready'}${next.demo?' · SIMULATOR':''}`;
     if(first)settingsUI();if(!next.settings.configured&&!$('onboarding').open&&view==='chat')$('onboarding').showModal();
     if(!next.storageReady||!next.identityReady)notify('Radio storage is unavailable. Sending is disabled until it is repaired.');
-  }catch(e){$('connection').textContent='Radio disconnected · showing saved messages';if(state){state.ready=false;count();}else{show('settings');notify('Connect to a Meshit radio to begin. '+e.message);}}finally{polling=false;}
+  }catch(e){if(epoch!==transport.generation||e.code==='CONNECTION_CHANGED')return;connectionStatus(e.message);if(state)state.ready=false;$('connection').textContent='Radio disconnected · showing saved messages';if(state){state.ready=false;count();}else{show('settings');notify('Connect to a Meshit radio to begin. '+e.message);}}finally{polling=false;}
 }
 $('chat-tab').onclick=()=>show('chat');$('settings-tab').onclick=()=>{if(state)settingsUI();show('settings');};
 $('message').oninput=()=>{count();localStorage.setItem(`meshit.draft.${room}`,JSON.stringify({text:$('message').value,parent:reply}));};
@@ -72,8 +77,43 @@ for(const input of document.querySelectorAll('[name=setup-network]'))input.oncha
 $('setup-region').onchange=()=>presets('setup-',document.querySelector('[name=setup-network]:checked').value);$('setup-preset').onchange=()=>details('setup-');
 $('setup-form').onsubmit=e=>{e.preventDefault();act(async()=>{const network=document.querySelector('[name=setup-network]:checked')?.value;if(!network||!$('setup-preset').value)throw new Error('Choose a network and preset');await transport.request({op:'settings',network,preset:$('setup-preset').value});$('onboarding').close();loadedRevision=0;await refresh();settingsUI();show('chat');});};
 $('setup-connect').onclick=()=>{$('onboarding').close();show('settings');};
-$('settings-form').onsubmit=e=>{e.preventDefault();act(async()=>{if(utf8($('nickname').value)>16)throw new Error('Nickname must fit 16 UTF-8 bytes');const data={op:'settings',network:document.querySelector('[name=network]:checked').value,preset:$('preset').value,nickname:$('nickname').value,channel:$('channel').value};const wifiChanged=$('ssid').value!==(state.settings.ssid||'')||$('password').value.length;if(wifiChanged){data.ssid=$('ssid').value;data.password=$('password').value;}await transport.request(data);loadedRevision=0;await refresh();notify(wifiChanged?'Saved. Restart the radio to join Wi-Fi, then open meshit.local.':'Settings saved.');$('password').value='';});};
-$('transport').onchange=()=>{$('address-label').hidden=$('transport').value!=='wifi';};
-$('connect').onclick=()=>act(async()=>{let next;const kind=$('transport').value;if(kind==='ble'){next=new BleTransport();await next.connect();}else{let base=kind==='wifi'?$('address').value.trim():globalThis.Capacitor?.isNativePlatform()?'http://meshit.local':'';if(base){const u=new URL(base);if(u.protocol!=='http:'&&u.protocol!=='https:')throw new Error('Use an HTTP radio address');base=u.origin;}next=new HttpTransport(base);}await transport.close();transport=next;state=null;loadedRevision=0;await refresh();if(state){settingsUI();show(state.settings.configured?'chat':'settings');}});
+$('settings-form').onsubmit=e=>{e.preventDefault();act(async()=>{if(utf8($('nickname').value)>16)throw new Error('Nickname must fit 16 UTF-8 bytes');const data={op:'settings',network:document.querySelector('[name=network]:checked').value,preset:$('preset').value,nickname:$('nickname').value};const wifiChanged=$('ssid').value!==(state.settings.ssid||'')||$('password').value.length;if(wifiChanged){data.ssid=$('ssid').value;data.password=$('password').value;}await transport.request(data);loadedRevision=0;await refresh();notify(wifiChanged?'Saved. Restart the radio to join Wi-Fi, then open meshit.local.':'Settings saved.');$('password').value='';});};
+function connectionStatus(message){$('link-status').textContent=message;connectionControls();}
+function connectionControls(){
+  const bluetooth=transport.mode==='ble';$('transport').value=transport.mode;
+  $('ble-controls').hidden=!bluetooth;$('wifi-help').hidden=bluetooth;
+  $('wifi-help').textContent=native?'Join Meshit-… in your device’s Wi-Fi settings. The app connects at 192.168.4.1.':'Join the radio’s Wi-Fi network and open http://192.168.4.1, or use meshit.local on its LAN.';
+  $('devices').disabled=busy||!transport.devices.length;
+  $('scan').disabled=busy;$('connect').disabled=busy||!transport.devices.length;
+  $('disconnect').disabled=busy||!transport.link;$('transport').disabled=busy;
+  for(const control of document.querySelectorAll('#settings-form input,#settings-form select,#settings-form button'))control.disabled=busy||!state||!transport.link;
+}
+function changingRadio(){
+  state=null;messages=[];loadedRevision=0;reply='';render();
+  $('radio-info').textContent='';
+}
+transport.onDisconnect=message=>{if(state)state.ready=false;count();connectionStatus(message);};
+$('transport').onchange=()=>{const mode=$('transport').value;act(async()=>{
+  changingRadio();await transport.changeMode(mode);
+  try{localStorage.setItem('meshit.connection',mode);}catch{}
+  $('devices').replaceChildren();connectionStatus(mode==='wifi'?'Join the radio’s Wi-Fi network.':'Find your radio, select it, then connect.');
+  if(mode==='wifi')await refresh();
+});};
+$('scan').onclick=()=>act(async()=>{
+  $('devices').replaceChildren();connectionStatus('Finding Meshit radios…');
+  const devices=await transport.findRadios();$('devices').replaceChildren();
+  for(const device of devices){const option=element('option',null,device.name||'Meshit radio');option.value=device.id;$('devices').append(option);}
+  connectionStatus(devices.length?'Select a radio and tap Connect.':'No Meshit radios found. Check Bluetooth and radio power.');
+});
+$('connect').onclick=()=>act(async()=>{
+  changingRadio();connectionStatus('Connecting… ESP32 may request its 6-digit pairing PIN.');
+  await transport.connect($('devices').value);await refresh();
+});
+$('disconnect').onclick=()=>act(async()=>{
+  await transport.disconnect();if(state)state.ready=false;count();
+  connectionStatus('Disconnected. ESP32 Wi-Fi returns; messages remain on the radio.');
+});
+connectionControls();
 const cache=saved('meshit.cache',null);if(cache?.state&&Array.isArray(cache.messages)){state=cache.state;state.ready=false;messages=cache.messages.slice(-200);}
 show('chat');chooseRoom(room);await refresh();if(state)settingsUI();setInterval(()=>{if(!busy)refresh();},3000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!busy)refresh();});

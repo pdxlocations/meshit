@@ -19,7 +19,7 @@ Other boards have not been ported. Select hardware suitable for your local frequ
 | meshcore | US | US / Canada narrow | 910.525 | 62.5 | 7 | 4/5 |
 | meshcore | EU_868 | Europe narrow | 869.618 | 62.5 | 7 | 4/5 |
 
-The preset catalog is [config/presets.json](../../config/presets.json). Match your nearby network's RF settings and transport channel. MeshOregon supplies RF settings only; its Meshtastic channel name defaults to `LongFast` and may need editing. Region selection must suit your deployment; these presets are not an exhaustive regional catalog.
+The preset catalog is [config/presets.json](../../config/presets.json). Match your nearby network’s RF settings. Meshtastic transport settings are selected automatically from the preset; there is no channel-name field. Region selection must suit your deployment; these presets are not an exhaustive regional catalog.
 
 Meshtastic uses its standard public transport key. MeshCore uses Meshit's built-in application group. Private transport-key entry and scope/transport-code routing are not implemented. Switching networks does not bridge traffic between them.
 

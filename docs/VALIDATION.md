@@ -57,3 +57,11 @@ After regenerating mobile assets, `npm run mobile:sync` also regenerates the iOS
 The setup password policy is tested in the host suite: no-display fallback `12345678`, migration of old or malformed credentials, eight ASCII digits with a repeated four-digit PIN, deterministic boundary inputs, and reuse across restarts. The Heltec display path probes I2C before initialization and selects the fallback when probing or allocation fails. RAK builds retain Bluetooth-only access.
 
 The OLED uses [Heltec V3’s board-defined Vext, reset, SDA, and SCL pins](https://github.com/Heltec-Aaron-Lee/WiFi_Kit_series/blob/master/variants/heltec_wifi_lora_32_V3/pins_arduino.h) and the pinned ThingPulse SSD1306 driver. It shows the AP name, large numeric password, and setup URL, then LAN details after the setup AP closes. On-device readability, missing-display detection, and joining the AP still require a physical radio; compilation and host tests do not establish those hardware results.
+
+## Form8-style connection controls
+
+The companion now has one Wi-Fi (ESP32) mode and a Bluetooth (ESP32 / nRF52) flow with Find radios, an explicit device selection, Connect, and Disconnect. Native Wi-Fi uses `192.168.4.1`; the browser uses the page's own origin. The selected connection type persists locally. Host tests cover native scan filtering, explicit selection, reconnect without rescanning, handshake failure cleanup, cancellation of queued BLE commands, and rejecting late replies from a previous connection.
+
+ESP32 requires authenticated, encrypted pairing with the last six digits of its setup password. Wi-Fi clients take priority over Bluetooth discovery, and authenticated Bluetooth pauses Wi-Fi until disconnect, following Form8. All three firmware targets compile. Native scan behavior, OS pairing prompts, and Wi-Fi/Bluetooth handoff still need testing with physical radios and phones.
+
+Meshtastic channel-name entry is removed. Firmware selects its internal transport value from the preset and ignores/removes saved overrides. The README contains light-mode screenshots only; the wiki contains usage and setup guidance without screenshots or styling commentary.

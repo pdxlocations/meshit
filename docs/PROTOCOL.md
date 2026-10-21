@@ -37,7 +37,7 @@ An envelope is split into fragments, each containing `m`, version 1, random 6-by
 
 ## Network carriers
 
-**Meshtastic:** standard 16-byte broadcast header, default hop limit/start of 3, WantAck clear, configured public channel-name hash, and a protobuf Data message on private application port 256. The transport payload uses the standard public AES-128-CTR key and nonce layout. Meshit accepts only matching broadcast/channel/private-port traffic. A lower remaining hop limit than hop start establishes that the frame was relayed.
+**Meshtastic:** standard 16-byte broadcast header, default hop limit/start of 3, WantAck clear, preset-selected public channel-name hash, and a protobuf Data message on private application port 256. The transport payload uses the standard public AES-128-CTR key and nonce layout. Meshit accepts only matching broadcast/channel/private-port traffic. A lower remaining hop limit than hop start establishes that the frame was relayed.
 
 **MeshCore:** v1 flood group-data packet, empty initial path, development datagram type `0xFF4D`. The group key is SHA-256 of `Meshit group transport v1`; group wrapping uses MeshCore's AES-128-ECB and truncated HMAC-SHA256 convention. The entire Meshit envelope remains independently authenticated. Repeaters do not need to understand the Meshit group. Raw custom packet type is deliberately avoided because upstream MeshCore does not flood-relay it. Only group-data flood packets are accepted; path hash sizes 1–3 are supported, with at most 64 path bytes. A nonempty relay path establishes a rebroadcast.
 
@@ -76,7 +76,7 @@ ESP uses LittleFS. RAK uses a reserved 436 KiB LittleFS region below the framewo
 
 HTTP: POST `/api/rpc` with JSON. BLE: Nordic UART service `6e400001-b5a3-f393-e0a9-e50e24dcca9e`, RX characteristic `…0002…`, TX `…0003…`. USB uses the same newline-delimited JSON API after boot diagnostics. Each BLE request carries an integer `id`, copied into the response. There is one outstanding request per companion; writes and notifications are streamed in 20-byte pieces with UTF-8 decoding across boundaries.
 
-Operations: `state`; `messages` with offset; `post` with room/text/parent; `vote` with target/up; and `settings` with network/preset/nickname/channel and optional Wi-Fi credentials. Message pages contain a revision; clients discard torn multi-page reads and retry on the next refresh. Passwords are never included in state responses. HTTP browser requests must be same-origin. Local LAN and BLE peers are trusted; application encryption does not authenticate a human operator or secure the local settings interface.
+Operations: `state`; `messages` with offset; `post` with room/text/parent; `vote` with target/up; and `settings` with network/preset/nickname and optional Wi-Fi credentials. Message pages contain a revision; clients discard torn multi-page reads and retry on the next refresh. Passwords are never included in state responses. HTTP browser requests must be same-origin. ESP32 BLE requires encrypted, authenticated pairing with a six-digit PIN derived from its setup password; Wi-Fi is paused during an authenticated BLE connection and resumes afterward. AP clients take priority over Bluetooth discovery. Local LAN and RAK BLE peers are trusted; application encryption does not authenticate a human operator or secure the local settings interface.
 
 ## Primary protocol references
 

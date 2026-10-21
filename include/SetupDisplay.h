@@ -31,6 +31,14 @@ public:
     screen.setFont(ArialMT_Plain_24);screen.drawString(0,22,password);
     screen.setFont(ArialMT_Plain_10);screen.drawString(0,51,"http://192.168.4.1");screen.display();
   }
+  void showBluetooth(const String& name,const String& pin){
+    if(!ready)return;
+    const String view="ble|"+name+"|"+pin;if(view==previous)return;previous=view;
+    screen.clear();screen.setFont(ArialMT_Plain_10);
+    screen.drawString(0,0,name);screen.drawString(0,12,"Bluetooth PIN:");
+    screen.setFont(ArialMT_Plain_24);screen.drawString(0,22,pin);
+    screen.setFont(ArialMT_Plain_10);screen.drawString(0,51,"Wi-Fi paused");screen.display();
+  }
   void showNetwork(bool connected,const String& ip){
     if(!ready)return;
     const String view="lan|"+String(connected)+"|"+ip;if(view==previous)return;previous=view;
@@ -46,6 +54,7 @@ class SetupDisplay {
 public:
   bool begin(){return false;}
   void showAccessPoint(const String&,const String&){}
+  void showBluetooth(const String&,const String&){}
   void showNetwork(bool,const String&){}
 };
 #endif

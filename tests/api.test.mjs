@@ -7,9 +7,10 @@ test('companion RPC setup, rooms, posts, replies, votes and implicit checks use 
   const sim=spawn('./output/simulator',[],{stdio:['pipe','pipe','inherit']}),waiting=[];
   t.after(()=>sim.kill());createInterface({input:sim.stdout}).on('line',line=>waiting.shift()?.(JSON.parse(line)));
   const rpc=data=>new Promise(resolve=>{waiting.push(resolve);sim.stdin.write(JSON.stringify(data)+'\n');});
-  const initial=await rpc({op:'state'});assert.equal(initial.ready,false);assert.equal(initial.demo,true);assert.ok(initial.presets.some(p=>p.name==='MeshOregon'&&p.frequency===918.5));
+  const initial=await rpc({op:'state'});assert.equal(initial.ready,false);assert.deepEqual(initial.settings,{});assert.equal(initial.demo,true);assert.ok(initial.presets.some(p=>p.name==='MeshOregon'&&p.frequency===918.5));
   assert.ok((await rpc({op:'post',room:'general',text:'before setup'})).error);
-  assert.equal((await rpc({op:'settings',network:'meshtastic',preset:'mt-us-meshoregon',nickname:'Test'})).ok,true);
+  assert.equal((await rpc({op:'settings',network:'meshtastic',preset:'mt-us-meshoregon',nickname:'Test',channel:'ignored-legacy-name'})).ok,true);
+  assert.equal((await rpc({op:'state'})).settings.channel,undefined);
   assert.equal((await rpc({op:'post',room:'campfire',text:'hello mesh',parent:''})).ok,true);
   let page=await rpc({op:'messages',offset:0});const parent=page.messages[0];assert.equal(parent.nickname,'Test');assert.equal(parent.room,'campfire');assert.equal(parent.acknowledged,false);
   assert.equal((await rpc({op:'post',room:'campfire',text:'a reply',parent:parent.id})).ok,true);

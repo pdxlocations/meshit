@@ -10,8 +10,9 @@
 | No display / setup password unknown | With current firmware, use `12345678` when the supported display is absent or cannot initialize. A working OLED shows its eight-digit password. Update older firmware for this setup flow; a serial monitor is not required. |
 | `meshit.local` does not resolve | Join the same LAN. If mDNS is unavailable, use the radio's LAN IP. Restart after saving Wi-Fi credentials. |
 | Bluetooth unavailable in browser | Use a Web Bluetooth-capable browser or the native companion; iPhone uses the native app. A simulator cannot validate phone BLE. |
-| Radio disconnected | Check power, reconnect in Settings, and confirm the selected Wi-Fi/Bluetooth connection. Saved messages can remain visible offline. |
-| Connected but no messages | Confirm network, region, preset, and Meshtastic channel name match nearby Meshit users and relay infrastructure. Ordinary network chat is not displayed. |
+| Radio disconnected | In Settings select Wi-Fi (ESP32) and join Meshit-… in device Wi-Fi settings, or select Bluetooth, Find radios, choose a radio, and Connect. Saved messages remain visible offline. |
+| ESP32 Bluetooth not found / will not pair | Disconnect clients from the setup Wi-Fi first. ESP32 Bluetooth is hidden while Wi-Fi clients are attached. Its pairing PIN is the last 6 digits of the setup Wi-Fi password (345678 for the no-display fallback). Remove an old OS bond if firmware credentials changed. |
+| Connected but no messages | Confirm network, region, and preset match nearby Meshit users and relay infrastructure. Ordinary network chat is not displayed. |
 | No rebroadcast check | No qualifying relayed echo was heard. This is not a read receipt; RF coverage and repeater behavior still require hardware checks. |
 | Messages disappeared | Check for a network/preset change, fresh install, or the 200-message retention limit. Parent eviction also removes descendants. |
 | Sending disabled | Complete setup, restore the radio connection, and check storage/identity warnings. Keep text within 160 characters. |

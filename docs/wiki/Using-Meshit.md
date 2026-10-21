@@ -1,13 +1,5 @@
 # Using Meshit
 
-## Appearance
-
-The 💩 logo identifies Meshit. The interface uses the neutral Paper/Graphite palette, sans-serif fonts, and a compact layout. The chat-bubble icon opens conversations; the gear icon opens settings. Message IDs are hidden in the client.
-
-In Settings, **Appearance** offers **Light**, **Dark**, and **System**. System is the default and follows device appearance changes automatically. Your selection is saved locally and survives reloads; it applies immediately to chat, settings, and dialogs, without saving radio settings. Each browser or companion keeps its own preference.
-
-![Meshit chat in dark mode](../screenshots/chat-dark.png)
-
 ## Rooms and conversations
 
 Choose a room on the left, enter up to **160 Unicode characters**, and select **Post**. Select **Reply** beneath a post to start a threaded response; **Cancel reply** returns to a new conversation. Posts are immutable.
@@ -27,9 +19,5 @@ A check means the radio heard an authenticated rebroadcast of its message from a
 The radio retains **200 posts and replies across all rooms**. When full, it evicts lowest-voted messages first, then oldest; evicting a parent removes its descendants. Upvotes influence retention but do not pin a message forever. Rooms disappear when their last retained message disappears.
 
 Companions keep local drafts and a bounded cached feed while disconnected; sending requires a ready radio. Preview history lasts only for the simulator process. Radio history is persisted across restarts, subject to storage health and installation choices.
-
-![Rooms, replies, votes, and simulated rebroadcast check](../screenshots/chat.png)
-
-Sample conversation in the simulator. Both example authors were entered on the same simulated radio, so both posts show “you.”
 
 [Wiki home](Home.md)

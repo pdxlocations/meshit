@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {BleTransport,HttpTransport} from '../web/transport.js';
+import {BleTransport,HttpTransport,RadioConnection,SERVICE} from '../web/transport.js';
 import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 
@@ -18,4 +18,49 @@ test('BLE errors and disconnects reject outstanding operations',async()=>{
 test('HTTP forwards structured commands and surfaces firmware errors',async()=>{
   const previous=globalThis.fetch;globalThis.fetch=async(url,options)=>{assert.equal(url,'http://meshit.local/api/rpc');assert.equal(JSON.parse(options.body).op,'state');return {ok:true,json:async()=>({error:'radio offline'})};};
   try{await assert.rejects(new HttpTransport('http://meshit.local/').request({op:'state'}),/radio offline/);}finally{globalThis.fetch=previous;}
+});
+
+test('BLE discovery filters Meshit radios and uses explicit selected-device connections',async()=>{
+  const calls=[];
+  const client={
+    async initialize(){calls.push('initialize');},
+    async requestLEScan(options,found){assert.deepEqual(options.services,[SERVICE]);found({device:{deviceId:'other',name:'Form8-test'}});found({device:{deviceId:'one',name:'Meshit-one'}});found({device:{deviceId:'two',name:'Meshit-two'}});},
+    async stopLEScan(){calls.push('stop scan');},
+    async connect(id,disconnected){calls.push('connect '+id);this.disconnected=disconnected;},
+    async startNotifications(id,service,tx,callback){calls.push('notify '+id);this.notification=callback;},
+    async disconnect(id){calls.push('disconnect '+id);}
+  };
+  const link=new BleTransport({client,scanMs:0});
+  const devices=await link.findRadios();assert.deepEqual(devices.map(d=>d.id),['one','two']);
+  await link.connect('two');assert.equal(link.label,'Meshit-two');assert.ok(calls.includes('connect two'));
+  let disconnected='';link.onDisconnect=message=>disconnected=message;client.disconnected();assert.match(disconnected,/disconnected/);
+  await link.close();assert.ok(calls.includes('disconnect two'));
+});
+test('closing BLE cancels queued requests instead of sending to the next radio',async()=>{
+  const link=new BleTransport();let wire='';link.rx={async writeValueWithResponse(bytes){wire+=new TextDecoder().decode(bytes);}};
+  const first=link.request({op:'state'}),second=link.request({op:'post',text:'do not send'});
+  const failures=Promise.all([assert.rejects(first,/closed/),assert.rejects(second,/changed/)]);
+  await new Promise(resolve=>setTimeout(resolve,0));await link.close();await failures;assert.equal(JSON.parse(wire).op,'state');
+});
+test('Wi-Fi/Bluetooth switches reject a late response from the previous radio',async()=>{
+  let finish,closed=false;
+  const old={request:()=>new Promise(resolve=>finish=resolve),async close(){closed=true;}};
+  const connection=new RadioConnection({http:()=>old});
+  const request=connection.request({op:'state'}),failure=assert.rejects(request,error=>error.code==='CONNECTION_CHANGED');
+  await connection.changeMode('ble');finish({board:'old'});await failure;assert.equal(closed,true);
+  await assert.rejects(connection.request({op:'post'}),/disconnected/);
+});
+test('Form8-style find, connect, disconnect and reconnect use a verified radio handshake',async()=>{
+  const created=[];
+  const ble=()=>{const link={devices:new Map(),async findRadios(){return [{id:'radio',name:'Meshit-radio'}];},async connect(id){assert.equal(id,'radio');},async request(data){assert.equal(data.op,'state');return {settings:{},presets:[],board:'Heltec V3'};},async close(){this.closed=true;}};created.push(link);return link;};
+  const connection=new RadioConnection({mode:'ble',ble});
+  await connection.findRadios();await connection.connect('radio');assert.equal((await connection.request({op:'state'})).board,'Heltec V3');
+  await connection.disconnect();assert.equal(created[0].closed,true);
+  await connection.connect('radio');assert.equal(created.length,2);
+  let disconnected='';connection.onDisconnect=message=>disconnected=message;connection.link.onDisconnect('lost');assert.equal(disconnected,'lost');assert.equal(connection.link,null);
+});
+test('failed Bluetooth handshake closes the candidate and keeps sending disabled',async()=>{
+  let closed=false;const candidate={async findRadios(){return [{id:'one'}];},async connect(){},async request(){return {wrong:'protocol'};},async close(){closed=true;}};
+  const connection=new RadioConnection({mode:'ble',ble:()=>candidate});await connection.findRadios();
+  await assert.rejects(connection.connect('one'),/compatible Meshit/);assert.equal(closed,true);assert.equal(connection.link,null);
 });
