@@ -1,0 +1,7 @@
+{
+  "appId": "com.pdxlocations.meshit",
+  "appName": "Meshit",
+  "webDir": "dist/mobile",
+  "server": {"androidScheme":"https", "cleartext":true},
+  "plugins": {"CapacitorHttp":{"enabled":true}}
+}

@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createHash,createCipheriv,createHmac,createDecipheriv} from 'node:crypto';
+const v=JSON.parse(readFileSync(process.argv[2],'utf8')),buf=s=>Buffer.from(s,'hex');
+const key=createHash('sha256').update('Meshit application encryption v1').digest(),encrypted=buf(v.encrypted),nonce=encrypted.subarray(3,15),plain=buf(v.plain);
+const cipher=createCipheriv('chacha20-poly1305',key,nonce,{authTagLength:16});cipher.setAAD(encrypted.subarray(0,15));const expected=Buffer.concat([encrypted.subarray(0,15),cipher.update(plain),cipher.final(),cipher.getAuthTag()]);assert.deepEqual(encrypted,expected);
+const groupKey=createHash('sha256').update('Meshit group transport v1').digest(),mc=buf(v.meshcore),hash=createHash('sha256').update(groupKey).digest()[0];assert.equal(mc[0],0x19);assert.equal(mc[1],0);assert.equal(mc[2],hash);assert.deepEqual(mc.subarray(3,5),createHmac('sha256',groupKey).update(mc.subarray(5)).digest().subarray(0,2));
+const aes=createDecipheriv('aes-128-ecb',groupKey.subarray(0,16),null);aes.setAutoPadding(false);const data=Buffer.concat([aes.update(mc.subarray(5)),aes.final()]);assert.equal(data.readUInt16LE(),0xff4d);assert.deepEqual(data.subarray(3,3+data[2]),buf(v.fragment));
+const mt=buf(v.meshtastic),iv=Buffer.alloc(16);iv.writeUInt32LE(0x23456789);iv.writeUInt32LE(0x12345678,8);const ctr=createDecipheriv('aes-128-ctr',buf('d4f1bb3a20290759f0bcffabcf4e6901'),iv);const pb=Buffer.concat([ctr.update(mt.subarray(16)),ctr.final()]);assert.equal(mt.readUInt32LE(),0xffffffff);assert.equal(mt[12]&8,0);assert.deepEqual(pb.subarray(0,3),buf('088002'));assert.equal(pb[3],18);assert.deepEqual(pb.subarray(5),buf(v.fragment));
+console.log('Independent Node/OpenSSL ChaCha20-Poly1305, AES-CTR, AES-ECB and HMAC vectors passed.');

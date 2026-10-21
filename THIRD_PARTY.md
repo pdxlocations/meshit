@@ -1,0 +1,9 @@
+# Third-party sources
+
+- `lib/MeshStorage/src/MeshStorage.cpp` and `.h` adapt Adafruit's InternalFileSystem (MIT, copyright 2019 hathach for Adafruit Industries). Original license headers are retained. Changes select a larger reserved flash region and a separate filesystem instance. The pinned Adafruit Arduino nRF52 framework supplies the flash driver.
+- RAK variant mapping and linker layout, Heltec pin mapping, and the embedded-companion approach take cues from the user's neighboring `form8` repository. Application code and packet framing are new for Meshit.
+- The web flasher's PHP release bridge, browser verification/download flow, styling, and related tests adapt the user's Form8 web flasher. Meshit changes its catalogs, reserved-memory boundary, release packaging, instructions, and per-release nRF metadata. ESP USB installation uses ESP Web Tools 10.4.0.
+- PlatformIO resolves pinned RadioLib 7.1.2, ArduinoJson 7.4.2, Crypto 0.4.0, and NimBLE-Arduino 1.4.3 dependencies; their upstream licenses accompany installed packages.
+- Capacitor and `@capacitor-community/bluetooth-le` are installed from npm with versions recorded in `package-lock.json`. The iOS generation script copies that plugin's installed Swift sources and MIT license into the generated native project, replacing Objective-C method registration with Swift `CAPBridgedPlugin` registration. It does not modify the installed dependency.
+
+Meshit uses established upstream wire formats and cryptographic implementations. It is an independent application, not an official Meshtastic or MeshCore firmware release.

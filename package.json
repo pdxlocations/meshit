@@ -1,0 +1,32 @@
+{
+  "name": "meshit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lightweight threaded LoRa chat for ESP32 and nRF52840",
+  "scripts": {
+    "test": "python3 tools/test_core.py && python3 tools/build_sim.py && node --test tests/*.test.mjs",
+    "dev": "python3 tools/build_sim.py && node tools/dev-server.mjs",
+    "mobile:prepare": "node tools/prepare-mobile.mjs",
+    "mobile:android": "npm run mobile:prepare && node tools/add-mobile.mjs android",
+    "mobile:ios": "npm run mobile:prepare && node tools/add-mobile.mjs ios",
+    "mobile:sync": "npm run mobile:prepare && node tools/configure-mobile.mjs && cap sync && node tools/ios-bluetooth-spm.mjs",
+    "build:firmware": "pio run -e heltec-v3 -e rak4631 -e rak4631-s140-6-1-1",
+    "package:firmware": "python3 tools/package_firmware.py",
+    "webflasher:prepare": "node tools/prepare-webflasher.mjs",
+    "test:webflasher": "node --test tests/webflasher*.test.mjs && php tests/webflasher-api.php",
+    "test:targets": "python3 tools/check_firmware_targets.py",
+    "build:android": "python3 tools/build_android.py",
+    "package:release": "npm run webflasher:prepare && python3 tools/package_release.py --require-android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.4.0",
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/ios": "^7.4.0",
+    "@capacitor-community/bluetooth-le": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.0",
+    "esbuild": "^0.25.0"
+  }
+}

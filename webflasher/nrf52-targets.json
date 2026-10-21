@@ -1,0 +1,4 @@
+[
+  {"environment":"rak4631","board":"RAK4631 / WisBlock — S140 7.3.0","radio":"SX1262","softdevice":"7.3.0","applicationStart":"0x27000","applicationEnd":"0x80000"},
+  {"environment":"rak4631-s140-6-1-1","board":"RAK4631 / WisBlock — stock S140 6.1.1","radio":"SX1262","softdevice":"6.1.1","applicationStart":"0x26000","applicationEnd":"0x80000"}
+]

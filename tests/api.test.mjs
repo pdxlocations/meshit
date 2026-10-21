@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {createInterface} from 'node:readline';
+const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+test('companion RPC setup, rooms, posts, replies, votes and implicit checks use the shared core',async t=>{
+  const sim=spawn('./output/simulator',[],{stdio:['pipe','pipe','inherit']}),waiting=[];
+  t.after(()=>sim.kill());createInterface({input:sim.stdout}).on('line',line=>waiting.shift()?.(JSON.parse(line)));
+  const rpc=data=>new Promise(resolve=>{waiting.push(resolve);sim.stdin.write(JSON.stringify(data)+'\n');});
+  const initial=await rpc({op:'state'});assert.equal(initial.ready,false);assert.equal(initial.demo,true);assert.ok(initial.presets.some(p=>p.name==='MeshOregon'&&p.frequency===918.5));
+  assert.ok((await rpc({op:'post',room:'general',text:'before setup'})).error);
+  assert.equal((await rpc({op:'settings',network:'meshtastic',preset:'mt-us-meshoregon',nickname:'Test'})).ok,true);
+  assert.equal((await rpc({op:'post',room:'campfire',text:'hello mesh',parent:''})).ok,true);
+  let page=await rpc({op:'messages',offset:0});const parent=page.messages[0];assert.equal(parent.nickname,'Test');assert.equal(parent.room,'campfire');assert.equal(parent.acknowledged,false);
+  assert.equal((await rpc({op:'post',room:'campfire',text:'a reply',parent:parent.id})).ok,true);
+  page=await rpc({op:'messages',offset:0});const reply=page.messages[1];assert.equal(reply.parent,parent.id);
+  assert.equal((await rpc({op:'vote',target:reply.id,up:true})).ok,true);page=await rpc({op:'messages',offset:0});assert.equal(page.messages[1].votes,1);
+  assert.equal((await rpc({op:'vote',target:reply.id,up:false})).ok,true);page=await rpc({op:'messages',offset:0});assert.equal(page.messages[1].votes,0);
+  assert.ok((await rpc({op:'post',room:'campfire',text:'x'.repeat(161)})).error);
+  await delay(800);await rpc({op:'state'});await delay(1200);page=await rpc({op:'messages',offset:0});assert.equal(page.messages[0].acknowledged,true);
+});

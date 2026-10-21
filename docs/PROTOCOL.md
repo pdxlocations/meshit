@@ -1,0 +1,93 @@
+# Meshit v1 protocol
+
+The application core is independent of Arduino. The same C++ headers drive firmware, the host simulator, and sanitizer tests.
+
+## Identity and events
+
+IDs are 48-bit values displayed as 12 hexadecimal digits: a random persistent 32-bit sender plus a 16-bit sequence. The counter advances for every originated event (post, vote, request). The radio reserves counter blocks in flash before use to prevent reuse after an interrupted write; restarting can skip numbers. A sender rotates on sequence exhaustion. Identities need no advertisements or discovery packets. Nicknames are only fields in posts.
+
+All multibyte application fields are little-endian. Event layout:
+
+| Field | Bytes |
+| --- | --- |
+| Kind: post=1, vote=2, request=3, history post=4 | 1 |
+| Event ID | 6 |
+| Reference: parent, vote target, requested ID, or zero | 6 |
+
+Posts/history append room length (1), nickname length (1), text length (2), then their UTF-8 bytes. Room and nickname each fit 16 bytes; an empty nickname means Anonymous. Text is at most 160 Unicode scalar values and 640 UTF-8 bytes. Invalid UTF-8, overlong encodings, surrogates, NULs, and controls other than line breaks are rejected. Names cannot contain line breaks. Votes append one byte: 1 adds an upvote; 0 removes it. Requests append nothing.
+
+Posts are immutable. A reply references its immediate parent in the same room. Cycles and excessive ancestry are rejected; retained descendant trees are deleted when their parent is evicted. Received replies whose parent has not been heard can be shown as roots, without requesting old history solely because of a reply. Locally displaced parents are tombstoned, preventing their replies from returning while those tombstones remain retained.
+
+For a target and voter, only the newest vote event takes effect. Votes and removals use separate event IDs. No resistance to invented identities is attempted.
+
+## Encryption and fragments
+
+The complete encoded event is encrypted using the vetted Crypto library's ChaCha20-Poly1305 implementation. The key is SHA-256 of the public string `Meshit application encryption v1`. Envelope:
+
+| Field | Bytes |
+| --- | --- |
+| `MI`, version 1 | 3 |
+| Hardware-generated random nonce | 12 |
+| Ciphertext | event size |
+| Poly1305 tag | 16 |
+
+The 15-byte prefix is authenticated associated data. A failed tag discards the whole event before application processing. No content is exposed as ordinary network chat text.
+
+An envelope is split into fragments, each containing `m`, version 1, random 6-byte transfer ID, fragment index, fragment count, and up to 112 envelope bytes. The maximum is seven fragments; even 160 four-byte Unicode characters fit. Ordinary short ASCII messages take fewer fragments. Fragmentation is bounded by the same rules on both networks. Four simultaneous reassemblies expire after ten minutes, accommodating duty-limited presets. A new encryption nonce and transfer ID are generated on each transmission attempt so network duplicate suppression does not prevent a retry.
+
+## Network carriers
+
+**Meshtastic:** standard 16-byte broadcast header, default hop limit/start of 3, WantAck clear, configured public channel-name hash, and a protobuf Data message on private application port 256. The transport payload uses the standard public AES-128-CTR key and nonce layout. Meshit accepts only matching broadcast/channel/private-port traffic. A lower remaining hop limit than hop start establishes that the frame was relayed.
+
+**MeshCore:** v1 flood group-data packet, empty initial path, development datagram type `0xFF4D`. The group key is SHA-256 of `Meshit group transport v1`; group wrapping uses MeshCore's AES-128-ECB and truncated HMAC-SHA256 convention. The entire Meshit envelope remains independently authenticated. Repeaters do not need to understand the Meshit group. Raw custom packet type is deliberately avoided because upstream MeshCore does not flood-relay it. Only group-data flood packets are accepted; path hash sizes 1–3 are supported, with at most 64 path bytes. A nonempty relay path establishes a rebroadcast.
+
+Neither adapter forwards received packets, emits node info, requests network acknowledgments, announces rooms, or emits location/telemetry. Modem setup uses a 16-symbol preamble for Meshtastic and MeshCore's 32-symbol preamble at SF5–8 (16 above SF8), plus the network-specific sync word. Initial Meshit support is for public-key Meshtastic channels and the built-in MeshCore application group; private transport-key entry and scope/transport-code routing are not implemented.
+
+## Checks and retries
+
+Only a successfully authenticated, matching echo of a transmitted originated post with relay evidence sets its green check. Every fragment in its reassembly must have relay evidence. Local enqueueing, an arbitrary duplicate, an unrelayed frame, explicit network ACK, upvote, or history response does not create a green check. A late matching relay echo still creates a check after retries end.
+
+The scheduler allows one initial attempt plus three retries, starting at 45 seconds with increasing waits and jitter. Channel-busy checks and refused sends do not consume attempts. Each attempt begins when the first fragment enters the radio; remaining fragments follow asynchronously. Failed or interrupted later fragments are repaired by a later whole-event retry. The PHY enforces the selected preset's airtime spacing; pending RF jobs prevent interleaving. Pending attempt counts and sent/check state are saved in the binary snapshot. Actual radio timing remains subject to hardware validation.
+
+## Recovery and resource bounds
+
+There is no periodic history exchange. First hearing a sender establishes its high-water mark. Later gaps queue at most the newest 16 missing IDs. A previously missing old post is fetched only on a positive upvote. Gap requests are broadcast, retried at most three times, and do not request an ACK. Peers with retained content schedule one delayed response; hearing an answer cancels their duplicate response. History posts preserve their original IDs but do not advance the receiver's live high-water mark. A missing request/control event need not be recoverable, so unavailable gaps stop quietly.
+
+| Resource | Bound |
+| --- | --- |
+| Posts and replies across rooms | 200 |
+| Active transmission/history-response jobs | 12 |
+| Missing IDs | 16 |
+| Sender high-water marks | 64 |
+| Recent event dedup IDs | 512 |
+| Displaced-message tombstones | 512 |
+| Current vote states | 512 |
+| Deferred votes for missing posts | 32 |
+| Recent recoverable vote events | 32 |
+| Fragment reassemblies | 4 × 7 fragments |
+| Local RPC input line | 2048 bytes |
+| RPC message page | 8 messages |
+
+Vote-state bounds prevent unbounded voter storage. If that bound is reached, the oldest tracked voter/target states drop out; scores are local retained counts rather than a global vote ledger. Deduplication, tombstones, and sender marks are bounded; this is not permanent replay prevention. Sender marks are session-local, so a reboot starts new hearing baselines. An evicted body cannot be recovered from a node that no longer stores it.
+
+ESP uses LittleFS. RAK uses a reserved 436 KiB LittleFS region below the framework's normal filesystem and bootloader area. Binary snapshots stream directly to flash, avoiding a second JSON history allocation. Config and identity writes retain a backup during replacement on nRF. Snapshots use temporary files and committed trailers; malformed snapshots are rejected. Radios save history, votes, tombstones, pending sends, and acknowledgment state across restart. Connected companions also cache at most 200 messages locally.
+
+## Local companion API
+
+HTTP: POST `/api/rpc` with JSON. BLE: Nordic UART service `6e400001-b5a3-f393-e0a9-e50e24dcca9e`, RX characteristic `…0002…`, TX `…0003…`. USB uses the same newline-delimited JSON API after boot diagnostics. Each BLE request carries an integer `id`, copied into the response. There is one outstanding request per companion; writes and notifications are streamed in 20-byte pieces with UTF-8 decoding across boundaries.
+
+Operations: `state`; `messages` with offset; `post` with room/text/parent; `vote` with target/up; and `settings` with network/preset/nickname/channel and optional Wi-Fi credentials. Message pages contain a revision; clients discard torn multi-page reads and retry on the next refresh. Passwords are never included in state responses. HTTP browser requests must be same-origin. Local LAN and BLE peers are trusted; application encryption does not authenticate a human operator or secure the local settings interface.
+
+## Primary protocol references
+
+- [Meshtastic packet layout and routing](https://meshtastic.org/docs/overview/mesh-algo/)
+- [Meshtastic application ports](https://github.com/meshtastic/protobufs/blob/master/meshtastic/portnums.proto)
+- [Meshtastic radio presets](https://github.com/meshtastic/meshtastic/blob/master/docs/about/overview/radio-settings.mdx)
+- [MeshCore packet and path format](https://github.com/meshcore-dev/MeshCore/blob/main/docs/packet_format.md)
+- [MeshCore group datagrams](https://github.com/meshcore-dev/MeshCore/blob/main/docs/payloads.md)
+- [MeshCore forwarding behavior](https://github.com/meshcore-dev/MeshCore/blob/main/src/Mesh.cpp)
+- [MeshCore cryptographic wrapper](https://github.com/meshcore-dev/MeshCore/blob/main/src/Utils.cpp)
+- [MeshCore experimental datagram range](https://github.com/meshcore-dev/MeshCore/blob/main/docs/number_allocations.md)
+- [MeshCore preamble settings](https://github.com/meshcore-dev/MeshCore/blob/main/src/helpers/radiolib/RadioLibWrappers.h)
+- [Puget Mesh's published narrow preset](https://github.com/pugetmesh/pugetmesh.github.io/blob/main/docs/meshcore/index.md)
+- [Crypto library](https://github.com/rweather/arduinolibs/tree/master/libraries/Crypto)

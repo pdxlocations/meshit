@@ -1,0 +1,137 @@
+name: Build and verify
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Release version embedded in firmware and companion metadata
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  MESHIT_VERSION: ${{ inputs.version }}
+
+jobs:
+  firmware:
+    name: Firmware, tests, and web flasher
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Set up PHP for the release bridge tests
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, zip
+          coverage: none
+      - name: Install build dependencies
+        run: |
+          python3 -m pip install platformio==6.1.19
+          npm ci
+          pio pkg install -e heltec-v3
+      - name: Check all board and SoftDevice profiles
+        run: npm run test:targets
+      - name: Run host, companion API, and web flasher tests
+        run: |
+          npm run webflasher:prepare
+          npm test
+          php -l webflasher/api.php
+          php -l webflasher/config.php
+          php tests/webflasher-api.php
+      - name: Build every firmware environment
+        run: npm run build:firmware
+      - name: Package full-flash and application images
+        run: |
+          npm run package:firmware
+          python3 -m unittest discover -s tests -p 'test_*.py'
+          node --test tests/release-images.mjs
+          php tests/webflasher-api.php --bundle dist/meshit-release.zip
+      - name: Verify image checksums
+        working-directory: dist/firmware
+        run: sha256sum --check SHA256SUMS
+      - uses: actions/upload-artifact@v7
+        with:
+          name: meshit-firmware
+          path: dist/firmware/
+          if-no-files-found: error
+
+  android:
+    name: Android companion
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Android SDK components
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"'
+      - run: npm ci
+      - name: Build, lint, and test the Android development APK
+        run: npm run build:android
+      - name: Verify APK checksum
+        working-directory: dist/companions
+        run: sha256sum --check meshit-android-debug.apk.sha256
+      - uses: actions/upload-artifact@v7
+        with:
+          name: meshit-android
+          path: |
+            dist/companions/meshit-android-debug.apk
+            dist/companions/meshit-android-debug.apk.sha256
+            dist/companions/build-info.json
+          if-no-files-found: error
+
+  ios:
+    name: iOS companion framework
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run mobile:ios
+      - name: Compile for iOS Simulator without signing
+        run: >-
+          xcodebuild -project ios/App/App.xcodeproj -scheme App
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath output/ios-build CODE_SIGNING_ALLOWED=NO build
+      - name: Package simulator app
+        run: >-
+          ditto -c -k --keepParent
+          output/ios-build/Build/Products/Debug-iphonesimulator/App.app
+          output/meshit-ios-simulator.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: meshit-ios-simulator
+          path: output/meshit-ios-simulator.zip
+          if-no-files-found: error

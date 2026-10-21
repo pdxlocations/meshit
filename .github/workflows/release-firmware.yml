@@ -1,0 +1,146 @@
+name: Release firmware
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number only, such as 0.1.0; commit hash and beta suffix are added automatically'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-firmware-${{ github.event.release.id || format('{0}-{1}', github.sha, inputs.version) }}
+  cancel-in-progress: false
+
+jobs:
+  identity:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      title: ${{ steps.release.outputs.title }}
+      commit: ${{ steps.release.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Resolve exact release identity
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          VERSION_INPUT: ${{ inputs.version }}
+          PUBLISHED_TAG: ${{ github.event.release.tag_name }}
+        shell: bash
+        run: |
+          commit=$(git rev-parse HEAD)
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ ! "$VERSION_INPUT" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo 'Enter a version such as 0.1.0, without v, a commit hash, or beta.' >&2
+              exit 1
+            fi
+            tag="v${VERSION_INPUT}.${commit:0:7}-beta"
+            title="Meshit ${VERSION_INPUT}.${commit:0:7} Beta"
+          else
+            tag="$PUBLISHED_TAG"
+            title="Meshit $tag"
+          fi
+          MESHIT_VERSION="$tag" python3 tools/build_info.py
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "title=$title" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: identity
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.identity.outputs.tag }}
+
+  publish:
+    name: Verify and attach completed release
+    needs: [identity, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      MESHIT_VERSION: ${{ needs.identity.outputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.identity.outputs.tag }}
+      RELEASE_TITLE: ${{ needs.identity.outputs.title }}
+      RELEASE_COMMIT: ${{ needs.identity.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.identity.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v8
+        with:
+          name: meshit-firmware
+          path: dist/firmware
+      - uses: actions/download-artifact@v8
+        with:
+          name: meshit-android
+          path: dist/companions
+      - name: Prepare and verify release bundle
+        run: |
+          npm run webflasher:prepare
+          python3 tools/package_release.py --require-android
+          cd dist
+          sha256sum --check meshit-release.zip.sha256 meshit-android-debug.apk.sha256
+      - uses: actions/upload-artifact@v7
+        with:
+          name: meshit-release
+          path: |
+            dist/release/
+            dist/meshit-release.zip
+            dist/meshit-release.zip.sha256
+            dist/meshit-android-debug.apk
+            dist/meshit-android-debug.apk.sha256
+          if-no-files-found: error
+      - name: Create or resume a draft beta release
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          if existing_commit=$(gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" --jq '.object.sha' 2>/dev/null); then
+            if [[ "$existing_commit" != "$RELEASE_COMMIT" ]]; then
+              echo 'The generated tag points to different code. Choose a new version.' >&2
+              exit 1
+            fi
+          else
+            gh api --method POST "repos/$GH_REPO/git/refs" -f "ref=refs/tags/$RELEASE_TAG" -f "sha=$RELEASE_COMMIT"
+          fi
+          if draft=$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' 2>/dev/null); then
+            if [[ "$draft" != "true" ]]; then
+              echo 'This beta is already published. Choose a new version or commit.' >&2
+              exit 1
+            fi
+          else
+            gh release create "$RELEASE_TAG" --target "$RELEASE_COMMIT" --title "$RELEASE_TITLE" --verify-tag --prerelease --draft --generate-notes
+          fi
+          actual_commit=$(gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')
+          test "$actual_commit" = "$RELEASE_COMMIT"
+      - name: Confirm the release tag still points to the built commit
+        shell: bash
+        run: |
+          actual_commit=$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq '.sha')
+          test "$actual_commit" = "$RELEASE_COMMIT"
+      - name: Attach release downloads
+        run: >-
+          gh release upload "$RELEASE_TAG"
+          dist/meshit-release.zip dist/meshit-release.zip.sha256
+          dist/meshit-android-debug.apk dist/meshit-android-debug.apk.sha256 --clobber
+      - name: Publish the completed beta
+        if: github.event_name == 'workflow_dispatch'
+        run: gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --draft=false --prerelease --latest=false

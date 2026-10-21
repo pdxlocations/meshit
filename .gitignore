@@ -1,0 +1,9 @@
+.pio/
+node_modules/
+dist/
+output/
+.DS_Store
+android/
+ios/
+__pycache__/
+include/BuildAssets.h

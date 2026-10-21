@@ -1,0 +1,48 @@
+#include <Core.h>
+#include <CryptoBox.h>
+#include <Fragments.h>
+#include <Carriers.h>
+#include <Snapshot.h>
+#include <cassert>
+#include <iostream>
+using namespace meshit;
+Id id(uint32_t who,uint16_t n){return (Id(who)<<16)|n;}
+Event post(uint32_t who,uint16_t n,Id parent=0){Event e;e.id=id(who,n);e.room="general";e.text="A lightweight conversation";e.ref=parent;return e;}
+Event vote(uint32_t who,uint16_t n,Id target,bool up=true){Event e;e.id=id(who,n);e.kind=Kind::Vote;e.ref=target;e.up=up;return e;}
+Core client(uint32_t who){Core c;c.allocate=[who,n=uint16_t(0)]()mutable{return id(who,++n);};return c;}
+struct Memory {
+  Bytes bytes;size_t at=0;
+  size_t write(const uint8_t* b,size_t n){bytes.insert(bytes.end(),b,b+n);return n;}
+  int read(uint8_t* b,size_t n){size_t len=std::min(n,bytes.size()-at);memcpy(b,bytes.data()+at,len);at+=len;return len;}
+};
+std::string hexBytes(const Bytes& b){std::string s;char x[3];for(auto c:b){snprintf(x,3,"%02x",c);s+=x;}return s;}
+int main(){
+  assert(hex(id(0xabcdef01,0x1234))=="abcdef011234");assert(fromHex("abcdef011234")==id(0xabcdef01,0x1234));assert(!fromHex("gggggggggggg"));
+  auto e=post(1,1);assert(valid(e));auto bytes=encode(e);Event decoded;assert(decode(bytes,decoded));assert(encode(decoded)==bytes);bytes.push_back(0);assert(!decode(bytes,decoded));
+  e.text=std::string(160,'a');assert(valid(e));e.text+='a';assert(!valid(e));e.text="";for(int i=0;i<160;++i)e.text+="🙂";assert(valid(e));assert(e.text.size()==640);e.text+="a";assert(!valid(e));e.text="\xc0\x80";assert(!valid(e));e.text="\xed\xa0\x80";assert(!valid(e));e.text="\x01";assert(!valid(e));
+  auto c=client(11);assert(c.submit(post(1,1),0));auto own=c.messages[0].event;int sends=0;
+  c.receive(own,50,true);assert(!c.messages[0].acked); // No TX yet.
+  c.tick(200,[&](const Event&,bool){++sends;return true;});assert(sends==1);
+  c.receive(own,300,false);assert(!c.messages[0].acked);auto wrong=own;wrong.text="forged";c.receive(wrong,350,true);assert(!c.messages[0].acked);
+  c.receive(own,400,true);assert(c.messages[0].acked);c.tick(500,[](const Event&,bool){assert(false);return true;});assert(c.pending.empty());
+  auto r=client(12);r.submit(post(1,1),0);sends=0;for(uint32_t t=0;t<400000;t+=1000)r.tick(t,[&](const Event&,bool){++sends;return true;});assert(sends==4);assert(r.pending.empty());
+  r.receive(r.messages[0].event,401000,true);assert(r.messages[0].acked); // Late echo still earns a check.
+  auto busy=client(13);busy.submit(post(1,1),0);for(uint32_t t=0;t<100000;t+=1000)busy.tick(t,[](const Event&,bool){return false;});assert(busy.pending[0].attempts==0);
+  auto quiet=client(14);quiet.receive(post(20,50),0,false);assert(quiet.pending.empty());sends=0;quiet.tick(60000,[&](const Event&,bool){++sends;return true;});assert(!sends); // First hearing skips old history.
+  quiet.receive(post(20,52),61000,false);std::vector<Event> emitted;
+  quiet.tick(62000,[&](const Event& out,bool history){assert(!history);emitted.push_back(out);return true;});assert(emitted.size()==1&&emitted[0].kind==Kind::Request&&emitted[0].ref==id(20,51));
+  auto source=client(20);source.receive(post(20,51),0,false);source.receive(emitted[0],62000,false);source.tick(70000,[&](const Event& out,bool history){assert(history&&out.kind==Kind::History);quiet.receive(out,70000,false);return true;});assert(quiet.find(id(20,51)));
+  auto old=client(30);old.receive(vote(22,1,id(90,1)),0,false);old.tick(1000,[&](const Event& out,bool){assert(out.kind==Kind::Request&&out.ref==id(90,1));return true;});auto recovered=post(90,1);recovered.kind=Kind::History;old.receive(recovered,2000,false);assert(old.score(id(90,1))==1);old.receive(vote(22,2,id(90,1),false),3000,false);assert(old.score(id(90,1))==0);old.receive(vote(22,1,id(90,1)),4000,false);assert(old.score(id(90,1))==0);
+  auto cap=client(40);auto parent=post(41,1);cap.receive(parent,0,false);auto child=post(42,1,parent.id);cap.receive(child,0,false);cap.receive(vote(43,1,child.id),0,false);
+  for(uint16_t n=2;n<=201;++n)cap.receive(post(41,n),n,false);
+  assert(cap.messages.size()<=200);assert(!cap.find(parent.id)&&!cap.find(child.id));assert(!cap.score(child.id));cap.receive(child,1000,false);assert(!cap.find(child.id));
+  auto ranked=client(50);ranked.receive(post(51,1),0,false);ranked.receive(vote(52,1,id(51,1)),0,false);for(uint16_t n=2;n<=205;++n)ranked.receive(post(51,n),n,false);assert(ranked.messages.size()==200&&ranked.find(id(51,1)));assert(!ranked.find(id(51,2)));
+  auto snapshot=client(60);snapshot.submit(post(1,1),0);snapshot.receive(vote(61,1,snapshot.messages[0].event.id),0,false);Memory storage;assert(writeSnapshot(storage,snapshot));Core restored;assert(readSnapshot(storage,restored,500));assert(restored.messages.size()==1&&restored.pending.size()==1&&restored.score(snapshot.messages[0].event.id)==1);storage.bytes.pop_back();storage.at=0;Core corrupt;assert(!readSnapshot(storage,corrupt,0));
+  std::array<uint8_t,12> nonce{};for(size_t i=0;i<nonce.size();++i)nonce[i]=i;auto plain=encode(post(0x12345678,9));auto encrypted=seal(plain,nonce);Bytes opened;assert(open(encrypted,opened)&&opened==plain);
+  for(size_t i=0;i<encrypted.size();++i){auto tampered=encrypted;tampered[i]^=1;assert(!open(tampered,opened)&&opened.empty());}
+  auto parts=fragment(id(2,1),encrypted);Assembler assembler;Bytes assembled;bool relayed=false;for(auto it=parts.rbegin();it!=parts.rend();++it)assembler.accept(*it,0,true,assembled,relayed);assert(assembled==encrypted&&relayed);
+  auto huge=post(1,1);huge.room=std::string(16,'r');huge.nick=std::string(16,'n');huge.text="";for(int i=0;i<160;++i)huge.text+="🙂";auto hugeParts=fragment(id(3,1),seal(encode(huge),nonce));assert(hugeParts.size()==7);
+  for(const auto& p:hugeParts){auto mc=meshcorePacket(p),mt=meshtasticPacket(p,0x12345678,0x23456789,"LongFast");assert(mc.size()<=186&&mt.size()<=255);Received received;assert(parseMeshcore(mc,received)&&received.payload==p&&!received.relayed);auto echo=mc;echo[1]=1;echo.insert(echo.begin()+2,0x55);assert(parseMeshcore(echo,received)&&received.relayed&&received.payload==p);assert(parseMeshtastic(mt,"LongFast",received)&&received.payload==p&&!received.relayed);echo=mt;echo[12]-=1;assert(parseMeshtastic(echo,"LongFast",received)&&received.relayed);assert(!parseMeshtastic(mt,"Other",received));}
+  auto mc=meshcorePacket(parts[0]),mt=meshtasticPacket(parts[0],0x12345678,0x23456789,"LongFast");
+  std::cout<<"{\"plain\":\""<<hexBytes(plain)<<"\",\"encrypted\":\""<<hexBytes(encrypted)<<"\",\"fragment\":\""<<hexBytes(parts[0])<<"\",\"meshcore\":\""<<hexBytes(mc)<<"\",\"meshtastic\":\""<<hexBytes(mt)<<"\"}\n";
+}

@@ -1,0 +1,3 @@
+[
+  {"environment":"heltec-v3","board":"Heltec WiFi LoRa 32 V3","radio":"SX1262","flashMiB":8,"partitions":"partitions/heltec.csv","chipFamily":"ESP32-S3"}
+]

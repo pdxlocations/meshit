@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#10251e"><title>Meshit</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+<header><a class="brand" href="#chat"><span class="mark">m</span> meshit<span class="tag">a little off-grid conversation</span></a><nav><button id="chat-tab" aria-current="page">Chat</button><button id="settings-tab">Settings</button></nav></header>
+<div id="notice" role="status" aria-live="polite"></div>
+<main id="chat-view" class="shell" hidden>
+  <aside><div class="aside-title"><h2>Rooms</h2><button id="new-room" class="quiet" aria-label="New room">＋ New room</button></div><div id="rooms"></div><p class="aside-note">One channel. Many conversations.<br>200 messages, kept by upvotes.</p><p id="connection" class="connection">Connecting…</p></aside>
+  <section class="conversation"><div class="conversation-title"><div><span class="eyebrow">ON THE MESH</span><h1 id="room-title">general</h1></div><div class="segmented" aria-label="Sort messages"><button id="sort-new" aria-pressed="true">New</button><button id="sort-top" aria-pressed="false">Top</button></div></div>
+    <form id="compose"><label id="compose-label" for="message">Start a conversation</label><div id="reply-context" hidden></div><textarea id="message" rows="3" placeholder="What’s on your mind?" required></textarea><div class="composer-footer"><span id="char-count">0 / 160</span><div><button type="button" id="cancel-reply" class="quiet" hidden>Cancel reply</button><button type="submit" id="send" class="primary">Post to room ↗</button></div></div></form>
+    <div id="feed"></div>
+  </section>
+</main>
+<main id="settings-view" class="settings" hidden><span class="eyebrow">MAKE YOURSELF AT HOME</span><h1>Settings</h1>
+  <section class="settings-card"><h2>Your radio</h2><p id="radio-info"></p><label>Connection<select id="transport"><option value="local">This radio / local Wi-Fi</option><option value="wifi">Another radio on Wi-Fi</option><option value="ble">Bluetooth</option></select></label><label id="address-label" hidden>Radio address<input id="address" type="url" placeholder="http://meshit.local"></label><button id="connect" class="secondary">Connect</button></section>
+  <form id="settings-form"><section class="settings-card"><h2>Identity</h2><label>Nickname <span class="hint">optional · 16 UTF-8 bytes</span><input id="nickname" placeholder="Anonymous" autocomplete="nickname"></label></section>
+    <section class="settings-card"><h2>Network</h2><div class="network-options"><label><input type="radio" name="network" value="meshtastic"> Meshtastic</label><label><input type="radio" name="network" value="meshcore"> MeshCore</label></div><label>Region<select id="region"></select></label><label>Preset<select id="preset"></select></label><p id="preset-detail" class="hint"></p><label id="channel-label">Transport channel name<input id="channel" value="LongFast" maxlength="32"></label><p class="hint">All Meshit rooms share this radio channel. Changing network or preset starts a fresh radio history.</p></section>
+    <section id="wifi-settings" class="settings-card"><h2>Local Wi-Fi</h2><p class="hint">Join your network to open <strong>meshit.local</strong>. The companion is bundled on your ESP radio.</p><label>Network name<input id="ssid" autocomplete="off"></label><label>Password<input id="password" type="password" autocomplete="new-password" placeholder="Leave blank to keep saved password"></label></section>
+    <button class="primary" type="submit">Save settings</button>
+  </form>
+</main>
+<dialog id="onboarding"><form id="setup-form"><span class="eyebrow">WELCOME TO MESHIT</span><h1>A small place<br>to talk.</h1><p>Choose the network your nearby repeaters use.</p><div id="setup-networks" class="network-options"><label><input type="radio" name="setup-network" value="meshtastic" required> Meshtastic</label><label><input type="radio" name="setup-network" value="meshcore"> MeshCore</label></div><div id="setup-options" hidden><label>Region<select id="setup-region"></select></label><label>Preset<select id="setup-preset"></select></label><p id="setup-detail" class="hint"></p></div><button class="primary" type="submit">Join the conversation ↗</button></form><button type="button" id="setup-connect" class="quiet">Connect to another radio</button></dialog>
+<dialog id="room-dialog"><form id="room-form"><h2>New room</h2><label>Room name<input id="room-name" required placeholder="campfire" autocomplete="off"></label><p class="hint">Up to 16 UTF-8 bytes. Others discover the room when you post its first message.</p><div class="actions"><button type="button" id="room-cancel" class="quiet">Cancel</button><button class="primary" type="submit">Create room</button></div></form></dialog>
+<script type="module" src="/app.js"></script>
+</body></html>
