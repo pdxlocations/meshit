@@ -8,11 +8,13 @@ The initial preset catalog covers US/Canada and EU 868 MHz, with Meshtastic Long
 
 ## Settings
 
+The header’s **Dark mode** toggle changes appearance only; it does not change radio settings or history.
+
 Open **Settings** to change the connection, nickname, radio network, region, and preset. Nicknames are optional and fit 16 UTF-8 bytes; blank means Anonymous. Changing the network or preset starts a fresh radio history.
 
 For a second ESP on the LAN, select **Another radio on Wi-Fi** and enter its HTTP address. In a browser, HTTP RPC must be same-origin; use the radio's own webpage for local Wi-Fi control. Native companions provide the local HTTP adapter.
 
-![Meshit connection, identity, radio, and Wi-Fi settings](../screenshots/settings.png)
+![Meshit connection, identity, and radio settings](../screenshots/settings.png)
 
 Screenshot from the local simulator; no Wi-Fi credentials are shown. The hosted flasher installs firmware; the radio's local page or mobile companion is where you chat.
 

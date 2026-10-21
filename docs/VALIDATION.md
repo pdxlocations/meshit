@@ -20,7 +20,7 @@ Host round trips and upstream format inspection do not prove interoperability wi
 
 Local Wi-Fi setup, LAN joining, `meshit.local` discovery, BLE reconnection and notification pacing require radios and real Android/iOS devices. The iOS simulator cannot validate BLE; the installed simulator service also reported a runtime-version mismatch during compilation. Android signing/distribution and iOS provisioning are not configured.
 
-Desktop Chrome visual review and chat/settings screenshots were completed using the local simulator during the documentation update. No mobile viewport or physical-device screenshots were captured. UI/API behavior and native bundling were checked through tests and builds. The local preview is available through `npm run dev`.
+Desktop Chrome visual review and updated chat screenshots in light/dark mode plus settings screenshots were completed using the local simulator during the documentation update. No mobile viewport or physical-device screenshots were captured. UI/API behavior and native bundling were checked through tests and builds. The local preview is available through `npm run dev`.
 
 The firmware size reports describe linked static RAM and flash, not maximum live heap consumption. No PSRAM is required by the implementation. The documented resource caps are application bounds, not a claim of measured hardware battery life or memory headroom.
 

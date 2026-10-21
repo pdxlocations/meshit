@@ -1,4 +1,4 @@
-# Meshit
+# 💩 Meshit
 
 **[Install firmware → meshit.pdxlocs.com](https://meshit.pdxlocs.com)** · [GitHub Releases](https://github.com/pdxlocations/meshit/releases) · [Wiki](https://github.com/pdxlocations/meshit/wiki) · [Documentation source](docs/wiki/Home.md)
 
@@ -10,7 +10,17 @@ There are no locations, node advertisements, direct messages, explicit radio ack
 
 ## Screenshots
 
+The companion uses a compact sans-serif layout with a 💩 logo and a saved light/dark preference. Use **Dark mode** in the header to switch themes.
+
+**Light mode**
+
 ![Meshit chat with rooms, upvotes, and threaded replies](docs/screenshots/chat.png)
+
+**Dark mode**
+
+![Meshit chat in dark mode](docs/screenshots/chat-dark.png)
+
+**Settings**
 
 ![Meshit radio connection and network settings](docs/screenshots/settings.png)
 

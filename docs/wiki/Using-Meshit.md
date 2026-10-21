@@ -1,8 +1,16 @@
 # Using Meshit
 
+## Appearance
+
+The 💩 logo identifies Meshit. The interface uses sans-serif fonts and a compact layout. **Chat** opens conversations; **Settings** opens radio configuration.
+
+**Dark mode** in the header toggles between light and dark themes. On first use, the app follows your device preference. After you toggle, that choice is saved locally and survives reloads; it applies to chat, settings, and dialogs. Each browser or companion keeps its own preference.
+
+![Meshit chat in dark mode](../screenshots/chat-dark.png)
+
 ## Rooms and conversations
 
-Choose a room on the left, enter up to **160 Unicode characters**, and select **Post to room**. Select **Reply** beneath a post to start a threaded response; **Cancel reply** returns to a new conversation. Posts are immutable.
+Choose a room on the left, enter up to **160 Unicode characters**, and select **Post**. Select **Reply** beneath a post to start a threaded response; **Cancel reply** returns to a new conversation. Posts are immutable.
 
 Use **New room** to create a room name of up to 16 UTF-8 bytes. A new empty room stays on your companion until its first post, when other radios can discover it. All rooms share the selected transport channel; a room is not a separate private channel.
 
