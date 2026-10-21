@@ -10,6 +10,8 @@ Use **[meshit.pdxlocs.com](https://meshit.pdxlocs.com)** for firmware installati
 4. Confirm the board and data replacement when applicable, then choose **Download & verify firmware**.
 5. Choose **Connect USB & install**, select the radio, and complete installation.
 
+After restart, read the setup AP name and eight-digit numeric password on the OLED, join that network, and open **http://192.168.4.1**. If the display is absent or fails to initialize, join `Meshit-…` with **`12345678`**. No serial monitor is needed with current firmware. See [connection and settings](Connection-and-Settings.md) for details.
+
 Update writes the application at `0x10000`. Preserve data only with a matching board/partition layout and **Erase device unchecked**. Fresh installation writes a complete 8 MiB image at `0x0` and replaces saved data regardless of the erase checkbox. The companion website is embedded; no filesystem upload is needed.
 
 ## RAK4631

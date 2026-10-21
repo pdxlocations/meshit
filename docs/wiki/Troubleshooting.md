@@ -6,7 +6,8 @@
 | USB install unavailable | Use desktop Chrome/Edge, HTTPS, a data cable, and the Heltec target. Close other apps using the serial port. |
 | RAK download blocked | Read the SoftDevice line in `INFO_UF2.TXT` and select exactly 6.1.1 or 7.3.0. Do not infer it from the bootloader version. |
 | Firmware verification fails | Re-select the release and download again. Keep the board and SoftDevice matched; do not bypass validation. |
-| ESP setup Wi-Fi missing | Read the boot log at 115200 baud. A successful LAN join closes the setup hotspot. |
+| ESP setup Wi-Fi missing | Read the AP name on the OLED or look for `Meshit-…` in Wi-Fi settings. After one minute on your LAN, the setup hotspot closes; use `meshit.local` or the LAN IP shown on screen. Restart to reopen setup Wi-Fi. |
+| No display / setup password unknown | With current firmware, use `12345678` when the supported display is absent or cannot initialize. A working OLED shows its eight-digit password. Update older firmware for this setup flow; a serial monitor is not required. |
 | `meshit.local` does not resolve | Join the same LAN. If mDNS is unavailable, use the radio's LAN IP. Restart after saving Wi-Fi credentials. |
 | Bluetooth unavailable in browser | Use a Web Bluetooth-capable browser or the native companion; iPhone uses the native app. A simulator cannot validate phone BLE. |
 | Radio disconnected | Check power, reconnect in Settings, and confirm the selected Wi-Fi/Bluetooth connection. Saved messages can remain visible offline. |

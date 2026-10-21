@@ -3,6 +3,7 @@
 #include <Fragments.h>
 #include <Carriers.h>
 #include <Snapshot.h>
+#include "../include/SetupAccess.h"
 #include <cassert>
 #include <iostream>
 using namespace meshit;
@@ -17,6 +18,18 @@ struct Memory {
 };
 std::string hexBytes(const Bytes& b){std::string s;char x[3];for(auto c:b){snprintf(x,3,"%02x",c);s+=x;}return s;}
 int main(){
+  assert(setupPassword(false,"",0)=="12345678");
+  assert(setupPassword(false,"48214821",99)=="12345678");
+  assert(setupPassword(true,"48214821",99)=="48214821");
+  for(const auto& saved:{"","abcdefghijkl","12345678","1234123x","00000000","123412341234","１２３４１２３４"}){
+    auto pass=setupPassword(true,saved,0);assert(pass=="10001000");
+  }
+  for(uint32_t random:{0u,1u,8999u,9000u,UINT32_MAX}){
+    auto pass=setupPassword(true,"",random);assert(pass.size()==8&&pass.substr(0,4)==pass.substr(4));
+    for(char c:pass)assert(c>='0'&&c<='9');
+    assert(setupPassword(true,pass,42)==pass);
+  }
+
   assert(hex(id(0xabcdef01,0x1234))=="abcdef011234");assert(fromHex("abcdef011234")==id(0xabcdef01,0x1234));assert(!fromHex("gggggggggggg"));
   auto e=post(1,1);assert(valid(e));auto bytes=encode(e);Event decoded;assert(decode(bytes,decoded));assert(encode(decoded)==bytes);bytes.push_back(0);assert(!decode(bytes,decoded));
   e.text=std::string(160,'a');assert(valid(e));e.text+='a';assert(!valid(e));e.text="";for(int i=0;i<160;++i)e.text+="🙂";assert(valid(e));assert(e.text.size()==640);e.text+="a";assert(!valid(e));e.text="\xc0\x80";assert(!valid(e));e.text="\xed\xa0\x80";assert(!valid(e));e.text="\x01";assert(!valid(e));

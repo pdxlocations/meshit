@@ -51,3 +51,9 @@ npm run mobile:ios
 ```
 
 After regenerating mobile assets, `npm run mobile:sync` also regenerates the iOS Swift Bluetooth registration adapter. Build Android with Gradle/Android Studio and iOS with Xcode; generated projects remain outside the checked-in source.
+
+## On-device Wi-Fi setup
+
+The setup password policy is tested in the host suite: no-display fallback `12345678`, migration of old or malformed credentials, eight ASCII digits with a repeated four-digit PIN, deterministic boundary inputs, and reuse across restarts. The Heltec display path probes I2C before initialization and selects the fallback when probing or allocation fails. RAK builds retain Bluetooth-only access.
+
+The OLED uses [Heltec V3’s board-defined Vext, reset, SDA, and SCL pins](https://github.com/Heltec-Aaron-Lee/WiFi_Kit_series/blob/master/variants/heltec_wifi_lora_32_V3/pins_arduino.h) and the pinned ThingPulse SSD1306 driver. It shows the AP name, large numeric password, and setup URL, then LAN details after the setup AP closes. On-device readability, missing-display detection, and joining the AP still require a physical radio; compilation and host tests do not establish those hardware results.

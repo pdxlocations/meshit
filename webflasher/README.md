@@ -23,7 +23,7 @@ Choose the firmware version, **Heltec WiFi LoRa 32 V3**, and installation type:
 
 Confirm your board and, for a fresh install, data replacement. **Download & verify firmware** checks size and SHA-256 before enabling **Connect USB & install**. The USB tool identifies the processor family, not the board model. Browser access to the USB port happens only after the visitor clicks and selects it.
 
-The companion webpage is embedded in the firmware. No separate filesystem upload is needed. After restart, read setup Wi-Fi credentials from the boot log at 115200 baud, join that network, and open `http://192.168.4.1`. After configuring your LAN and restarting, use `http://meshit.local`.
+The companion webpage is embedded in the firmware. No separate filesystem upload is needed. After restart, the Heltec V3 OLED shows its `Meshit-…` AP name, eight-digit numeric password, and `http://192.168.4.1`. The password is a four-digit PIN repeated twice (for example, `48214821`) and stays the same across restarts. If the supported display is absent or fails to initialize, the AP password is **`12345678`**. Join the setup Wi-Fi and open the displayed address; **no serial monitor is needed**. Current firmware automatically replaces older saved setup passwords with this policy; home Wi-Fi credentials are unchanged. Older firmware must be updated for this setup flow. After configuring your LAN and restarting, use `http://meshit.local`. After one minute on the LAN, the setup AP closes and the OLED switches to `meshit.local` and the LAN IP.
 
 ## RAK4631 installation
 

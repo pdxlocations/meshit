@@ -10,6 +10,8 @@
 #include "History.h"
 #include "BleLink.h"
 #include "BuildAssets.h"
+#include "SetupAccess.h"
+#include "SetupDisplay.h"
 #if defined(MESHIT_ESP32)
 #include <WiFi.h>
 #include <WebServer.h>
@@ -17,6 +19,8 @@
 #include <esp_system.h>
 constexpr int RADIO_CS=8,RADIO_IRQ=14,RADIO_RESET=12,RADIO_BUSY=13;
 WebServer server(80);
+SetupDisplay setupDisplay;
+String setupName,setupPass;
 #else
 #include "../firmware/nrf52/Pins.h"
 constexpr int RADIO_CS=NRF_CS,RADIO_IRQ=NRF_IRQ,RADIO_RESET=NRF_RESET,RADIO_BUSY=NRF_BUSY;
@@ -168,9 +172,15 @@ void pollLinks(){
 #if defined(MESHIT_ESP32)
 void setupWifi(){
   WiFi.setHostname("meshit");WiFi.mode(WIFI_AP_STA);
-  String password=settings["setupPassword"]|"";
-  if(password.length()<12){password="";const char alphabet[]="abcdefghjkmnpqrstuvwxyz23456789";for(int i=0;i<12;++i)password+=alphabet[random32()%(sizeof(alphabet)-1)];settings["setupPassword"]=password;String s;serializeJson(settings,s);writeFile("/settings.json",s);}
-  String name="Meshit-"+String(identity&65535,HEX);WiFi.softAP(name.c_str(),password.c_str());Serial.println("Setup Wi-Fi: "+name+" password: "+password);
+  const bool displayReady=setupDisplay.begin();
+  const String saved=settings["setupPassword"]|"";
+  setupPass=meshit::setupPassword(displayReady,saved.c_str(),random32()).c_str();
+  if(setupPass!=saved){settings["setupPassword"]=setupPass;String s;serializeJson(settings,s);writeFile("/settings.json",s);}
+  setupName="Meshit-"+String(identity&65535,HEX);
+  const bool apStarted=WiFi.softAP(setupName.c_str(),setupPass.c_str());
+  if(apStarted)setupDisplay.showAccessPoint(setupName,setupPass);
+  else setupDisplay.showNetwork(false,"");
+  Serial.println("Setup Wi-Fi: "+setupName+" password: "+setupPass);
   String ssid=settings["ssid"]|"";if(ssid.length())WiFi.begin(ssid.c_str(),settings["password"]|"");
   MDNS.begin("meshit");MDNS.addService("http","tcp",80);
   server.on("/api/rpc",HTTP_POST,[]{
@@ -198,6 +208,12 @@ void loop(){
   server.handleClient();
   static uint32_t connectedAt=0;
   if(WiFi.status()==WL_CONNECTED){if(!connectedAt)connectedAt=millis();if(uint32_t(millis()-connectedAt)>60000)WiFi.softAPdisconnect(true);}else connectedAt=0;
+  static uint32_t lastDisplay=0;
+  if(uint32_t(millis()-lastDisplay)>=1000){
+    lastDisplay=millis();
+    if(WiFi.getMode()&WIFI_AP)setupDisplay.showAccessPoint(setupName,setupPass);
+    else setupDisplay.showNetwork(WiFi.status()==WL_CONNECTED,WiFi.localIP().toString());
+  }
 #endif
   pollLinks();pollRadio();size_t before=core.pending.size();
   if(ready&&identityReady)core.tick(millis(),sendEvent);

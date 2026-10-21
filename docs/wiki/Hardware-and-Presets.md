@@ -5,6 +5,8 @@
 | Heltec WiFi LoRa 32 V3 | ESP32-S3 | Local Wi-Fi or Bluetooth | Browser USB installer |
 | RAK4631 | nRF52840 | Bluetooth | Matching S140 UF2/HEX download |
 
+Heltec V3’s built-in 128×64 OLED shows setup Wi-Fi credentials and the setup URL. If the display is absent or initialization fails, its AP uses `12345678`. RAK4631 uses Bluetooth and has no setup AP.
+
 Other boards have not been ported. Select hardware suitable for your local frequency band.
 
 ## Included presets
