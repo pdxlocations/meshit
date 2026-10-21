@@ -2,7 +2,7 @@
 
 ## Appearance
 
-The 💩 logo identifies Meshit. The interface uses sans-serif fonts and a compact layout. **Chat** opens conversations; **Settings** opens radio configuration.
+The 💩 logo identifies Meshit. The interface uses the neutral Paper/Graphite palette, sans-serif fonts, and a compact layout. **Chat** opens conversations; **Settings** opens radio configuration.
 
 **Dark mode** in the header toggles between light and dark themes. On first use, the app follows your device preference. After you toggle, that choice is saved locally and survives reloads; it applies to chat, settings, and dialogs. Each browser or companion keeps its own preference.
 
@@ -18,7 +18,7 @@ Use **New room** to create a room name of up to 16 UTF-8 bytes. A new empty room
 
 Select the up arrow to upvote, and select it again to remove your vote. **New** sorts by recent local order; **Top** sorts by votes, with recent order breaking ties. Votes are bounded local state, not a globally synchronized ledger.
 
-## The green check
+## The rebroadcast check
 
 A check means the radio heard an authenticated rebroadcast of its message from another radio. It does not prove delivery to every participant or that anyone read it. No check means no qualifying rebroadcast was heard. The radio allows one initial transmission plus at most three retries. Busy-channel waits do not consume attempts.
 

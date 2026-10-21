@@ -11,7 +11,7 @@
 | Bluetooth unavailable in browser | Use a Web Bluetooth-capable browser or the native companion; iPhone uses the native app. A simulator cannot validate phone BLE. |
 | Radio disconnected | Check power, reconnect in Settings, and confirm the selected Wi-Fi/Bluetooth connection. Saved messages can remain visible offline. |
 | Connected but no messages | Confirm network, region, preset, and Meshtastic channel name match nearby Meshit users and relay infrastructure. Ordinary network chat is not displayed. |
-| No green check | No qualifying relayed echo was heard. This is not a read receipt; RF coverage and repeater behavior still require hardware checks. |
+| No rebroadcast check | No qualifying relayed echo was heard. This is not a read receipt; RF coverage and repeater behavior still require hardware checks. |
 | Messages disappeared | Check for a network/preset change, fresh install, or the 200-message retention limit. Parent eviction also removes descendants. |
 | Sending disabled | Complete setup, restore the radio connection, and check storage/identity warnings. Keep text within 160 characters. |
 | Hosted page returns PHP source | Enable PHP 8.1+ with cURL, JSON, and ZipArchive. Static GitHub Pages cannot run the bridge. |

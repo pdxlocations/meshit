@@ -4,13 +4,13 @@
 
 Small, threaded LoRa chat for **Heltec V3 (ESP32-S3)** and **RAK4631 (nRF52840)**. Meshit originates encrypted application traffic on a selected Meshtastic or MeshCore network. Existing infrastructure supplies the relays; Meshit never forwards ordinary received traffic.
 
-Chat has rooms, replies, removable upvotes, New/Top sorting, and an optional nickname (Anonymous by default). Posts and replies accept **160 Unicode characters**. A green check means **another radio was heard rebroadcasting the message**, not that everyone received it. Without a check, the radio makes at most three retries after the initial send.
+Chat has rooms, replies, removable upvotes, New/Top sorting, and an optional nickname (Anonymous by default). Posts and replies accept **160 Unicode characters**. A check means **another radio was heard rebroadcasting the message**, not that everyone received it. Without a check, the radio makes at most three retries after the initial send.
 
 There are no locations, node advertisements, direct messages, explicit radio acknowledgments, or periodic history broadcasts. The single exception to the no-forwarding rule is answering an explicit request for a retained message, with delayed response suppression.
 
 ## Screenshots
 
-The companion uses a compact sans-serif layout with a 💩 logo and a saved light/dark preference. Use **Dark mode** in the header to switch themes.
+The companion uses a compact sans-serif layout with a 💩 logo and Paper/Graphite colors and a saved light/dark preference. Use **Dark mode** in the header to switch themes.
 
 **Light mode**
 
@@ -24,7 +24,7 @@ The companion uses a compact sans-serif layout with a 💩 logo and a saved ligh
 
 ![Meshit radio connection and network settings](docs/screenshots/settings.png)
 
-Captured from the local simulator with sample messages. Green checks are simulated rebroadcasts; screenshots do not establish hardware interoperability.
+Captured from the local simulator with sample messages. Rebroadcast checks are simulated rebroadcasts; screenshots do not establish hardware interoperability.
 
 ## Get started
 

@@ -4,7 +4,7 @@ const systemTheme=matchMedia('(prefers-color-scheme: dark)');
 function updateTheme(){
   const dark=(document.documentElement.dataset.theme|| (systemTheme.matches?'dark':'light'))==='dark';
   $('theme-toggle').setAttribute('aria-pressed',String(dark));
-  document.querySelector('meta[name="theme-color"]').content=dark?'#111a16':'#f4f4ed';
+  document.querySelector('meta[name="theme-color"]').content=dark?'#151515':'#fafafa';
 }
 $('theme-toggle').onclick=()=>{
   const theme=$('theme-toggle').getAttribute('aria-pressed')==='true'?'light':'dark';

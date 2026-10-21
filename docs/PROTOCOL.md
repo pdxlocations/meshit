@@ -45,7 +45,7 @@ Neither adapter forwards received packets, emits node info, requests network ack
 
 ## Checks and retries
 
-Only a successfully authenticated, matching echo of a transmitted originated post with relay evidence sets its green check. Every fragment in its reassembly must have relay evidence. Local enqueueing, an arbitrary duplicate, an unrelayed frame, explicit network ACK, upvote, or history response does not create a green check. A late matching relay echo still creates a check after retries end.
+Only a successfully authenticated, matching echo of a transmitted originated post with relay evidence sets its rebroadcast check. Every fragment in its reassembly must have relay evidence. Local enqueueing, an arbitrary duplicate, an unrelayed frame, explicit network ACK, upvote, or history response does not create a rebroadcast check. A late matching relay echo still creates a check after retries end.
 
 The scheduler allows one initial attempt plus three retries, starting at 45 seconds with increasing waits and jitter. Channel-busy checks and refused sends do not consume attempts. Each attempt begins when the first fragment enters the radio; remaining fragments follow asynchronously. Failed or interrupted later fragments are repaired by a later whole-event retry. The PHY enforces the selected preset's airtime spacing; pending RF jobs prevent interleaving. Pending attempt counts and sent/check state are saved in the binary snapshot. Actual radio timing remains subject to hardware validation.
 
