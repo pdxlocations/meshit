@@ -2,7 +2,8 @@
 #include <Arduino.h>
 #if defined(MESHIT_ESP32)
 #include <LittleFS.h>
-inline bool storageBegin(){return LittleFS.begin(true);}
+// Arduino defaults to "spiffs"; our Heltec partition table names it "littlefs".
+inline bool storageBegin(){return LittleFS.begin(true,"/littlefs",10,"littlefs");}
 inline String readFile(const char* name){auto f=LittleFS.open(name,"r");return f?f.readString():String();}
 inline bool writeFile(const char* name,const String& value){
   String tmp=String(name)+".tmp";auto f=LittleFS.open(tmp,"w");if(!f)return false;bool ok=f.print(value)==value.length();f.flush();f.close();return ok&&LittleFS.rename(tmp,name);

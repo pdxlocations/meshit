@@ -16,6 +16,7 @@
 | No rebroadcast check | No qualifying relayed echo was heard. This is not a read receipt; RF coverage and repeater behavior still require hardware checks. |
 | Messages disappeared | Check for a network/preset change, fresh install, or the 200-message retention limit. Parent eviction also removes descendants. |
 | Sending disabled | Complete setup, restore the radio connection, and check storage/identity warnings. Keep text within 160 characters. |
+| Heltec reports “Radio storage is unavailable” | Older firmware used the wrong storage partition name. Update the existing installation with firmware containing the partition-name fix, then restart. Use an app-only update; a fresh install erases saved settings and messages. If the warning persists, report it before erasing the radio. |
 | Hosted page returns PHP source | Enable PHP 8.1+ with cURL, JSON, and ZipArchive. Static GitHub Pages cannot run the bridge. |
 
 When [reporting a bug](https://github.com/pdxlocations/meshit/issues), include board, firmware version, installed RAK SoftDevice, network/preset, browser or phone OS, reproduction steps, and relevant logs. Remove Wi-Fi passwords and other private details.
