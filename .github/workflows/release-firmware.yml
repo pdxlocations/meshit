@@ -20,6 +20,8 @@ concurrency:
 jobs:
   identity:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     outputs:
       tag: ${{ steps.release.outputs.tag }}
       title: ${{ steps.release.outputs.title }}
@@ -53,6 +55,14 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "title=$title" >> "$GITHUB_OUTPUT"
           echo "commit=$commit" >> "$GITHUB_OUTPUT"
+      - name: Reserve the exact release tag before building
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_COMMIT: ${{ steps.release.outputs.commit }}
+        run: python3 tools/release_tag.py --create
 
   build:
     needs: identity
@@ -113,21 +123,14 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          if existing_commit=$(gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" --jq '.object.sha' 2>/dev/null); then
-            if [[ "$existing_commit" != "$RELEASE_COMMIT" ]]; then
-              echo 'The generated tag points to different code. Choose a new version.' >&2
-              exit 1
-            fi
-          else
-            gh api --method POST "repos/$GH_REPO/git/refs" -f "ref=refs/tags/$RELEASE_TAG" -f "sha=$RELEASE_COMMIT"
-          fi
+          python3 tools/release_tag.py
           if draft=$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' 2>/dev/null); then
             if [[ "$draft" != "true" ]]; then
               echo 'This beta is already published. Choose a new version or commit.' >&2
               exit 1
             fi
           else
-            gh release create "$RELEASE_TAG" --target "$RELEASE_COMMIT" --title "$RELEASE_TITLE" --verify-tag --prerelease --draft --generate-notes
+            gh release create "$RELEASE_TAG" --title "$RELEASE_TITLE" --verify-tag --prerelease --draft --generate-notes
           fi
           actual_commit=$(gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')
           test "$actual_commit" = "$RELEASE_COMMIT"

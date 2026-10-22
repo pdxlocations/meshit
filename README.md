@@ -63,7 +63,7 @@ The nRF builds reserve `0x80000–0xECFFF` for meshit storage; linker limits pre
 
 The **[web flasher at meshit.pdxlocs.com](https://meshit.pdxlocs.com)** installs ESP firmware over browser USB and provides verified RAK4631 / T114 UF2/HEX downloads with explicit SoftDevice matching. Deployment and self-hosting instructions are in [webflasher/README.md](webflasher/README.md). It automatically discovers published builds from `pdxlocations/meshit`.
 
-GitHub workflows run CI on pushes and pull requests, build all firmware and the Android companion, and package release downloads. **Release firmware → Run workflow** accepts a numeric version and publishes a beta named `vVERSION.COMMIT-beta` after all checks pass. Publishing an existing tagged release also builds and attaches its downloads. Only the publishing job receives repository write permission.
+GitHub workflows run CI on branch pushes and pull requests, build all firmware and the Android companion, and package release downloads. **Release firmware → Run workflow** accepts a numeric version and publishes a beta named `vVERSION.COMMIT-beta` after all checks pass. Publishing an existing tagged release also builds and attaches its downloads. The release tag is reserved at the selected commit before builds start, so later pushes do not change that release. Publishing uses that verified existing tag without passing an outdated commit as a new tag target. Tag pushes do not start a second CI build. Only the tag-reservation and publishing jobs receive repository write permission. A failed build may leave a reserved tag without a published release; rerunning the same version/commit reuses it.
 
 For the equivalent local release bundle:
 

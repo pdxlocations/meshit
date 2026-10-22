@@ -2,6 +2,7 @@
 
 | Symptom | What to check |
 | --- | --- |
+| Release tag creation fails with HTTP 403 after a push | Older workflows created their tag after the build, when its commit might no longer be a branch head. Current workflows reserve the exact tag before building. For an old failed run, restore its missing tag at the recorded `RELEASE_COMMIT`, create a draft prerelease for that existing tag if the old release-creation step also receives a 403, then rerun only the failed publishing job; do not move the tag to newer code. |
 | No releases listed | Publish a release containing `meshit-release.zip`; enable **Show prereleases** for betas. PHP caches results for five minutes. |
 | USB install unavailable | Use desktop Chrome/Edge, HTTPS, a data cable, and the Heltec target. Close other apps using the serial port. |
 | RAK download blocked | Read the SoftDevice line in `INFO_UF2.TXT` and select exactly 6.1.1 or 7.3.0. Do not infer it from the bootloader version. |
