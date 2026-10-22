@@ -63,7 +63,7 @@ The nRF builds reserve `0x80000–0xECFFF` for meshit storage; linker limits pre
 
 The **[web flasher at meshit.pdxlocs.com](https://meshit.pdxlocs.com)** installs ESP firmware over browser USB and provides verified RAK4631 / T114 UF2/HEX downloads with explicit SoftDevice matching. Deployment and self-hosting instructions are in [webflasher/README.md](webflasher/README.md). It automatically discovers published builds from `pdxlocations/meshit`.
 
-GitHub workflows run CI on pushes and pull requests, build all firmware plus Android/iOS companions, and package release downloads. **Release firmware → Run workflow** accepts a numeric version and publishes a beta named `vVERSION.COMMIT-beta` after all checks pass. Publishing an existing tagged release also builds and attaches its downloads. Only the publishing job receives repository write permission.
+GitHub workflows run CI on pushes and pull requests, build all firmware and the Android companion, and package release downloads. **Release firmware → Run workflow** accepts a numeric version and publishes a beta named `vVERSION.COMMIT-beta` after all checks pass. Publishing an existing tagged release also builds and attaches its downloads. Only the publishing job receives repository write permission.
 
 For the equivalent local release bundle:
 
@@ -72,7 +72,7 @@ npm run build:android
 npm run package:release
 ```
 
-This uses the packaged firmware above and creates `dist/meshit-release.zip`, its SHA-256 checksum, and the standalone Android APK/checksum. The ZIP contains `esp32/`, `nrf52/`, and the uploadable `webflasher/`. iOS simulator builds remain CI artifacts; signing an iPhone release requires separate provisioning.
+This uses the packaged firmware above and creates `dist/meshit-release.zip`, its SHA-256 checksum, and the standalone Android APK/checksum. The ZIP contains `esp32/`, `nrf52/`, and the uploadable `webflasher/`. iOS builds are local-only in Xcode; GitHub Actions does not build or upload an iOS app. Signing an iPhone release requires separate provisioning.
 
 ## Connect
 

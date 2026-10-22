@@ -102,36 +102,3 @@ jobs:
             dist/companions/meshit-android-debug.apk.sha256
             dist/companions/build-info.json
           if-no-files-found: error
-
-  ios:
-    name: iOS companion framework
-    runs-on: macos-15
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: npm
-      - run: npm ci
-      - run: npm run mobile:ios
-      - name: Compile for iOS Simulator without signing
-        run: >-
-          xcodebuild -project ios/App/App.xcodeproj -scheme App
-          -destination 'generic/platform=iOS Simulator'
-          -derivedDataPath output/ios-build CODE_SIGNING_ALLOWED=NO build
-      - name: Package simulator app
-        run: >-
-          ditto -c -k --keepParent
-          output/ios-build/Build/Products/Debug-iphonesimulator/App.app
-          output/meshit-ios-simulator.zip
-      - uses: actions/upload-artifact@v7
-        with:
-          name: meshit-ios-simulator
-          path: output/meshit-ios-simulator.zip
-          if-no-files-found: error
