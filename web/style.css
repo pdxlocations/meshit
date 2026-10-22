@@ -32,7 +32,7 @@ h1{letter-spacing:-1px;font-size:28px;font-weight:650;margin:0}
 .segmented button[aria-pressed=true]{background:var(--light)}
 #compose{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px}
 label{font-size:13px;font-weight:600;display:block;margin-bottom:8px}
-textarea{border:0;background:transparent;width:100%;resize:vertical;min-height:56px;color:var(--ink);font-size:15px;line-height:1.7;padding:6px 0}
+textarea{border:0;background:transparent;width:100%;resize:vertical;min-height:56px;color:var(--ink);font-size:16px;line-height:1.7;padding:6px 0}
 textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 .composer-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--line);padding-top:8px}
 .composer-footer>span{font-size:11px;color:var(--muted)}
@@ -57,7 +57,8 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border
 .settings-card{border:1px solid var(--line);border-radius:12px;background:var(--white);padding:12px;margin:12px 0}
 .settings-card h2{margin:0 0 10px}
 .settings-card label,dialog label{margin-top:10px}
-input:not([type=radio]),select{display:block;width:100%;border:1px solid var(--line);border-radius:6px;padding:8px;margin-top:7px;color:var(--ink);background:var(--white)}
+/* Keep text controls at 16px so mobile focus does not trigger input zoom. */
+input:not([type=radio]),select{font-size:16px;display:block;width:100%;border:1px solid var(--line);border-radius:6px;padding:8px;margin-top:7px;color:var(--ink);background:var(--white)}
 .hint{color:var(--muted);font-weight:400;font-size:12px;line-height:1.7}
 .network-options{display:flex;gap:12px;flex-wrap:wrap}
 .network-options label{padding:9px;border:1px solid var(--line);border-radius:8px;flex:1;margin-bottom:0;white-space:nowrap}
