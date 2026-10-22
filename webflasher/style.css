@@ -7,3 +7,5 @@
 .rak-guide{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;line-height:1.6}.rak-guide summary{font-weight:600;cursor:pointer;color:var(--green)}.rak-guide p{margin:10px 0;color:var(--muted)}.rak-guide table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12px 0}.rak-guide th,.rak-guide td{text-align:left;vertical-align:top;padding:9px 8px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.rak-guide th:first-child{width:30%}.rak-guide code{font-size:11px;overflow-wrap:anywhere}
 
 #nrf-compatibility.error{color:#fca5a5;font-weight:600}
+
+header{flex-wrap:wrap;gap:12px}.brand-heading{display:flex;align-items:center;gap:12px}.brand-heading h1{margin:0;font-size:clamp(22px,4vw,28px)}
