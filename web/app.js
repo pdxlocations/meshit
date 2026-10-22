@@ -77,7 +77,8 @@ function render(){
     }
     const actions=element('div','post-actions'),button=element('button',null,'↳ Reply');button.disabled=!!m.local;button.onclick=()=>{reply=m.id;count();$('message').focus();$('compose').scrollIntoView({behavior:'smooth',block:'center'});};actions.append(button);if(m.mine&&!m.acknowledged)actions.append(element('span',null,m.status));
     content.append(meta,element('p','body',m.text),actions);
-    const children=sorted(list.filter(child=>child.parent===m.id));if(children.length&&depth<32){const box=element('div','children');for(const child of children)box.append(post(child,depth+1));content.append(box);}row.append(vote,content);return row;
+    row.append(vote,content);
+    const children=sorted(list.filter(child=>child.parent===m.id));if(children.length&&depth<32){const box=element('div','children');for(const child of children)box.append(post(child,depth+1));row.append(box);}return row;
   }
   const roots=sorted(list.filter(m=>!m.parent||!byId.has(m.parent)));for(const m of roots)$('feed').append(post(m));
   if(!roots.length){const empty=element('div','empty');empty.append(element('h2',null,'No messages'));$('feed').append(empty);}

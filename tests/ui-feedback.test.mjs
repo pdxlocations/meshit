@@ -69,4 +69,18 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   assert.equal(viewed.at(-1).room,'general','polling does not mark other rooms viewed');
   get('rooms').children.find(e=>e.textContent.includes('# camp')).onclick();await tick();
   assert.equal(viewed.at(-1).room,'camp','opening another room marks that room viewed');
+  // An orphan moves under its recovered parent and master post on the next refresh.
+  get('rooms').children.find(e=>e.textContent.includes('# general')).onclick();
+  feed.push({id:'reply',parent:'parent',room:'general',text:'Maybe not',mine:false,votes:0,order:5});revision++;
+  poll();await tick();assert.ok(get('feed').children.some(e=>e.textContent.includes('Maybe not')));
+  feed.push({id:'parent',parent:'master',room:'general',text:'Maybe',mine:false,votes:0,order:6});revision++;
+  poll();await tick();
+  feed.push({id:'master',parent:'',room:'general',text:'I think this will be a hit',mine:false,votes:0,order:7});revision++;
+  poll();await tick();
+  const masterRow=get('feed').children.find(e=>e.textContent.includes('I think this will be a hit'));
+  const parentRow=masterRow.children.find(e=>e.className==='children').children[0];
+  assert.match(parentRow.textContent,/Maybe/);
+  assert.match(parentRow.children.find(e=>e.className==='children').children[0].textContent,/Maybe not/);
+  assert.equal(get('feed').children.filter(e=>e.textContent.includes('Maybe not')).length,1);
+
 });

@@ -100,7 +100,7 @@ Open `android/` in Android Studio or `ios/App/App.xcodeproj` in Xcode. Native pr
 
 The radio keeps **200 posts and replies total across rooms**, evicting lowest-voted first and then oldest. Evicting a parent removes its entire descendant thread, even if replies have votes. Upvoted messages remain until displaced. A room disappears when its last retained message disappears; empty room drafts remain local until their first post.
 
-Numbering is automatic: a six-byte ID combines a sender identity and its counter. Hearing a new sender establishes a baseline without downloading old history. Subsequent gaps trigger bounded requests. Old missing posts are requested only when a newly heard upvote references them. No central numbering server or clock synchronization is needed.
+Numbering is automatic: a six-byte ID combines a sender identity and its counter. Hearing a new sender establishes a baseline without downloading old history. Subsequent gaps trigger bounded requests. Replies request missing parents and follow their ancestor chain back to the original post. A newly heard upvote also requests its missing target and ancestors. No central numbering server or clock synchronization is needed.
 
 Application content uses **ChaCha20-Poly1305** with a built-in shared key and random 96-bit nonces. No key entry is required. It obscures broker contents even if an MQTT gateway removes transport encryption. The key is public in this source; this is not secrecy from other meshit users or someone inspecting the implementation. Transport metadata and traffic volume remain visible. MQTT forwarding depends on the gateway's application-port/channel filters; compatibility does not guarantee passage through every broker.
 

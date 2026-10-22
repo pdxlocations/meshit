@@ -41,7 +41,7 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border
 .primary{background:var(--accent);color:var(--primary-ink);font-size:13px}
 .primary:hover{background:var(--primary-hover)}
 .secondary{background:var(--light)}
-.post{padding:6px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px}
+.post{padding:6px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:38px minmax(0,1fr);gap:0 12px}
 .vote{display:flex;flex-direction:column;align-items:center;font-size:13px;color:var(--muted)}
 .vote button{font-size:18px;padding:0 8px 4px}
 .vote button[aria-pressed=true]{color:var(--vote)}
@@ -51,8 +51,8 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border
 .post-actions{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--muted)}
 .post-actions button{padding:2px 0;font-size:11px}
 .ack{color:var(--ack);font-size:15px;font-weight:700}
-.children{margin:5px 0 0 3px;border-left:2px solid var(--line);padding-left:14px}
-.children .post{padding:6px 0;border:0;grid-template-columns:26px minmax(0,1fr)}
+.children{grid-column:1 / -1;margin:5px 0 0 8px;border-left:2px solid var(--line);padding-left:4px}
+.children .post{padding:6px 0;border:0}
 .empty{text-align:center;color:var(--muted);padding:30px 12px}
 .empty h2{color:var(--ink);font-size:18px;font-weight:600}
 .settings{max-width:680px;margin:12px auto;padding:0 12px 60px}
@@ -85,11 +85,10 @@ aside{border-bottom:1px solid var(--line);padding-bottom:8px}
 .room{width:auto;font-size:12px;margin:0;white-space:normal;padding:6px 8px}
 .connection{margin:10px 0 0}
 .conversation-title h1{font-size:24px}
-.post{gap:8px}
+.post{gap:0 8px}
 dialog{padding:16px}
 #compose{padding:10px}
 .settings{margin-top:12px}
-.children{padding-left:9px}
 .composer-footer{align-items:flex-start}
 .composer-footer>div{display:flex;gap:5px}
 }

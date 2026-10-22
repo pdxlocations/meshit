@@ -16,7 +16,7 @@ Status: initial implementation complete; firmware, host tests, Android debug, an
 - Text posts and threaded replies, upvotes that can be removed on either, no downvotes, New/Top sorting. Final text limit: 160 Unicode characters (replaces the earlier 200-byte proposal).
 - Optional nickname in Settings, default Anonymous. Impersonation resistance is not required.
 - Six-byte hexadecimal message identifiers requested, with gap detection and requests for missing messages.
-- An old missing message may be requested only upon hearing an upvote for that message.
+- A missing message may be requested upon hearing an upvote or when needed to reconstruct a received reply’s ancestor chain.
 - A 200-message cap across rooms (user called these channels); unvoted messages and inactive rooms fall off the list.
 - Apply minimal application-layer encryption with a built-in key, without user key configuration, so broker payloads are not human readable. Shared built-in keys do not provide secrecy from other meshit users or anyone inspecting the implementation.
 
@@ -24,7 +24,7 @@ Status: initial implementation complete; firmware, host tests, Android debug, an
 
 - Numbering stays automatic: sender identity plus sequence, six bytes total, displayed as 12 hexadecimal digits. No user setup or global allocator.
 - Any client with the retained content may answer a request; delayed duplicate-response suppression limits airtime.
-- First hearing skips history; subsequent live gaps trigger bounded requests. Old missing posts are fetched on a newly heard positive upvote.
+- First hearing skips history; subsequent live gaps trigger bounded requests. Missing posts are fetched for newly heard positive upvotes and reply ancestor chains.
 - The 200-message cap includes replies. Evict lowest-voted first, oldest first on ties. Upvoted messages stay until displaced. Evicting a parent deletes all descendants, regardless of reply votes. Rooms with no retained messages disappear.
 - The implementation preserves the 160-character limit, including multibyte Unicode, using up to seven bounded fragments when metadata and encryption do not fit a carrier packet.
 - Meshtastic private application port 256 and MeshCore flood group datagrams carry meshit. Upstream protocol sources and independent cryptographic vectors validate framing; physical interoperability is still to be verified. MQTT gateway filters may affect passage.

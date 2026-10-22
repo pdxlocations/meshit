@@ -2,7 +2,7 @@
 
 The radio keeps **200 posts and replies total across rooms**, evicting lowest-voted first and then oldest. Evicting a parent removes its entire descendant thread, even if replies have votes. Upvoted messages remain until displaced. A room disappears when its last retained message disappears; empty room drafts remain local until their first post.
 
-Numbering is automatic: a six-byte ID combines a sender identity and its counter. Hearing a new sender establishes a baseline without downloading old history. Subsequent gaps trigger bounded requests. Old missing posts are requested only when a newly heard upvote references them. No central numbering server or clock synchronization is needed.
+Numbering is automatic: a six-byte ID combines a sender identity and its counter. Hearing a new sender establishes a baseline without downloading old history. Subsequent gaps trigger bounded requests. Replies request missing parents and follow their ancestor chain back to the original post. A newly heard upvote also requests its missing target and ancestors. No central numbering server or clock synchronization is needed.
 
 Application content uses **ChaCha20-Poly1305** with a built-in shared key and random 96-bit nonces. No key entry is required. It obscures broker contents even if an MQTT gateway removes transport encryption. The key is public in this source; this is not secrecy from other meshit users or someone inspecting the implementation. Transport metadata and traffic volume remain visible. MQTT forwarding depends on the gateway's application-port/channel filters; compatibility does not guarantee passage through every broker.
 
@@ -21,6 +21,6 @@ meshit originates application traffic and relies on existing relays. It does not
 
 Meshtastic packets originate with `hop_limit=7` and `hop_start=7`. Relays decrement the remaining limit while retaining the starting value. The broadcast header does not request an ACK, and the explicitly present Data bitfield requests neither a response nor MQTT uplink. meshit's checkmark still requires an authenticated meshit message heard via a relay.
 
-An upvote on a reply triggers recovery of its missing parent chain through the original post. If the reply itself is missing, the radio requests it first, then follows its parent references. Duplicate requests are suppressed; tombstoned content stays removed, and bounded requests stop when unavailable.
+Receiving a reply or an upvote on one triggers recovery of its missing parent chain through the original post. If the reply itself is missing, the radio requests it first, then follows its parent references. Duplicate requests are suppressed; tombstoned content stays removed, and bounded requests stop when unavailable.
 
 [Wiki home](Home.md)
