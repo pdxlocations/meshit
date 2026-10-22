@@ -6,7 +6,7 @@
 <main id="chat-view" class="shell" hidden>
   <aside><div class="aside-title"><h2>Rooms</h2><button id="new-room" class="quiet" aria-label="New room">＋ New room</button></div><div id="rooms"></div><p id="connection" class="connection">Connecting…</p></aside>
   <section class="conversation"><div class="conversation-title"><h1 id="room-title">general</h1><div class="segmented" aria-label="Sort messages"><button id="sort-new" aria-pressed="false">New</button><button id="sort-top" aria-pressed="true">Top</button></div></div>
-    <form id="compose"><label id="compose-label" for="message">Message</label><div id="reply-context" hidden></div><textarea id="message" rows="3" placeholder="Message…" required></textarea><div class="composer-footer"><span id="char-count">0 / 160</span><div><button type="button" id="cancel-reply" class="quiet" hidden>Cancel reply</button><button type="submit" id="send" class="primary">Post</button></div></div></form>
+    <form id="compose"><div id="reply-context" hidden></div><textarea id="message" rows="3" aria-label="Write something interesting..." placeholder="Write something interesting..." required></textarea><div class="composer-footer"><span id="char-count">0 / 160</span><div><button type="button" id="cancel-reply" class="quiet" hidden>Cancel reply</button><button type="submit" id="send" class="primary">Post</button></div></div></form>
     <div id="feed"></div>
   </section>
 </main>

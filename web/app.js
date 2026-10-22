@@ -76,7 +76,7 @@ function render(){
   count();
 }
 function count(){const n=Array.from($('message').value).length;$('char-count').textContent=`${n} / 160`;$('send').disabled=busy||n>160||!$('message').value.trim()||!state?.ready||state.storageReady===false||state.identityReady===false;
-  const parent=messages.find(m=>m.id===reply);if(reply&&!parent)reply='';$('reply-context').hidden=!reply;$('cancel-reply').hidden=!reply;$('compose-label').textContent=reply?'Reply':'Message';$('reply-context').textContent=parent?`${parent.nickname||'Anonymous'}: ${parent.text.slice(0,70)}`:'';$('send').textContent=busy?'Sending…':reply?'Reply':'Post';}
+  const parent=messages.find(m=>m.id===reply);if(reply&&!parent)reply='';$('reply-context').hidden=!reply;$('cancel-reply').hidden=!reply;$('reply-context').textContent=parent?`${parent.nickname||'Anonymous'}: ${parent.text.slice(0,70)}`:'';$('send').textContent=busy?'Sending…':reply?'Reply':'Post';}
 async function act(action,label='Working…'){if(busy)return;busy=true;count();connectionControls();notify(label);try{await action();if($('notice').textContent===label)notify(label.includes('message')?'Message queued. Waiting for rebroadcast acknowledgment.':label.includes('upvote')?'Vote queued.':'Done.');}catch(e){notify(e.message);}finally{busy=false;render();connectionControls();}}
 async function refresh(){
   if(polling)return;polling=true;const epoch=transport.generation;try{
