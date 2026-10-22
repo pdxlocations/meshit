@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 class Element {
-  constructor(){this.children=[];this.value='';this.text='';this.hidden=false;this.disabled=false;this.dataset={};}
+  constructor(){this.children=[];this.value='';this.text='';this.hidden=false;this.disabled=false;this.dataset={};this.style={};this.scrollHeight=40;}
   set textContent(value){this.text=value;this.children=[];}
   get textContent(){return this.text+this.children.map(e=>e.textContent).join('');}
   append(...items){this.children.push(...items);}
@@ -14,11 +14,12 @@ class Element {
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('post appears before RPC resolves; errors retain text with retry; acknowledgment replaces retry',async()=>{
   const elements=new Map(),get=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);};
-  let feed=[],revision=1,resolvePost,rejectPost,poll;const viewed=[];let visibilityChanged;
+  let feed=[],revision=1,resolvePost,rejectPost,poll,offline=false;const viewed=[];let visibilityChanged;
   class Radio {
     constructor(){this.mode='wifi';this.devices=[];this.link={};this.generation=1;}
     async request(req){
       if(req.op==='viewed'){viewed.push(req);return {ok:true};}
+      if(req.op==='state'&&offline)throw new Error('Connection lost');
       if(req.op==='state')return {viewedSupported:true,node:'test',ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester'},board:'Heltec V4.3',wifiSupported:true,presets:[]};
       if(req.op==='messages')return {revision,messages:feed};
       if(req.op==='resend'){feed.find(m=>m.id===req.target).status='sending';revision++;return {ok:true};}
@@ -30,6 +31,14 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   await vm.runInNewContext('(async()=>{'+source+'})()',context);
   assert.deepEqual(JSON.parse(JSON.stringify(viewed)),[{op:'viewed',room:'general',revision:1}]);
   assert.equal(get('wifi-settings').hidden,false,'V4 exposes Wi-Fi configuration');
+  assert.equal(get('radio-connection').dataset.connected,'true');
+  assert.equal(get('radio-connection')['aria-label'],'Radio connected via Wi-Fi');
+  assert.equal(get('message').placeholder,'Write something interesting...');
+  assert.equal(get('message').style.height,'40px');
+  get('message').scrollHeight=94;get('message').value='Long text';get('message').oninput();
+  assert.equal(get('message').style.height,'94px');
+  get('message').scrollHeight=40;get('message').value='';get('message').oninput();
+  assert.equal(get('message').style.height,'40px');
   get('message').value='Hello radio';get('message').oninput();get('compose').onsubmit({preventDefault(){}});
   assert.match(get('feed').textContent,/Hello radio/);assert.equal(get('notice').textContent,'Sending message…');assert.equal(get('send').disabled,true);
   rejectPost(new Error('Connection timed out'));await tick();
@@ -39,20 +48,20 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   feed=[{id:'abc',parent:'',room:'general',text:'Hello radio',nickname:'Tester',mine:true,votes:0,order:1,status:'sending'}];revision++;
   resolvePost({ok:true,messageId:'abc'});await tick();
   assert.equal((get('feed').textContent.match(/Hello radio/g)||[]).length,1);
-  assert.match(get('notice').textContent,/Message queued/);
+  assert.equal(get('notice').textContent,'');
   feed[0].acknowledged=true;feed[0].status='rebroadcast heard';revision++;
   poll();await tick();assert.match(get('feed').textContent,/✓/);assert.doesNotMatch(get('feed').textContent,/↻/);
-  assert.equal(get('notice').textContent,'Message heard rebroadcast by another radio.');
+  assert.equal(get('notice').textContent,'');
   // A checkmark on an earlier post must not complete the latest post's notice.
   get('message').value='Second message';get('message').oninput();get('compose').onsubmit({preventDefault(){}});
   feed.push({id:'def',parent:'',room:'general',text:'Second message',mine:true,votes:0,order:2,status:'sending'});revision++;
-  resolvePost({ok:true,messageId:'def'});await tick();assert.match(get('notice').textContent,/Message queued/);
+  resolvePost({ok:true,messageId:'def'});await tick();assert.equal(get('notice').textContent,'');
   feed[1].status='no rebroadcast heard';revision++;poll();await tick();
-  assert.match(get('notice').textContent,/No rebroadcast acknowledgment/);
+  assert.equal(get('notice').textContent,'');
   const resend=walk(get('feed')).find(e=>e.className==='delivery'&&e.textContent==='↻');
-  resend.onclick();await tick();assert.match(get('notice').textContent,/Message queued/);
+  resend.onclick();await tick();assert.equal(get('notice').textContent,'');
   feed[1].acknowledged=true;feed[1].status='rebroadcast heard';revision++;poll();await tick();
-  assert.equal(get('notice').textContent,'Message heard rebroadcast by another radio.');
+  assert.equal(get('notice').textContent,'');
   // Later polling must not replace an unrelated error with an old acknowledgment.
   get('message').value='Third message';get('message').oninput();get('compose').onsubmit({preventDefault(){}});
   rejectPost(new Error('Radio queue full'));await tick();
@@ -61,7 +70,7 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   get('settings-tab').onclick();const before=viewed.length;
   feed.push({id:'incoming',parent:'',room:'general',text:'Unread',mine:false,votes:0,order:3});revision++;
   poll();await tick();assert.equal(viewed.length,before,'Settings polling leaves messages unread');
-  get('chat-tab').onclick();await tick();assert.equal(viewed.at(-1).revision,revision);
+  get('chat-tab').onclick();await tick();assert.equal(get('notice').textContent,'','returning to chat clears errors');assert.equal(viewed.at(-1).revision,revision);
   assert.equal(viewed.length,before+1,'opening chat marks the loaded room viewed');
   context.document.hidden=true;revision++;poll();await tick();assert.equal(viewed.length,before+1,'hidden client leaves messages unread');
   context.document.hidden=false;visibilityChanged();await tick();assert.equal(viewed.at(-1).revision,revision);
@@ -82,5 +91,23 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   assert.match(parentRow.textContent,/Maybe/);
   assert.match(parentRow.children.find(e=>e.className==='children').children[0].textContent,/Maybe not/);
   assert.equal(get('feed').children.filter(e=>e.textContent.includes('Maybe not')).length,1);
+  const replyButton=walk(masterRow).find(e=>e.textContent==='↳ Reply'&&typeof e.onclick==='function');replyButton.onclick();
+  assert.equal(get('message').placeholder,'Post a reply');
+  assert.equal(get('message')['aria-label'],'Post a reply');
+  get('cancel-reply').onclick();assert.equal(get('message').placeholder,'Write something interesting...');
+  get('notice').textContent='Previous error';offline=true;poll();await tick();
+  assert.equal(get('radio-connection').dataset.connected,'false');
+  assert.equal(get('radio-connection')['aria-label'],'Radio disconnected');
+  offline=false;poll();await tick();
+  assert.equal(get('radio-connection').dataset.connected,'true');
+  assert.equal(get('notice').textContent,'','reconnecting clears stale notices');
+  // Navigating while a slow action is pending must not restore a completion banner.
+  get('message').value='Pending reply';get('message').oninput();get('compose').onsubmit({preventDefault(){}});
+  assert.equal(get('notice').textContent,'Sending message…');
+  get('rooms').children.find(e=>e.textContent.includes('# camp')).onclick();
+  assert.equal(get('notice').textContent,'','room switch clears progress');
+  resolvePost({ok:true,messageId:'late'});await tick();
+  assert.equal(get('notice').textContent,'','late success does not add a completion banner');
+
 
 });
