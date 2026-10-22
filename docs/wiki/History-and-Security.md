@@ -18,4 +18,7 @@ The shared application key is public. Nicknames are not verified identities, and
 
 meshit originates application traffic and relies on existing relays. It does not bridge Meshtastic and MeshCore or turn ordinary Meshtastic/MeshCore chat into meshit rooms. All participants must use meshit and matching transport settings. Hardware forwarding, RF timing, power-loss behavior, and real-phone BLE still require physical validation; see the [verification record](../VALIDATION.md).
 
+
+Meshtastic packets originate with `hop_limit=7` and `hop_start=7`. Relays decrement the remaining limit while retaining the starting value. The broadcast header does not request an ACK, and the explicitly present Data bitfield requests neither a response nor MQTT uplink. meshit's checkmark still requires an authenticated meshit message heard via a relay.
+
 [Wiki home](Home.md)

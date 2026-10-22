@@ -66,6 +66,16 @@ int main(){
   auto parts=fragment(id(2,1),encrypted);Assembler assembler;Bytes assembled;bool relayed=false;for(auto it=parts.rbegin();it!=parts.rend();++it)assembler.accept(*it,0,true,assembled,relayed);assert(assembled==encrypted&&relayed);
   auto huge=post(1,1);huge.room=std::string(16,'r');huge.nick=std::string(16,'n');huge.text="";for(int i=0;i<160;++i)huge.text+="🙂";auto hugeParts=fragment(id(3,1),seal(encode(huge),nonce));assert(hugeParts.size()==7);
   for(const auto& p:hugeParts){auto mc=meshcorePacket(p),mt=meshtasticPacket(p,0x12345678,0x23456789,"LongFast");assert(mc.size()<=186&&mt.size()<=255);Received received;assert(parseMeshcore(mc,received)&&received.payload==p&&!received.relayed);auto echo=mc;echo[1]=1;echo.insert(echo.begin()+2,0x55);assert(parseMeshcore(echo,received)&&received.relayed&&received.payload==p);assert(parseMeshtastic(mt,"LongFast",received)&&received.payload==p&&!received.relayed);echo=mt;echo[12]-=1;assert(parseMeshtastic(echo,"LongFast",received)&&received.relayed);assert(!parseMeshtastic(mt,"Other",received));}
+  // Meshtastic uses low 3 bits for remaining hops and high 3 for initial hops.
+  for(uint8_t hops=0;hops<=7;++hops){
+    auto packet=meshtasticPacket(parts[0],0x12345678,0x23456789,"LongFast",hops);
+    assert((packet[12]&7)==hops&&(packet[12]>>5)==hops&&(packet[12]&0x18)==0);
+    Received received;assert(parseMeshtastic(packet,"LongFast",received)&&!received.relayed);
+    for(uint8_t remaining=0;remaining<hops;++remaining){packet[12]=(hops<<5)|remaining;assert(parseMeshtastic(packet,"LongFast",received)&&received.relayed&&received.payload==parts[0]);}
+    if(hops<7){packet[12]=(hops<<5)|(hops+1);assert(!parseMeshtastic(packet,"LongFast",received));}
+  }
+  assert(meshtasticPacket(parts[0],1,1,"LongFast",8).empty());
+  assert(meshtasticPacket(parts[0],0,1,"LongFast").empty());assert(meshtasticPacket(parts[0],1,0,"LongFast").empty());
   auto mc=meshcorePacket(parts[0]),mt=meshtasticPacket(parts[0],0x12345678,0x23456789,"LongFast");
   std::cout<<"{\"plain\":\""<<hexBytes(plain)<<"\",\"encrypted\":\""<<hexBytes(encrypted)<<"\",\"fragment\":\""<<hexBytes(parts[0])<<"\",\"meshcore\":\""<<hexBytes(mc)<<"\",\"meshtastic\":\""<<hexBytes(mt)<<"\"}\n";
 }

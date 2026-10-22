@@ -37,7 +37,7 @@ An envelope is split into fragments, each containing `m`, version 1, random 6-by
 
 ## Network carriers
 
-**Meshtastic:** standard 16-byte broadcast header, default hop limit/start of 3, WantAck clear, preset-selected public channel-name hash, and a protobuf Data message on private application port 256. The transport payload uses the standard public AES-128-CTR key and nonce layout. meshit accepts only matching broadcast/channel/private-port traffic. A lower remaining hop limit than hop start establishes that the frame was relayed.
+**Meshtastic:** standard 16-byte broadcast header, default hop limit/start of 7 (`hop_limit=7`, `hop_start=7`, header flags `0xE7`), WantAck clear, preset-selected public channel-name hash, and a protobuf Data message on private application port 256. Data field 9 (`bitfield`) is explicitly present as zero, matching modern origin metadata without requesting a response or opting into MQTT uplink. The transport payload uses the standard public AES-128-CTR key and nonce layout. meshit accepts only matching broadcast/channel/private-port traffic. A lower remaining hop limit than hop start establishes that the frame was relayed.
 
 **MeshCore:** v1 flood group-data packet, empty initial path, development datagram type `0xFF4D`. The group key is SHA-256 of `Meshit group transport v1`; group wrapping uses MeshCore's AES-128-ECB and truncated HMAC-SHA256 convention. The entire meshit envelope remains independently authenticated. Repeaters do not need to understand the meshit group. Raw custom packet type is deliberately avoided because upstream MeshCore does not flood-relay it. Only group-data flood packets are accepted; path hash sizes 1–3 are supported, with at most 64 path bytes. A nonempty relay path establishes a rebroadcast.
 
@@ -80,6 +80,8 @@ Operations: `state`; `messages` with offset; `post` with room/text/parent; `vote
 
 ## Primary protocol references
 
+- [Meshtastic on-air header fields and flag masks](https://github.com/meshtastic/firmware/blob/develop/src/mesh/RadioInterface.h)
+- [Meshtastic origin metadata and encoding](https://github.com/meshtastic/firmware/blob/develop/src/mesh/Router.cpp)
 - [Meshtastic packet layout and routing](https://meshtastic.org/docs/overview/mesh-algo/)
 - [Meshtastic application ports](https://github.com/meshtastic/protobufs/blob/master/meshtastic/portnums.proto)
 - [Meshtastic radio presets](https://github.com/meshtastic/meshtastic/blob/master/docs/about/overview/radio-settings.mdx)

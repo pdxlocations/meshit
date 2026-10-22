@@ -28,11 +28,16 @@ inline bool protobufData(const Bytes& b,Bytes& payload){
     else return false;
   }return got&&port==256;
 }
-inline Bytes meshtasticPacket(const Bytes& payload,uint32_t origin,uint32_t packet,const std::string& channel,uint8_t hops=3){
-  if(payload.empty()||payload.size()>230||!origin||!packet||hops>7)return {};
+inline Bytes meshtasticPacket(const Bytes& payload,uint32_t origin,uint32_t packet,const std::string& channel,uint8_t hopLimit=7){
+  if(payload.empty()||payload.size()>230||!origin||!packet||hopLimit>7)return {};
   Bytes data{8};varint(data,256);data.push_back(18);varint(data,payload.size());data.insert(data.end(),payload.begin(),payload.end());
+  // Data.bitfield (field 9) is explicitly present on modern Meshtastic origins.
+  // Zero keeps want_response and MQTT opt-in clear.
+  data.push_back(0x48);varint(data,0);
   if(data.size()>239)return {};aesCtr(data,origin,packet);
-  Bytes b;put(b,0xffffffff,4);put(b,origin,4);put(b,packet,4);b.push_back(hops|(hops<<5));b.push_back(channelHash(channel));b.push_back(0);b.push_back(origin&255);b.insert(b.end(),data.begin(),data.end());return b;
+  const uint8_t hopStart=hopLimit; // An originated packet starts with its full budget.
+  const uint8_t flags=(hopLimit&0x07)|((hopStart<<5)&0xe0);
+  Bytes b;put(b,0xffffffff,4);put(b,origin,4);put(b,packet,4);b.push_back(flags);b.push_back(channelHash(channel));b.push_back(0);b.push_back(origin&255);b.insert(b.end(),data.begin(),data.end());return b;
 }
 inline bool parseMeshtastic(const Bytes& b,const std::string& channel,Received& out){
   if(b.size()<20||b.size()>255||get(b.data(),4)!=0xffffffff||b[13]!=channelHash(channel))return false;
