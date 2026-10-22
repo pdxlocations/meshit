@@ -5,6 +5,7 @@
 #include <Snapshot.h>
 #include "../include/SetupAccess.h"
 #include "../include/BatteryGauge.h"
+#include "../include/UnreadMessages.h"
 #include <cassert>
 #include <iostream>
 using namespace meshit;
@@ -19,6 +20,18 @@ struct Memory {
 };
 std::string hexBytes(const Bytes& b){std::string s;char x[3];for(auto c:b){snprintf(x,3,"%02x",c);s+=x;}return s;}
 int main(){
+  {
+    auto c=client(1);UnreadMessages unread;
+    auto a=post(2,1),b=post(2,2);b.room="camp";
+    c.receive(a,0,false);c.receive(b,0,false);unread.add(a.id,c);unread.add(b.id,c);unread.add(a.id,c);
+    assert(unread.count()==2); // Retransmissions do not double-count.
+    assert(!unread.viewed("general",1,2,c)&&unread.count()==2); // Stale snapshot.
+    assert(unread.viewed("general",2,2,c)&&unread.count()==1);
+    assert(unread.viewed("general",2,2,c)&&unread.count()==1);
+    assert(unread.viewed("camp",2,2,c)&&unread.count()==0);
+    unread.add(a.id,c);c.messages.clear();unread.prune(c);assert(unread.count()==0);
+  }
+
   assert(!plausibleBatteryVoltage(0));assert(!plausibleBatteryVoltage(5000));
   assert(batteryBars(3400)==0&&batteryBars(3600)==1&&batteryBars(3800)==2&&batteryBars(4000)==3&&batteryBars(4200)==4);
 

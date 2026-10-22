@@ -39,7 +39,7 @@ Open the **Settings** gear icon to change nickname, radio network, region, and p
 
 ## Heltec V3/V4 OLED display
 
-During Bluetooth pairing, the LCD shows the six-digit PIN before authentication finishes. Enter it on your phone. Once Bluetooth is authenticated or a web companion is actively polling over Wi-Fi, the LCD shows battery bars and voltage, outgoing posts/votes awaiting a rebroadcast acknowledgment, and new incoming messages since restart. Retransmissions do not add to the new-message count. The footer shows the configured frequency and connection type appears at the top. No node count is displayed. Battery bars are a coarse voltage estimate; an unavailable or implausible reading shows `?` / `--V`.
+During Bluetooth pairing, the LCD shows the six-digit PIN before authentication finishes. Enter it on your phone. Once Bluetooth is authenticated or a web companion is actively polling over Wi-Fi, the LCD shows battery bars and voltage, outgoing posts/votes awaiting a rebroadcast acknowledgment, and unread incoming messages. Opening a room in the client clears its new-message count on the LCD after the current messages load. Other rooms stay unread, and background polling or viewing Settings does not clear them. Retransmissions do not add to the new-message count. The footer shows the configured frequency and connection type appears at the top. No node count is displayed. Battery bars are a coarse voltage estimate; an unavailable or implausible reading shows `?` / `--V`.
 
 After the client disconnects (or Wi-Fi requests stop for 15 seconds), the setup/network screen returns.
 

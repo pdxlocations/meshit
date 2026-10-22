@@ -13,6 +13,7 @@
 #include "SetupAccess.h"
 #include "SetupDisplay.h"
 #include "Battery.h"
+#include "UnreadMessages.h"
 #if defined(MESHIT_ESP32)
 #include <WiFi.h>
 #include <WebServer.h>
@@ -35,7 +36,7 @@ uint32_t identity=0,reserved=0,counter=0,revision=1,dirtyAt=0,lastChange=0,nextT
 bool fsReady=false,identityReady=false,ready=false,txBusy=false,dirty=false,txStateChanged=false;
 volatile bool radioFlag=false;
 int radioError=0;size_t txIndex=0;std::vector<Bytes> txPackets;
-uint32_t rxCount=0,txCount=0,newMessageCount=0;
+uint32_t rxCount=0,txCount=0;UnreadMessages unreadMessages;
 #if defined(MESHIT_ESP32)
 uint32_t lastWebActivity=0;bool webClientSeen=false;
 #endif
@@ -113,7 +114,7 @@ void pollRadio(){
     radioFlag=false;size_t len=radio.getPacketLength();Bytes raw(std::min(size_t(255),len));int err=radio.readData(raw.data(),raw.size());startRx();
     if(!err&&len<=255){Received rx;bool ok=network()==Network::Meshtastic?parseMeshtastic(raw,String(preset()["channel"]|"LongFast").c_str(),rx):parseMeshcore(raw,rx);
       Bytes encrypted,plain;bool relayed=false;Event e;
-      if(ok&&assembler.accept(rx.payload,millis(),rx.relayed,encrypted,relayed)&&open(encrypted,plain)&&decode(plain,e)){++rxCount;const bool unseen=!core.find(e.id);core.receive(e,millis(),relayed);if(unseen&&e.kind==Kind::Post&&core.find(e.id)&&!core.find(e.id)->mine)++newMessageCount;changed();}
+      if(ok&&assembler.accept(rx.payload,millis(),rx.relayed,encrypted,relayed)&&open(encrypted,plain)&&decode(plain,e)){++rxCount;const bool unseen=!core.find(e.id);core.receive(e,millis(),relayed);if(unseen&&e.kind==Kind::Post&&core.find(e.id)&&!core.find(e.id)->mine)unreadMessages.add(e.id,core);changed();}
     }
   }
   if(!txBusy&&!txPackets.empty()&&int32_t(millis()-nextTx)>=0)beginPacket();
@@ -123,7 +124,7 @@ String dispatch(const String& input){
   else {
     res["id"]=req["id"];String op=req["op"]|"";
     if(op=="state"){
-      res["version"]=FIRMWARE_VERSION;res["node"]=String(identity,HEX);
+      res["viewedSupported"]=true;res["version"]=FIRMWARE_VERSION;res["node"]=String(identity,HEX);
       res["revision"]=revision;res["count"]=core.messages.size();res["settings"]=settings;res["settings"].remove("password");res["settings"].remove("setupPassword");res["settings"].remove("channel");res["settings"]["wifiConfigured"]=String(settings["ssid"]|"").length()>0;
       res["presets"]=presets;res["ready"]=ready;res["radioError"]=radioError;res["storageReady"]=fsReady;res["identityReady"]=identityReady;res["rx"]=rxCount;res["tx"]=txCount;
       res["wifiSupported"]=
@@ -144,6 +145,8 @@ String dispatch(const String& input){
 #else
       NRF_BOARD_NAME;
 #endif
+    }else if(op=="viewed"){
+      res["ok"]=unreadMessages.viewed(req["room"]|"",req["revision"]|0u,revision,core);
     }else if(op=="messages"){
       res["revision"]=revision;auto a=res["messages"].to<JsonArray>();size_t offset=req["offset"]|0;for(size_t i=offset;i<core.messages.size()&&i<offset+8;++i)eventJson(a.add<JsonObject>(),core.messages[i]);
      }else if(op=="resend"){
@@ -169,7 +172,7 @@ String dispatch(const String& input){
         if(req["password"].is<const char*>()&&String(req["password"]).length())next["password"]=req["password"];
         String s;serializeJson(next,s);
         if(!fsReady||!writeFile("/settings.json",s))res["error"]="Could not save settings";
-        else {bool changedNetwork=net!=String(settings["network"]|"")||selected!=String(settings["preset"]|"");settings.set(next);if(changedNetwork){core=Core();core.allocate=allocateId;core.jitter=random32;assembler=Assembler();}initRadio();changed();persist();res["ok"]=true;res["reconnectRequired"]=req["ssid"].is<const char*>();}
+        else {bool changedNetwork=net!=String(settings["network"]|"")||selected!=String(settings["preset"]|"");settings.set(next);if(changedNetwork){unreadMessages=UnreadMessages();core=Core();core.allocate=allocateId;core.jitter=random32;assembler=Assembler();}initRadio();changed();persist();res["ok"]=true;res["reconnectRequired"]=req["ssid"].is<const char*>();}
       }
     }else res["error"]="Unknown operation";
   }
@@ -267,7 +270,8 @@ void loop(){
     if(ble.pairing())setupDisplay.showBluetooth(setupName,setupPass.substring(2));
     else if(bluetooth||(!wifiSuspended&&webClientSeen&&uint32_t(millis()-lastWebActivity)<15000)){
       size_t outgoing=0;for(const auto& p:core.pending)if(!p.ack&&!p.history&&(p.event.kind==Kind::Post||p.event.kind==Kind::Vote))++outgoing;
-      setupDisplay.showStatus(bluetooth,batteryReading().millivolts,outgoing,newMessageCount,ready,preset()["frequency"]|0.0f);
+      unreadMessages.prune(core);
+      setupDisplay.showStatus(bluetooth,batteryReading().millivolts,outgoing,unreadMessages.count(),ready,preset()["frequency"]|0.0f);
     }
     else if(WiFi.getMode()&WIFI_AP)setupDisplay.showAccessPoint(setupName,setupPass);
     else setupDisplay.showNetwork(WiFi.status()==WL_CONNECTED,WiFi.localIP().toString());

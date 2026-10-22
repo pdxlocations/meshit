@@ -36,7 +36,15 @@ function updateDeliveryNotice(){
   else if(m.status!=='sending'&&loadedRevision&&loadedRevision!==deliveryNotice.revision)notify('No rebroadcast acknowledgment received. Use ↻ to resend.');
 }
 function element(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
-function show(which){view=which;$('chat-view').hidden=which!=='chat';$('settings-view').hidden=which!=='settings';$('chat-tab').setAttribute('aria-current',which==='chat'?'page':'false');$('settings-tab').setAttribute('aria-current',which==='settings'?'page':'false');}
+let viewedKey='';
+function markViewed(){
+  if(view!=='chat'||document.hidden||!state?.ready||!state.viewedSupported||!loadedRevision||loadedRevision!==state.revision||!transport.link||$('onboarding').open)return;
+  const key=`${transport.generation}:${state.node}:${loadedRevision}:${room}`;
+  if(viewedKey===key)return;
+  viewedKey=key;
+  transport.request({op:'viewed',room,revision:loadedRevision}).then(result=>{if(!result.ok&&viewedKey===key)viewedKey='';}).catch(()=>{if(viewedKey===key)viewedKey='';});
+}
+function show(which){view=which;$('chat-view').hidden=which!=='chat';$('settings-view').hidden=which!=='settings';$('chat-tab').setAttribute('aria-current',which==='chat'?'page':'false');$('settings-tab').setAttribute('aria-current',which==='settings'?'page':'false');markViewed();}
 function chooseRoom(name){localStorage.setItem(`meshit.draft.${room}`,JSON.stringify({text:$('message').value,parent:reply}));room=name;localStorage.setItem('meshit.room',room);reply='';$('message').value='';try{const d=JSON.parse(localStorage.getItem(`meshit.draft.${room}`)||'{}');$('message').value=d.text||'';reply=d.parent||'';}catch{}render();count();}
 function regions(prefix,network){const select=$(prefix+'region');select.replaceChildren();for(const region of new Set(state.presets.filter(p=>p.network===network).map(p=>p.region))){const o=element('option',null,region==='US'?'US / Canada':region.replace('_',' '));o.value=region;select.append(o);}presets(prefix,network);}
 function presets(prefix,network){const select=$(prefix+'preset');select.replaceChildren();for(const p of state.presets.filter(p=>p.network===network&&p.region===$(prefix+'region').value)){const o=element('option',null,p.name);o.value=p.id;select.append(o);}details(prefix);}
@@ -73,7 +81,7 @@ function render(){
   }
   const roots=sorted(list.filter(m=>!m.parent||!byId.has(m.parent)));for(const m of roots)$('feed').append(post(m));
   if(!roots.length){const empty=element('div','empty');empty.append(element('h2',null,'No messages'));$('feed').append(empty);}
-  count();
+  count();markViewed();
 }
 function count(){const n=Array.from($('message').value).length;$('char-count').textContent=`${n} / 160`;$('send').disabled=busy||n>160||!$('message').value.trim()||!state?.ready||state.storageReady===false||state.identityReady===false;
   const parent=messages.find(m=>m.id===reply);if(reply&&!parent)reply='';$('reply-context').hidden=!reply;$('cancel-reply').hidden=!reply;$('reply-context').textContent=parent?`${parent.nickname||'Anonymous'}: ${parent.text.slice(0,70)}`:'';$('send').textContent=busy?'Sending…':reply?'Reply':'Post';}
@@ -85,6 +93,7 @@ async function refresh(){
     connectionStatus(`Connected via ${transport.mode==='wifi'?'Wi-Fi':'Bluetooth'}${transport.link?.label?' · '+transport.link.label:''}`);
     $('connection').textContent=`${next.settings.network||'Choose a network'} · ${next.ready?'connected':'radio not ready'}${next.demo?' · SIMULATOR':''}`;
     if(first)settingsUI();if(!next.settings.configured&&!$('onboarding').open&&view==='chat')$('onboarding').showModal();
+    markViewed();
     if(!next.storageReady||!next.identityReady)notify('Radio storage is unavailable. Sending is disabled until it is repaired.');
   }catch(e){if(epoch!==transport.generation||e.code==='CONNECTION_CHANGED')return;connectionStatus(e.message);if(state)state.ready=false;$('connection').textContent='Radio disconnected · showing saved messages';if(state){state.ready=false;count();}else{show('settings');notify('Connect to a meshit radio to begin. '+e.message);}}finally{polling=false;}
 }
