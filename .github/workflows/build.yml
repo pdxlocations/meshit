@@ -3,6 +3,10 @@ name: Build and verify
 on:
   workflow_call:
     inputs:
+      build_artifacts:
+        description: Build firmware targets and the Android APK
+        type: boolean
+        default: true
       version:
         description: Release version embedded in firmware and companion metadata
         type: string
@@ -16,7 +20,7 @@ env:
 
 jobs:
   firmware:
-    name: Firmware, tests, and web flasher
+    name: Host tests and web flasher
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -51,23 +55,28 @@ jobs:
           php -l webflasher/config.php
           php tests/webflasher-api.php
       - name: Build every firmware environment
+        if: inputs.build_artifacts
         run: npm run build:firmware
       - name: Package full-flash and application images
+        if: inputs.build_artifacts
         run: |
           npm run package:firmware
           python3 -m unittest discover -s tests -p 'test_*.py'
           node --test tests/release-images.mjs
           php tests/webflasher-api.php --bundle dist/meshit-release.zip
       - name: Verify image checksums
+        if: inputs.build_artifacts
         working-directory: dist/firmware
         run: sha256sum --check SHA256SUMS
       - uses: actions/upload-artifact@v7
+        if: inputs.build_artifacts
         with:
           name: meshit-firmware
           path: dist/firmware/
           if-no-files-found: error
 
   android:
+    if: inputs.build_artifacts
     name: Android companion
     runs-on: ubuntu-24.04
     timeout-minutes: 30
