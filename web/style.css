@@ -18,13 +18,15 @@ nav button:hover{background:var(--header-hover)}
 #notice:not(:empty){padding:8px 12px;background:var(--notice-bg)}
 .shell{max-width:1180px;margin:12px auto;padding:0 12px;display:grid;grid-template-columns:180px minmax(0,1fr);gap:18px}
 [hidden]{display:none!important}
+.shell>aside{min-width:0}
 .aside-title{display:flex;align-items:center;justify-content:space-between;gap:5px}
 h2{font-size:17px}
 h1{letter-spacing:-1px;font-size:28px;font-weight:650;margin:0}
 .quiet{color:var(--muted);font-size:13px;padding:8px}
-.room{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;margin:5px 0;padding:8px 10px}
+.room{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;min-width:0;max-width:100%;width:100%;text-align:left;margin:5px 0;padding:8px 10px}
 .room.selected{background:var(--light);font-weight:650}
-.room span:last-child{font-size:12px;color:var(--muted)}
+.room span:first-child{min-width:0;overflow-wrap:anywhere}
+.room span:last-child{flex-shrink:0;font-size:11px;color:var(--muted)}
 .connection{font-size:12px;color:var(--muted)}
 .conversation-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
 .segmented{display:flex;border:1px solid var(--line);border-radius:8px}
@@ -79,8 +81,8 @@ nav button{padding:8px}
 .shell{margin-top:10px;padding:0 10px;grid-template-columns:1fr;gap:12px}
 aside{border-bottom:1px solid var(--line);padding-bottom:8px}
 .aside-title h2{font-size:13px}
-#rooms{display:flex;overflow-x:auto;gap:6px}
-.room{width:auto;gap:15px;white-space:nowrap;padding:7px 10px}
+#rooms{display:flex;flex-wrap:wrap;gap:6px}
+.room{width:auto;font-size:12px;margin:0;white-space:normal;padding:6px 8px}
 .connection{margin:10px 0 0}
 .conversation-title h1{font-size:24px}
 .post{gap:8px}
