@@ -24,8 +24,16 @@ class Core {
       id=m->event.ref;
     }
   }
-  void wantVotedThreads(uint32_t now){
-    for(const auto& m:messages)if(score(m.event.id)>0)wantThread(m.event.id,now);
+  // Only advance a thread whose ancestor arrived; unrelated traffic must not
+  // restart exhausted recovery requests.
+  void wantVotedThreads(Id recovered,uint32_t now){
+    for(const auto& m:messages)if(score(m.event.id)>0){
+      Id ancestor=m.event.id;
+      for(size_t depth=0;ancestor&&depth<32;++depth){
+        if(ancestor==recovered){wantThread(m.event.id,now);break;}
+        auto parent=find(ancestor);if(!parent)break;ancestor=parent->event.ref;
+      }
+    }
   }
   void noteGap(const Event& e,uint32_t now){
     if(e.kind==Kind::History)return;
@@ -97,7 +105,7 @@ public:
       }
       Event post=e;post.kind=Kind::Post;messages.push_back({post,++clock,local,false});
       for(auto it=deferredVotes.begin();it!=deferredVotes.end();)if(it->target==e.id){votes.push_back(*it);it=deferredVotes.erase(it);}else ++it;
-      trim();wantVotedThreads(now);
+      trim();wantVotedThreads(e.id,now);
     }else if(e.kind==Kind::Vote){
       if(contains(dead,e.ref))return;
       applyVote(e);if(e.up)wantThread(e.ref,now);

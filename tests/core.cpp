@@ -65,6 +65,12 @@ int main(){
   thread.receive(vote(93,1,threadReply.id),3500,false);thread.tick(4000,[](const Event&,bool){assert(false);return true;}); // Deduplicated.
   threadRoot.kind=Kind::History;thread.receive(threadRoot,4500,false);assert(thread.find(threadRoot.id)&&thread.score(threadReply.id)==2);
   thread.tick(5000,[](const Event&,bool){assert(false);return true;});
+  // Unrelated traffic cannot restart exhausted parent-recovery retries.
+  auto unavailable=client(34);auto orphan=post(94,1,id(95,1));unavailable.receive(orphan,0,false);
+  unavailable.receive(vote(96,1,orphan.id),1,false);int historyRequests=0;
+  for(uint32_t t=1000;t<=100000;t+=1000)unavailable.tick(t,[&](const Event& out,bool){assert(out.kind==Kind::Request&&out.ref==id(95,1));++historyRequests;return true;});
+  assert(historyRequests==3);unavailable.receive(post(97,1),101000,false);
+  unavailable.tick(102000,[](const Event&,bool){assert(false);return true;});
   // If the reply is missing too, recover it, its parent, and the original root.
   auto chain=client(32);auto chainRoot=post(80,1),chainParent=post(81,1,chainRoot.id),chainReply=post(82,1,chainParent.id);
   chain.receive(vote(83,1,chainReply.id),0,false);requested.clear();
