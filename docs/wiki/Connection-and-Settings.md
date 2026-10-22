@@ -25,7 +25,7 @@ There is one Wi-Fi mode. The radio webpage connects to the radio serving that pa
 1. Disconnect from the ESP32 radio’s setup Wi-Fi before using Bluetooth. While Wi-Fi clients are attached, ESP32 Bluetooth advertising is paused.
 2. Select **Bluetooth (ESP32 / nRF52)** in Settings.
 3. Choose **Find radios**, select your `Meshit-…` radio in **Available radios**, and choose **Connect**. Native companions scan for radios; supported browsers use the browser’s device chooser.
-4. If ESP32 requests pairing, enter the **last six digits of its setup Wi-Fi password**. With the no-display password `12345678`, the Bluetooth PIN is **`345678`**. The OLED also shows the Bluetooth PIN while connected. RAK4631 uses its BLE UART connection without this ESP32 PIN.
+4. If ESP32 requests pairing, enter the **last six digits of its setup Wi-Fi password**. With the no-display password `12345678`, the Bluetooth PIN is **`345678`**. The OLED shows the Bluetooth PIN while pairing. RAK4631 uses its BLE UART connection without this ESP32 PIN.
 5. Use **Disconnect** to end the session. You can select the same discovered radio and **Connect** again without scanning.
 
 ESP32 pauses Wi-Fi during an authenticated Bluetooth connection and restores the setup hotspot when Bluetooth disconnects. Saved home Wi-Fi is rejoined as well; after one minute on the LAN, the setup hotspot closes normally. Messages remain on the radio. A disconnected companion keeps its cached feed and drafts but cannot send until reconnected. Connection type is saved locally; Bluetooth reconnection requires an explicit Connect action after reopening the app.
@@ -35,5 +35,12 @@ If an old ESP32 pairing stops working after a credential change, forget the radi
 ## Radio settings
 
 Open the **Settings** gear icon to change nickname, radio network, region, and preset. Nicknames are optional and fit 16 UTF-8 bytes; blank means Anonymous. Changing network or preset starts a fresh radio history. Meshtastic transport values come from the selected preset automatically; existing saved channel-name overrides are ignored and removed.
+
+
+## Heltec display
+
+During Bluetooth pairing, the LCD shows the six-digit PIN before authentication finishes. Enter it on your phone. Once Bluetooth is authenticated or a web companion is actively polling over Wi-Fi, the LCD shows battery bars and voltage, outgoing posts/votes awaiting a rebroadcast acknowledgment, and new incoming messages since restart. Retransmissions do not add to the new-message count. The footer shows the configured frequency and connection type appears at the top. No node count is displayed. Battery bars are a coarse voltage estimate; an unavailable or implausible reading shows `?` / `--V`.
+
+After the client disconnects (or Wi-Fi requests stop for 15 seconds), the setup/network screen returns.
 
 [Wiki home](Home.md)

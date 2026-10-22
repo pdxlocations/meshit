@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include "BatteryGauge.h"
 
 #if defined(MESHIT_ESP32) && defined(MESHIT_HAS_OLED)
 #include <Wire.h>
@@ -37,7 +38,21 @@ public:
     screen.clear();screen.setFont(ArialMT_Plain_10);
     screen.drawString(0,0,name);screen.drawString(0,12,"Bluetooth PIN:");
     screen.setFont(ArialMT_Plain_24);screen.drawString(0,22,pin);
-    screen.setFont(ArialMT_Plain_10);screen.drawString(0,51,"Wi-Fi paused");screen.display();
+    screen.setFont(ArialMT_Plain_10);screen.drawString(0,51,"Enter PIN on your phone");screen.display();
+  }
+  void showStatus(bool bluetooth,uint16_t batteryMv,size_t outgoing,uint32_t incoming,bool radioReady,float frequency){
+    if(!ready)return;
+    const String view="stats|"+String(bluetooth)+"|"+String(batteryMv/10)+"|"+String(outgoing)+"|"+String(incoming)+"|"+String(radioReady)+"|"+String(frequency,3);
+    if(view==previous)return;previous=view;
+    screen.clear();screen.setFont(ArialMT_Plain_10);
+    screen.drawString(0,0,bluetooth?"Meshit / Bluetooth":"Meshit / Wi-Fi");
+    screen.drawRect(105,2,20,9);screen.fillRect(125,4,2,5);
+    if(!batteryMv)screen.drawString(111,0,"?");
+    else {const uint8_t bars=batteryBars(batteryMv);for(uint8_t i=0;i<bars;++i)screen.fillRect(107+i*4,4,3,5);if(!bars)screen.drawString(111,0,"!");}
+    screen.drawString(0,15,"Outgoing");screen.drawString(70,15,"New msgs");
+    screen.setFont(ArialMT_Plain_16);screen.drawString(0,27,String(outgoing));screen.drawString(70,27,String(incoming));
+    screen.setFont(ArialMT_Plain_10);screen.drawString(0,51,radioReady?String(frequency,3)+" MHz":"Radio not ready");
+    screen.drawString(96,51,batteryMv?String(batteryMv/1000.0f,2)+"V":"--V");screen.display();
   }
   void showNetwork(bool connected,const String& ip){
     if(!ready)return;
@@ -56,5 +71,6 @@ public:
   void showAccessPoint(const String&,const String&){}
   void showBluetooth(const String&,const String&){}
   void showNetwork(bool,const String&){}
+  void showStatus(bool,uint16_t,size_t,uint32_t,bool,float){}
 };
 #endif

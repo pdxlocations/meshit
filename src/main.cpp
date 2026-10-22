@@ -12,6 +12,7 @@
 #include "BuildAssets.h"
 #include "SetupAccess.h"
 #include "SetupDisplay.h"
+#include "Battery.h"
 #if defined(MESHIT_ESP32)
 #include <WiFi.h>
 #include <WebServer.h>
@@ -34,7 +35,10 @@ uint32_t identity=0,reserved=0,counter=0,revision=1,dirtyAt=0,lastChange=0,nextT
 bool fsReady=false,identityReady=false,ready=false,txBusy=false,dirty=false,txStateChanged=false;
 volatile bool radioFlag=false;
 int radioError=0;size_t txIndex=0;std::vector<Bytes> txPackets;
-uint32_t rxCount=0,txCount=0;
+uint32_t rxCount=0,txCount=0,newMessageCount=0;
+#if defined(MESHIT_ESP32)
+uint32_t lastWebActivity=0;bool webClientSeen=false;
+#endif
 String line[2],output[2];size_t outputAt[2]={0,0};bool discard[2]={false,false};
 
 uint32_t random32(){
@@ -106,7 +110,7 @@ void pollRadio(){
     radioFlag=false;size_t len=radio.getPacketLength();Bytes raw(std::min(size_t(255),len));int err=radio.readData(raw.data(),raw.size());startRx();
     if(!err&&len<=255){Received rx;bool ok=network()==Network::Meshtastic?parseMeshtastic(raw,String(preset()["channel"]|"LongFast").c_str(),rx):parseMeshcore(raw,rx);
       Bytes encrypted,plain;bool relayed=false;Event e;
-      if(ok&&assembler.accept(rx.payload,millis(),rx.relayed,encrypted,relayed)&&open(encrypted,plain)&&decode(plain,e)){++rxCount;core.receive(e,millis(),relayed);changed();}
+      if(ok&&assembler.accept(rx.payload,millis(),rx.relayed,encrypted,relayed)&&open(encrypted,plain)&&decode(plain,e)){++rxCount;const bool unseen=!core.find(e.id);core.receive(e,millis(),relayed);if(unseen&&e.kind==Kind::Post&&core.find(e.id)&&!core.find(e.id)->mine)++newMessageCount;changed();}
     }
   }
   if(!txBusy&&!txPackets.empty()&&int32_t(millis()-nextTx)>=0)beginPacket();
@@ -189,7 +193,7 @@ void setupWifi(){
   MDNS.begin("meshit");MDNS.addService("http","tcp",80);
   server.on("/api/rpc",HTTP_POST,[]{
     if(server.hasHeader("Origin")){String origin=server.header("Origin"),host=server.hostHeader();if(origin!="http://"+host){server.send(403,"application/json","{\"error\":\"Origin rejected\"}");return;}}
-    String result=dispatch(server.arg("plain"));server.send(200,"application/json",result);
+    lastWebActivity=millis();webClientSeen=true;String result=dispatch(server.arg("plain"));server.send(200,"application/json",result);
   });
   const char* headers[]={"Origin"};server.collectHeaders(headers,1);
   server.onNotFound([]{String uri=server.uri();if(uri=="/")uri="/index.html";for(const auto& asset:WEB_ASSETS)if(uri==asset.path){server.sendHeader("Content-Encoding","gzip");server.sendHeader("Cache-Control","no-cache");server.sendHeader("X-Content-Type-Options","nosniff");server.sendHeader("Content-Security-Policy","default-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'");server.send_P(200,asset.mime,(const char*)asset.data,asset.size);return;}server.send(404,"text/plain","Not found");});server.begin();
@@ -232,10 +236,15 @@ void loop(){
     server.handleClient();
     if(WiFi.status()==WL_CONNECTED){if(!connectedAt)connectedAt=millis();if(uint32_t(millis()-connectedAt)>60000)WiFi.softAPdisconnect(true);}else connectedAt=0;
   }
+  updateBattery(millis());
   static uint32_t lastDisplay=0;
-  if(uint32_t(millis()-lastDisplay)>=1000){
+  if(uint32_t(millis()-lastDisplay)>=100){
     lastDisplay=millis();
-    if(wifiSuspended)setupDisplay.showBluetooth(setupName,setupPass.substring(2));
+    if(ble.pairing())setupDisplay.showBluetooth(setupName,setupPass.substring(2));
+    else if(bluetooth||(!wifiSuspended&&webClientSeen&&uint32_t(millis()-lastWebActivity)<15000)){
+      size_t outgoing=0;for(const auto& p:core.pending)if(!p.ack&&!p.history&&(p.event.kind==Kind::Post||p.event.kind==Kind::Vote))++outgoing;
+      setupDisplay.showStatus(bluetooth,batteryReading().millivolts,outgoing,newMessageCount,ready,preset()["frequency"]|0.0f);
+    }
     else if(WiFi.getMode()&WIFI_AP)setupDisplay.showAccessPoint(setupName,setupPass);
     else setupDisplay.showNetwork(WiFi.status()==WL_CONNECTED,WiFi.localIP().toString());
   }

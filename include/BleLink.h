@@ -64,6 +64,7 @@ public:
     if(overflow){xQueueReset(queue);overflow=false;c='\n';return true;}
     if(partAt>=part.n){if(!queue||xQueueReceive(queue,&part,0)!=pdTRUE)return false;partAt=0;}c=part.data[partAt++];return true;
   }
+  bool pairing(){return linked&&!authorized&&!accessPointOccupied;}
   bool connected(){return tx&&linked&&authorized&&!accessPointOccupied;}
   bool send(const String& s){if(!connected())return false;auto peers=NimBLEDevice::getServer()->getPeerDevices();if(peers.empty())return false;auto buffer=ble_hs_mbuf_from_flat(s.c_str(),s.length());return buffer&&ble_gattc_notify_custom(peers.front(),tx->getHandle(),buffer)==0;}
 };

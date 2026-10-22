@@ -4,6 +4,7 @@
 #include <Carriers.h>
 #include <Snapshot.h>
 #include "../include/SetupAccess.h"
+#include "../include/BatteryGauge.h"
 #include <cassert>
 #include <iostream>
 using namespace meshit;
@@ -18,6 +19,9 @@ struct Memory {
 };
 std::string hexBytes(const Bytes& b){std::string s;char x[3];for(auto c:b){snprintf(x,3,"%02x",c);s+=x;}return s;}
 int main(){
+  assert(!plausibleBatteryVoltage(0));assert(!plausibleBatteryVoltage(5000));
+  assert(batteryBars(3400)==0&&batteryBars(3600)==1&&batteryBars(3800)==2&&batteryBars(4000)==3&&batteryBars(4200)==4);
+
   assert(setupPassword(false,"",0)=="12345678");
   assert(setupPassword(false,"48214821",99)=="12345678");
   assert(setupPassword(true,"48214821",99)=="48214821");
