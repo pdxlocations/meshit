@@ -39,6 +39,12 @@ int main(){
   c.receive(own,300,false);assert(!c.messages[0].acked);auto wrong=own;wrong.text="forged";c.receive(wrong,350,true);assert(!c.messages[0].acked);
   c.receive(own,400,true);assert(c.messages[0].acked);c.tick(500,[](const Event&,bool){assert(false);return true;});assert(c.pending.empty());
   auto r=client(12);r.submit(post(1,1),0);sends=0;for(uint32_t t=0;t<400000;t+=1000)r.tick(t,[&](const Event&,bool){++sends;return true;});assert(sends==4);assert(r.pending.empty());
+  auto retryId=r.messages[0].event.id;auto original=encode(r.messages[0].event);
+  assert(r.resend(retryId,400000));assert(!r.resend(retryId,400001));assert(r.messages.size()==1);
+  assert(encode(r.pending[0].event)==original);assert(!r.resend(id(99,1),400002));
+  r.tick(401000,[](const Event&,bool){return true;});r.receive(r.messages[0].event,402000,true);
+  assert(r.messages[0].acked);assert(!r.resend(retryId,402001));
+  auto foreign=client(15);foreign.receive(post(20,1),0,false);assert(!foreign.resend(id(20,1),1));
   r.receive(r.messages[0].event,401000,true);assert(r.messages[0].acked); // Late echo still earns a check.
   auto busy=client(13);busy.submit(post(1,1),0);for(uint32_t t=0;t<100000;t+=1000)busy.tick(t,[](const Event&,bool){return false;});assert(busy.pending[0].attempts==0);
   auto quiet=client(14);quiet.receive(post(20,50),0,false);assert(quiet.pending.empty());sends=0;quiet.tick(60000,[&](const Event&,bool){++sends;return true;});assert(!sends); // First hearing skips old history.

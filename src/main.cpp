@@ -127,13 +127,16 @@ String dispatch(const String& input){
 #endif
     }else if(op=="messages"){
       res["revision"]=revision;auto a=res["messages"].to<JsonArray>();size_t offset=req["offset"]|0;for(size_t i=offset;i<core.messages.size()&&i<offset+8;++i)eventJson(a.add<JsonObject>(),core.messages[i]);
+     }else if(op=="resend"){
+      if(!ready||!core.resend(fromHex(req["target"]|""),millis()))res["error"]="Cannot resend: message unavailable, acknowledged, already queued, or radio not ready";
+      else {res["ok"]=true;res["messageId"]=hex(core.pending.back().event.id);changed();persist();}
     }else if(op=="post"||op=="vote"){
       if(!ready)res["error"]="Choose a network and preset; radio must be ready";
       else {Event e;e.kind=op=="post"?Kind::Post:Kind::Vote;e.ref=fromHex(req[op=="post"?"parent":"target"]|"");
         e.room=req["room"].as<std::string>();e.nick=std::string(settings["nickname"]|"");e.text=req["text"].as<std::string>();e.up=req["up"]|true;
         if(op=="vote"&&!core.find(e.ref))res["error"]="Message is no longer stored";
         else if(!core.submit(e,millis()))res["error"]="Cannot queue: invalid text, displaced thread, full queue, or storage unavailable";
-        else {res["ok"]=true;changed();persist();}
+        else {res["ok"]=true;res["messageId"]=hex(core.pending.back().event.id);changed();persist();}
       }
     }else if(op=="settings"){
       String selected=req["preset"]|settings["preset"]|"",net=req["network"]|settings["network"]|"";JsonObjectConst p;

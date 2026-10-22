@@ -11,8 +11,8 @@ test('companion RPC setup, rooms, posts, replies, votes and implicit checks use 
   assert.ok((await rpc({op:'post',room:'general',text:'before setup'})).error);
   assert.equal((await rpc({op:'settings',network:'meshtastic',preset:'mt-us-meshoregon',nickname:'Test',channel:'ignored-legacy-name'})).ok,true);
   assert.equal((await rpc({op:'state'})).settings.channel,undefined);
-  assert.equal((await rpc({op:'post',room:'campfire',text:'hello mesh',parent:''})).ok,true);
-  let page=await rpc({op:'messages',offset:0});const parent=page.messages[0];assert.equal(parent.nickname,'Test');assert.equal(parent.room,'campfire');assert.equal(parent.acknowledged,false);
+  const posted=await rpc({op:'post',room:'campfire',text:'hello mesh',parent:''});assert.equal(posted.ok,true);assert.ok(posted.messageId);
+  let page=await rpc({op:'messages',offset:0});const parent=page.messages[0];assert.equal(parent.id,posted.messageId);assert.ok((await rpc({op:'resend',target:parent.id})).error);assert.equal(parent.nickname,'Test');assert.equal(parent.room,'campfire');assert.equal(parent.acknowledged,false);
   assert.equal((await rpc({op:'post',room:'campfire',text:'a reply',parent:parent.id})).ok,true);
   page=await rpc({op:'messages',offset:0});const reply=page.messages[1];assert.equal(reply.parent,parent.id);
   assert.equal((await rpc({op:'vote',target:reply.id,up:true})).ok,true);page=await rpc({op:'messages',offset:0});assert.equal(page.messages[1].votes,1);

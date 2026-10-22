@@ -12,7 +12,7 @@ Select the up arrow to upvote, and select it again to remove your vote. **New** 
 
 ## The rebroadcast check
 
-A check means the radio heard an authenticated rebroadcast of its message from another radio. It does not prove delivery to every participant or that anyone read it. No check means no qualifying rebroadcast was heard. The radio allows one initial transmission plus at most three retries. Busy-channel waits do not consume attempts.
+A check means the radio heard an authenticated rebroadcast of its message from another radio. It does not prove delivery to every participant or that anyone read it. No check means no qualifying rebroadcast was heard. Posts and replies appear immediately with a sending indicator. Actions such as voting and saving settings show progress while waiting for the radio. The radio allows one initial transmission plus at most three retries. When those attempts finish without a check, a resend icon appears in the checkmark’s place. Resend queues the original message again without creating a duplicate post. Busy-channel waits do not consume attempts.
 
 ## History and offline use
 

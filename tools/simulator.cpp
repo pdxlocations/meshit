@@ -25,9 +25,12 @@ int main(){
         bool valid=false;for(JsonObjectConst p:presets.as<JsonArrayConst>())if(p["id"]==req["preset"]&&p["network"]==req["network"])valid=true;
         if(!valid)res["error"]="Choose a network and matching preset";
         else {if(settings["preset"]!=req["preset"]){core.messages.clear();core.pending.clear();core.votes.clear();}for(const char* key:{"network","preset","nickname","ssid"})if(req[key].is<const char*>())settings[key]=req[key];settings["configured"]=true;++revision;res["ok"]=true;}
-      }else if(op=="post"||op=="vote"){
+       }else if(op=="resend"){
+      if(!(settings["configured"]|false)||!core.resend(fromHex(req["target"]|""),now))res["error"]="Cannot resend: message unavailable, acknowledged, already queued, or radio not ready";
+      else {res["ok"]=true;++revision;}
+    }else if(op=="post"||op=="vote"){
         Event e;e.kind=op=="post"?Kind::Post:Kind::Vote;e.ref=fromHex(req[op=="post"?"parent":"target"]|"");e.room=req["room"].as<std::string>();e.text=req["text"].as<std::string>();e.nick=settings["nickname"]|"";e.up=req["up"]|true;
-        if(!(settings["configured"]|false))res["error"]="Choose a network first";else if(!core.submit(e,now))res["error"]="Invalid message or queue full";else {res["ok"]=true;++revision;}
+        if(!(settings["configured"]|false))res["error"]="Choose a network first";else if(!core.submit(e,now))res["error"]="Invalid message or queue full";else {res["ok"]=true;res["messageId"]=hex(core.pending.back().event.id);++revision;}
       }else res["error"]="Unknown operation";
     }
     serializeJson(res,std::cout);std::cout<<std::endl;

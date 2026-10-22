@@ -39,18 +39,18 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border
 .primary{background:var(--accent);color:var(--primary-ink);font-size:13px}
 .primary:hover{background:var(--primary-hover)}
 .secondary{background:var(--light)}
-.post{padding:12px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px}
+.post{padding:6px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px}
 .vote{display:flex;flex-direction:column;align-items:center;font-size:13px;color:var(--muted)}
 .vote button{font-size:18px;padding:0 8px 4px}
 .vote button[aria-pressed=true]{color:var(--vote)}
 .meta{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .meta strong{font-weight:650;color:var(--ink)}
-.body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;font-size:14px;margin:10px 0}
+.body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4;font-size:14px;margin:3px 0}
 .post-actions{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--muted)}
-.post-actions button{padding:4px 0;font-size:11px}
+.post-actions button{padding:2px 0;font-size:11px}
 .ack{color:var(--ack);font-size:15px;font-weight:700}
-.children{margin:14px 0 0 3px;border-left:2px solid var(--line);padding-left:14px}
-.children .post{padding:12px 0;border:0;grid-template-columns:26px minmax(0,1fr)}
+.children{margin:5px 0 0 3px;border-left:2px solid var(--line);padding-left:14px}
+.children .post{padding:6px 0;border:0;grid-template-columns:26px minmax(0,1fr)}
 .empty{text-align:center;color:var(--muted);padding:30px 12px}
 .empty h2{color:var(--ink);font-size:18px;font-weight:600}
 .settings{max-width:680px;margin:12px auto;padding:0 12px 60px}
@@ -102,3 +102,5 @@ dialog{padding:16px}
 @media(max-width:380px){header{flex-wrap:wrap}
 nav{margin-left:auto}
 }
+
+.delivery{padding:0 3px;font-size:15px;line-height:1.2;color:var(--muted)}

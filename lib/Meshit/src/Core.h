@@ -61,6 +61,11 @@ public:
     receive(e,now,false,true);if(e.kind==Kind::Post&&!find(e.id))return false;
     pending.push_back({e,0,now+100+jitter()%500,false,false});return true;
   }
+  bool resend(Id id,uint32_t now){
+    auto m=find(id);if(!m||!m->mine||m->acked||pending.size()>=12)return false;
+    for(const auto& p:pending)if(p.event.id==id&&!p.history)return false;
+    pending.push_back({m->event,0,now+100+jitter()%500,false,false});return true;
+  }
   void receive(const Event& e,uint32_t now,bool relayed,bool local=false){
     if(!valid(e))return;
     if(auto m=find(e.id))if(m->mine&&m->sent&&relayed&&e.kind==Kind::Post&&encode(m->event)==encode(e))m->acked=true;
