@@ -36,9 +36,13 @@ int main(){
   assert(batteryBars(3400)==0&&batteryBars(3600)==1&&batteryBars(3800)==2&&batteryBars(4000)==3&&batteryBars(4200)==4);
 
   assert(setupPassword(false,"",0)=="12345678");
-  assert(setupPassword(false,"48214821",99)=="12345678");
+  assert(setupPassword(false,"48214821",99)=="48214821");
+  assert(setupPassword(true,"12345678",99)=="12345678");
+  assert(setupRadioName(0x000a)=="mesit-000a");
+  assert(setupRadioName(0xabcd)=="mesit-abcd");
+  assert(setupRadioName(0xffff)=="mesit-ffff");
   assert(setupPassword(true,"48214821",99)=="48214821");
-  for(const auto& saved:{"","abcdefghijkl","12345678","1234123x","00000000","123412341234","１２３４１２３４"}){
+  for(const auto& saved:{"","abcdefghijkl","1234123x","123412341234","１２３４１２３４"}){
     auto pass=setupPassword(true,saved,0);assert(pass=="10001000");
   }
   for(uint32_t random:{0u,1u,8999u,9000u,UINT32_MAX}){

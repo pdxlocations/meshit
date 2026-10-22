@@ -130,7 +130,7 @@ function connectionStatus(message){$('link-status').textContent=message;connecti
 function connectionControls(){
   const bluetooth=transport.mode==='ble';$('transport').value=transport.mode;
   $('ble-controls').hidden=!bluetooth;$('wifi-help').hidden=bluetooth;
-  $('wifi-help').textContent=native?'Join meshit-… in your device’s Wi-Fi settings. The app connects at 192.168.4.1.':'Join the radio’s Wi-Fi network and open http://192.168.4.1, or use meshit.local on its LAN.';
+  $('wifi-help').textContent=native?'Join mesit-… in your device’s Wi-Fi settings. The app connects at 192.168.4.1.':'Join the radio’s Wi-Fi network and open http://192.168.4.1, or use meshit.local on its LAN.';
   $('devices').disabled=busy||!transport.devices.length;
   $('scan').disabled=busy;$('connect').disabled=busy||!transport.devices.length;
   $('disconnect').disabled=busy||!transport.link;$('transport').disabled=busy;

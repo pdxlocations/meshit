@@ -24,14 +24,14 @@ test('BLE discovery filters meshit radios and uses explicit selected-device conn
   const calls=[];
   const client={
     async initialize(){calls.push('initialize');},
-    async requestLEScan(options,found){assert.deepEqual(options.services,[SERVICE]);found({device:{deviceId:'other',name:'Form8-test'}});found({device:{deviceId:'one',name:'meshit-one'}});found({device:{deviceId:'two',name:'Meshit-two'}});},
+    async requestLEScan(options,found){assert.deepEqual(options.services,[SERVICE]);found({device:{deviceId:'other',name:'Form8-test'}});found({device:{deviceId:'one',name:'meshit-one'}});found({device:{deviceId:'two',name:'Meshit-two'}});found({device:{deviceId:'three',name:'mesit-00af'}});},
     async stopLEScan(){calls.push('stop scan');},
     async connect(id,disconnected){calls.push('connect '+id);this.disconnected=disconnected;},
     async startNotifications(id,service,tx,callback){calls.push('notify '+id);this.notification=callback;},
     async disconnect(id){calls.push('disconnect '+id);}
   };
   const link=new BleTransport({client,scanMs:0});
-  const devices=await link.findRadios();assert.deepEqual(devices.map(d=>d.id),['one','two']);
+  const devices=await link.findRadios();assert.deepEqual(devices.map(d=>d.id),['one','two','three']);
   await link.connect('two');assert.equal(link.label,'meshit-two');assert.ok(calls.includes('connect two'));
   let disconnected='';link.onDisconnect=message=>disconnected=message;client.disconnected();assert.match(disconnected,/disconnected/);
   await link.close();assert.ok(calls.includes('disconnect two'));
@@ -63,4 +63,13 @@ test('failed Bluetooth handshake closes the candidate and keeps sending disabled
   let closed=false;const candidate={async findRadios(){return [{id:'one'}];},async connect(){},async request(){return {wrong:'protocol'};},async close(){closed=true;}};
   const connection=new RadioConnection({mode:'ble',ble:()=>candidate});await connection.findRadios();
   await assert.rejects(connection.connect('one'),/compatible meshit/);assert.equal(closed,true);assert.equal(connection.link,null);
+});
+
+test('browser chooser accepts MAC-based mesit names and legacy radios',async()=>{
+  const link=new BleTransport({bluetooth:{async requestDevice({filters}){
+    assert.deepEqual(filters.map(f=>f.namePrefix),['mesit-','meshit-','Meshit-']);
+    assert.ok(filters.every(f=>f.services.includes(SERVICE)));
+    return {id:'mac-radio',name:'mesit-00af'};
+  }}});
+  const devices=await link.findRadios();assert.equal(devices[0].name,'mesit-00af');
 });

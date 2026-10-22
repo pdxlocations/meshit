@@ -19,6 +19,7 @@
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <esp_system.h>
+#include <esp_mac.h>
 constexpr int RADIO_CS=8,RADIO_IRQ=14,RADIO_RESET=12,RADIO_BUSY=13;
 WebServer server(80);
 SetupDisplay setupDisplay;
@@ -198,11 +199,13 @@ void pollLinks(){
 #if defined(MESHIT_ESP32)
 void setupWifi(){
   WiFi.setHostname("meshit");WiFi.mode(WIFI_AP_STA);
+  uint8_t mac[6]={};esp_efuse_mac_get_default(mac);
+  const uint16_t macSuffix=(uint16_t(mac[4])<<8)|mac[5];
   const bool displayReady=setupDisplay.begin();
   const String saved=settings["setupPassword"]|"";
-  setupPass=meshit::setupPassword(displayReady,saved.c_str(),random32()).c_str();
+  setupPass=meshit::setupPassword(displayReady,saved.c_str(),macSuffix).c_str();
   if(setupPass!=saved){settings["setupPassword"]=setupPass;String s;serializeJson(settings,s);writeFile("/settings.json",s);}
-  setupName="meshit-"+String(identity&65535,HEX);
+  setupName=meshit::setupRadioName(macSuffix).c_str();
   const bool apStarted=WiFi.softAP(setupName.c_str(),setupPass.c_str());
   if(apStarted)setupDisplay.showAccessPoint(setupName,setupPass);
   else setupDisplay.showNetwork(false,"");
@@ -240,7 +243,7 @@ void setup(){
 #if defined(MESHIT_ESP32)
   ble.begin(setupName,setupPass.substring(2).toInt());
 #else
-  ble.begin("meshit-"+String(identity&65535,HEX));
+  ble.begin(meshit::setupRadioName(uint16_t(NRF_FICR->DEVICEADDR[0])).c_str());
 #endif
   initRadio();
 }

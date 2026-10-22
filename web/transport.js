@@ -32,7 +32,7 @@ export class BleTransport {
     if(this.native){
       try{
         await this.native.requestLEScan({services:[SERVICE]},result=>{
-          const device=result.device,name=result.localName||device?.name;if(!device||!name?.toLowerCase().startsWith('meshit-'))return;
+          const device=result.device,name=result.localName||device?.name;if(!device||!/^mes(?:h)?it-/i.test(name||''))return;
           this.devices.set(device.deviceId,{id:device.deviceId,name:name.replace(/^meshit-/i,'meshit-'),device});
         });
         await new Promise(resolve=>{this.finishScan=resolve;this.scanTimer=setTimeout(resolve,this.scanMs);});
@@ -40,7 +40,7 @@ export class BleTransport {
     }else{
       const bluetooth=this.bluetooth||globalThis.navigator?.bluetooth;
       if(!bluetooth)throw new Error('Use the mobile companion or a browser with Bluetooth support.');
-      const device=await bluetooth.requestDevice({filters:[{services:[SERVICE],namePrefix:'meshit-'},{services:[SERVICE],namePrefix:'Meshit-'}]});
+      const device=await bluetooth.requestDevice({filters:[{services:[SERVICE],namePrefix:'mesit-'},{services:[SERVICE],namePrefix:'meshit-'},{services:[SERVICE],namePrefix:'Meshit-'}]});
       this.devices.set(device.id,{id:device.id,name:device.name?.replace(/^meshit-/i,'meshit-')||'meshit radio',device});
     }
     return [...this.devices.values()];
