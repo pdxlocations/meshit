@@ -21,4 +21,6 @@ meshit originates application traffic and relies on existing relays. It does not
 
 Meshtastic packets originate with `hop_limit=7` and `hop_start=7`. Relays decrement the remaining limit while retaining the starting value. The broadcast header does not request an ACK, and the explicitly present Data bitfield requests neither a response nor MQTT uplink. meshit's checkmark still requires an authenticated meshit message heard via a relay.
 
+An upvote on a reply triggers recovery of its missing parent chain through the original post. If the reply itself is missing, the radio requests it first, then follows its parent references. Duplicate requests are suppressed; tombstoned content stays removed, and bounded requests stop when unavailable.
+
 [Wiki home](Home.md)

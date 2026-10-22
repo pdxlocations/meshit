@@ -56,6 +56,27 @@ int main(){
   quiet.tick(62000,[&](const Event& out,bool history){assert(!history);emitted.push_back(out);return true;});assert(emitted.size()==1&&emitted[0].kind==Kind::Request&&emitted[0].ref==id(20,51));
   auto source=client(20);source.receive(post(20,51),0,false);source.receive(emitted[0],62000,false);source.tick(70000,[&](const Event& out,bool history){assert(history&&out.kind==Kind::History);quiet.receive(out,70000,false);return true;});assert(quiet.find(id(20,51)));
   auto old=client(30);old.receive(vote(22,1,id(90,1)),0,false);old.tick(1000,[&](const Event& out,bool){assert(out.kind==Kind::Request&&out.ref==id(90,1));return true;});auto recovered=post(90,1);recovered.kind=Kind::History;old.receive(recovered,2000,false);assert(old.score(id(90,1))==1);old.receive(vote(22,2,id(90,1),false),3000,false);assert(old.score(id(90,1))==0);old.receive(vote(22,1,id(90,1)),4000,false);assert(old.score(id(90,1))==0);
+  // A live orphan alone does not backfill history; an upvote recovers its parent.
+  auto thread=client(31);auto threadRoot=post(90,1),threadReply=post(91,1,threadRoot.id);
+  thread.receive(threadReply,0,false);thread.tick(1000,[](const Event&,bool){assert(false);return true;});
+  thread.receive(vote(92,1,threadReply.id),2000,false);std::vector<Id> requested;
+  thread.tick(3000,[&](const Event& out,bool){assert(out.kind==Kind::Request);requested.push_back(out.ref);return true;});
+  assert(requested==std::vector<Id>{threadRoot.id});
+  thread.receive(vote(93,1,threadReply.id),3500,false);thread.tick(4000,[](const Event&,bool){assert(false);return true;}); // Deduplicated.
+  threadRoot.kind=Kind::History;thread.receive(threadRoot,4500,false);assert(thread.find(threadRoot.id)&&thread.score(threadReply.id)==2);
+  thread.tick(5000,[](const Event&,bool){assert(false);return true;});
+  // If the reply is missing too, recover it, its parent, and the original root.
+  auto chain=client(32);auto chainRoot=post(80,1),chainParent=post(81,1,chainRoot.id),chainReply=post(82,1,chainParent.id);
+  chain.receive(vote(83,1,chainReply.id),0,false);requested.clear();
+  auto collect=[&](const Event& out,bool){assert(out.kind==Kind::Request);requested.push_back(out.ref);return true;};
+  chain.tick(1000,collect);assert(requested.back()==chainReply.id);
+  chainReply.kind=Kind::History;chain.receive(chainReply,2000,false);chain.tick(3000,collect);assert(requested.back()==chainParent.id);
+  chainParent.kind=Kind::History;chain.receive(chainParent,4000,false);chain.tick(5000,collect);assert(requested.back()==chainRoot.id);
+  chainRoot.kind=Kind::History;chain.receive(chainRoot,6000,false);chain.tick(7000,[](const Event&,bool){assert(false);return true;});
+  assert(requested.size()==3&&chain.messages.size()==3&&chain.score(chainReply.id)==1);
+  // Removing the only upvote before recovery must not start parent backfill.
+  auto withdrawn=client(33);withdrawn.receive(vote(84,1,chainReply.id),0,false);withdrawn.receive(vote(84,2,chainReply.id,false),100,false);
+  withdrawn.receive(chainReply,200,false);withdrawn.tick(1000,[](const Event&,bool){assert(false);return true;});
   auto cap=client(40);auto parent=post(41,1);cap.receive(parent,0,false);auto child=post(42,1,parent.id);cap.receive(child,0,false);cap.receive(vote(43,1,child.id),0,false);
   for(uint16_t n=2;n<=201;++n)cap.receive(post(41,n),n,false);
   assert(cap.messages.size()<=200);assert(!cap.find(parent.id)&&!cap.find(child.id));assert(!cap.score(child.id));cap.receive(child,1000,false);assert(!cap.find(child.id));

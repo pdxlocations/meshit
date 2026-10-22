@@ -17,6 +17,16 @@ class Core {
   bool contains(const std::vector<Id>& list,Id id)const{return std::find(list.begin(),list.end(),id)!=list.end();}
   void remember(const Event& e){seen.push_back(e.id);bounded(seen,512);if(e.kind==Kind::Vote){recent.push_back(e);bounded(recent,32);}}
   void want(Id id,uint32_t now){if(find(id)||contains(dead,id)||contains(seen,id))return;for(auto& m:missing)if(m.id==id)return;if(missing.size()<16)missing.push_back({id,now+500,0});}
+  void wantThread(Id id,uint32_t now){
+    for(size_t depth=0;id&&depth<32;++depth){
+      if(contains(dead,id))return;
+      auto m=find(id);if(!m){want(id,now);return;}
+      id=m->event.ref;
+    }
+  }
+  void wantVotedThreads(uint32_t now){
+    for(const auto& m:messages)if(score(m.event.id)>0)wantThread(m.event.id,now);
+  }
   void noteGap(const Event& e,uint32_t now){
     if(e.kind==Kind::History)return;
     auto p=std::find_if(peers.begin(),peers.end(),[&](const Peer& p){return p.id==sender(e.id);});
@@ -87,10 +97,10 @@ public:
       }
       Event post=e;post.kind=Kind::Post;messages.push_back({post,++clock,local,false});
       for(auto it=deferredVotes.begin();it!=deferredVotes.end();)if(it->target==e.id){votes.push_back(*it);it=deferredVotes.erase(it);}else ++it;
-      trim();
+      trim();wantVotedThreads(now);
     }else if(e.kind==Kind::Vote){
       if(contains(dead,e.ref))return;
-      applyVote(e);if(e.up&&!find(e.ref))want(e.ref,now);
+      applyVote(e);if(e.up)wantThread(e.ref,now);
     }else if(e.kind==Kind::Request){
       if(pending.size()>=12||contains(dead,e.ref))return;
       Event answer;bool found=false;

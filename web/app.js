@@ -23,7 +23,18 @@ let state=null,messages=[],room=localStorage.getItem('meshit.room')||'general',s
 function saved(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
 let draftRooms=saved('meshit.rooms',[]).filter(s=>typeof s==='string').slice(0,20);
 const outgoing=new Map();
-const notify=(text='')=>{$('notice').textContent=text;};
+let deliveryNotice=null;
+const notify=(text='')=>{deliveryNotice=null;$('notice').textContent=text;};
+function watchDelivery(id){
+  notify('Message queued. Waiting for rebroadcast acknowledgment.');deliveryNotice={id,node:state?.node,revision:loadedRevision};updateDeliveryNotice();
+}
+function updateDeliveryNotice(){
+  if(!deliveryNotice)return;
+  if(deliveryNotice.node!==state?.node){notify();return;}
+  const m=messages.find(item=>item.id===deliveryNotice.id);if(!m)return;
+  if(m.acknowledged)notify('Message heard rebroadcast by another radio.');
+  else if(m.status!=='sending'&&loadedRevision&&loadedRevision!==deliveryNotice.revision)notify('No rebroadcast acknowledgment received. Use ↻ to resend.');
+}
 function element(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
 function show(which){view=which;$('chat-view').hidden=which!=='chat';$('settings-view').hidden=which!=='settings';$('chat-tab').setAttribute('aria-current',which==='chat'?'page':'false');$('settings-tab').setAttribute('aria-current',which==='settings'?'page':'false');}
 function chooseRoom(name){localStorage.setItem(`meshit.draft.${room}`,JSON.stringify({text:$('message').value,parent:reply}));room=name;localStorage.setItem('meshit.room',room);reply='';$('message').value='';try{const d=JSON.parse(localStorage.getItem(`meshit.draft.${room}`)||'{}');$('message').value=d.text||'';reply=d.parent||'';}catch{}render();count();}
@@ -36,7 +47,11 @@ function settingsUI(){
   const p=state.presets.find(p=>p.id===s.preset);if(p){$('region').value=p.region;presets('',network);$('preset').value=p.id;details('');}
 }
 function render(){
-  for(const [key,m] of outgoing)if(messages.some(item=>item.id===m.id||(m.failed&&item.mine&&!m.before.includes(item.id)&&item.room===m.room&&item.parent===m.parent&&item.text===m.text)))outgoing.delete(key);
+  for(const [key,m] of outgoing){
+    const found=messages.find(item=>item.id===m.id||((m.failed||m.accepted)&&item.mine&&!m.before.includes(item.id)&&item.room===m.room&&item.parent===m.parent&&item.text===m.text));
+    if(found){if(deliveryNotice?.id===m.id)deliveryNotice.id=found.id;outgoing.delete(key);}
+  }
+  updateDeliveryNotice();
   const visible=[...messages,...outgoing.values()];
   const rooms=new Set([...visible.map(m=>m.room),...draftRooms]);if(!rooms.size)rooms.add('general');if(!rooms.has(room)){room=[...rooms][0];reply='';}
   $('rooms').replaceChildren();for(const name of [...rooms].sort()){const b=element('button','room'+(name===room?' selected':''));b.append(element('span',null,'# '+name),element('span',null,String(visible.filter(m=>m.room===name).length)));b.onclick=()=>chooseRoom(name);$('rooms').append(b);}
@@ -49,7 +64,7 @@ function render(){
       if(m.status==='sending'){const pending=element('span','delivery','…');pending.title='Sending message…';pending.setAttribute('aria-label',pending.title);meta.append(pending);}
       else {const retry=element('button','delivery','↻');retry.title='No acknowledgment received. Resend message';retry.setAttribute('aria-label',retry.title);retry.disabled=busy||!state?.ready;retry.onclick=()=>act(async()=>{
         if(m.local)await sendOutgoing(m);
-        else {await transport.request({op:'resend',target:m.id});loadedRevision=0;await refresh();}
+        else {await transport.request({op:'resend',target:m.id});watchDelivery(m.id);loadedRevision=0;await refresh();}
       },'Resending message…');meta.append(retry);}
     }
     const actions=element('div','post-actions'),button=element('button',null,'↳ Reply');button.disabled=!!m.local;button.onclick=()=>{reply=m.id;count();$('message').focus();$('compose').scrollIntoView({behavior:'smooth',block:'center'});};actions.append(button);if(m.mine&&!m.acknowledged)actions.append(element('span',null,m.status));
@@ -80,11 +95,11 @@ async function sendOutgoing(m){
   m.status='sending';render();
   try{
     // A lost response may still have stored the post. Reconcile before retrying.
-    if(m.failed){loadedRevision=0;await refresh();const found=messages.find(item=>item.mine&&!m.before.includes(item.id)&&item.room===m.room&&item.parent===m.parent&&item.text===m.text);if(found){outgoing.delete(m.key);render();return;}}
+    if(m.failed){loadedRevision=0;await refresh();const found=messages.find(item=>item.mine&&!m.before.includes(item.id)&&item.room===m.room&&item.parent===m.parent&&item.text===m.text);if(found){outgoing.delete(m.key);watchDelivery(found.id);render();return;}}
     const result=await transport.request({op:'post',room:m.room,text:m.text,parent:m.parent});
-    if(result.messageId){m.id=result.messageId;m.local=false;}
+    m.accepted=true;if(result.messageId){m.id=result.messageId;m.local=false;}watchDelivery(m.id);
     loadedRevision=0;await refresh();
-    if(!result.messageId){const found=messages.find(item=>item.mine&&!m.before.includes(item.id)&&item.room===m.room&&item.parent===m.parent&&item.text===m.text);if(found)outgoing.delete(m.key);}
+    if(!result.messageId){const found=messages.find(item=>item.mine&&!m.before.includes(item.id)&&item.room===m.room&&item.parent===m.parent&&item.text===m.text);if(found){outgoing.delete(m.key);watchDelivery(found.id);}}
   }catch(e){m.status='not confirmed';m.failed=true;throw e;}finally{render();}
 }
 $('compose').onsubmit=e=>{e.preventDefault();if(busy||$('send').disabled)return;act(async()=>{
