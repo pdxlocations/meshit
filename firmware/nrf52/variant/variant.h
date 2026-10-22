@@ -10,7 +10,11 @@
 #define PIN_LED1 NRF_LED
 #define LED_BUILTIN PIN_LED1
 #define LED_BLUE PIN_LED1
+#if defined(MESHIT_NRF_T114)
+#define LED_STATE_ON 0
+#else
 #define LED_STATE_ON 1
+#endif
 #define PIN_A0 2
 #define PIN_A1 3
 #define PIN_A2 4

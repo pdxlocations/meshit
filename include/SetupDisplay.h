@@ -7,15 +7,15 @@
 #include <SSD1306Wire.h>
 
 class SetupDisplay {
-  SSD1306Wire screen{0x3c,SDA_OLED,SCL_OLED,GEOMETRY_128_64,I2C_ONE,400000};
+  SSD1306Wire screen{0x3c,17,18,GEOMETRY_128_64,I2C_ONE,400000};
   bool ready=false;
   String previous;
 public:
   bool begin(){
     // Heltec V3's OLED is on its active-low Vext rail and dedicated I2C pins.
-    pinMode(Vext,OUTPUT);digitalWrite(Vext,LOW);delay(100);
-    pinMode(RST_OLED,OUTPUT);digitalWrite(RST_OLED,LOW);delay(20);digitalWrite(RST_OLED,HIGH);delay(20);
-    if(!Wire.begin(SDA_OLED,SCL_OLED,400000))return false;
+    pinMode(36,OUTPUT);digitalWrite(36,LOW);delay(100);
+    pinMode(21,OUTPUT);digitalWrite(21,LOW);delay(20);digitalWrite(21,HIGH);delay(20);
+    if(!Wire.begin(17,18,400000))return false;
     Wire.setTimeOut(50);
     // The driver's init() only checks allocation, so explicitly probe first.
     Wire.beginTransmission(0x3c);
@@ -45,7 +45,7 @@ public:
     const String view="stats|"+String(bluetooth)+"|"+String(batteryMv/10)+"|"+String(outgoing)+"|"+String(incoming)+"|"+String(radioReady)+"|"+String(frequency,3);
     if(view==previous)return;previous=view;
     screen.clear();screen.setFont(ArialMT_Plain_10);
-    screen.drawString(0,0,bluetooth?"Meshit / Bluetooth":"Meshit / Wi-Fi");
+    screen.drawString(0,0,bluetooth?"meshit / Bluetooth":"meshit / Wi-Fi");
     screen.drawRect(105,2,20,9);screen.fillRect(125,4,2,5);
     if(!batteryMv)screen.drawString(111,0,"?");
     else {const uint8_t bars=batteryBars(batteryMv);for(uint8_t i=0;i<bars;++i)screen.fillRect(107+i*4,4,3,5);if(!bars)screen.drawString(111,0,"!");}

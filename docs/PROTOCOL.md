@@ -1,4 +1,4 @@
-# Meshit v1 protocol
+# meshit v1 protocol
 
 The application core is independent of Arduino. The same C++ headers drive firmware, the host simulator, and sanitizer tests.
 
@@ -37,11 +37,11 @@ An envelope is split into fragments, each containing `m`, version 1, random 6-by
 
 ## Network carriers
 
-**Meshtastic:** standard 16-byte broadcast header, default hop limit/start of 3, WantAck clear, preset-selected public channel-name hash, and a protobuf Data message on private application port 256. The transport payload uses the standard public AES-128-CTR key and nonce layout. Meshit accepts only matching broadcast/channel/private-port traffic. A lower remaining hop limit than hop start establishes that the frame was relayed.
+**Meshtastic:** standard 16-byte broadcast header, default hop limit/start of 3, WantAck clear, preset-selected public channel-name hash, and a protobuf Data message on private application port 256. The transport payload uses the standard public AES-128-CTR key and nonce layout. meshit accepts only matching broadcast/channel/private-port traffic. A lower remaining hop limit than hop start establishes that the frame was relayed.
 
-**MeshCore:** v1 flood group-data packet, empty initial path, development datagram type `0xFF4D`. The group key is SHA-256 of `Meshit group transport v1`; group wrapping uses MeshCore's AES-128-ECB and truncated HMAC-SHA256 convention. The entire Meshit envelope remains independently authenticated. Repeaters do not need to understand the Meshit group. Raw custom packet type is deliberately avoided because upstream MeshCore does not flood-relay it. Only group-data flood packets are accepted; path hash sizes 1–3 are supported, with at most 64 path bytes. A nonempty relay path establishes a rebroadcast.
+**MeshCore:** v1 flood group-data packet, empty initial path, development datagram type `0xFF4D`. The group key is SHA-256 of `Meshit group transport v1`; group wrapping uses MeshCore's AES-128-ECB and truncated HMAC-SHA256 convention. The entire meshit envelope remains independently authenticated. Repeaters do not need to understand the meshit group. Raw custom packet type is deliberately avoided because upstream MeshCore does not flood-relay it. Only group-data flood packets are accepted; path hash sizes 1–3 are supported, with at most 64 path bytes. A nonempty relay path establishes a rebroadcast.
 
-Neither adapter forwards received packets, emits node info, requests network acknowledgments, announces rooms, or emits location/telemetry. Modem setup uses a 16-symbol preamble for Meshtastic and MeshCore's 32-symbol preamble at SF5–8 (16 above SF8), plus the network-specific sync word. Initial Meshit support is for public-key Meshtastic channels and the built-in MeshCore application group; private transport-key entry and scope/transport-code routing are not implemented.
+Neither adapter forwards received packets, emits node info, requests network acknowledgments, announces rooms, or emits location/telemetry. Modem setup uses a 16-symbol preamble for Meshtastic and MeshCore's 32-symbol preamble at SF5–8 (16 above SF8), plus the network-specific sync word. Initial meshit support is for public-key Meshtastic channels and the built-in MeshCore application group; private transport-key entry and scope/transport-code routing are not implemented.
 
 ## Checks and retries
 

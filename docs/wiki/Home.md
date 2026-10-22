@@ -1,6 +1,6 @@
-# 💩 Meshit wiki
+# 💩 meshit wiki
 
-Small, threaded LoRa chat on Heltec V3 and RAK4631, using nearby Meshtastic or MeshCore infrastructure.
+Small, threaded LoRa chat on Heltec V3/V4, RAK4631, and T114, using nearby Meshtastic or MeshCore infrastructure.
 
 **[Install firmware](https://meshit.pdxlocs.com)** · **[Release downloads](https://github.com/pdxlocations/meshit/releases)**
 

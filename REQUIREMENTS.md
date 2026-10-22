@@ -1,4 +1,4 @@
-# Meshit implementation requirements
+# meshit implementation requirements
 
 Status: initial implementation complete; firmware, host tests, Android debug, and iOS simulator compilation passed. Hardware interoperability, visual UI review, and phone BLE validation remain.
 
@@ -7,7 +7,7 @@ Status: initial implementation complete; firmware, host tests, Android debug, an
 - Lightweight ESP32 and nRF52840 firmware; first boards Heltec V3 and RAK4631.
 - Use neighboring `../form8` as a reference for board support, local web hosting, and mobile transports.
 - No location, node announcements, direct messages, or ordinary forwarding of received network traffic. Explicitly requested cached-message responses are the agreed exception.
-- Meshit clients originate messages using either Meshtastic or MeshCore wire protocols. Existing network infrastructure relays them. Only Meshit understands the application messages.
+- meshit clients originate messages using either Meshtastic or MeshCore wire protocols. Existing network infrastructure relays them. Only meshit understands the application messages.
 - First-run network selection, followed by region and modem presets; configuration remains accessible in Settings.
 - Meshtastic MeshOregon preset: 918.5 MHz, BW 125 kHz, SF8, CR 4/5 (user supplied as CR5).
 - Hearing our own packet rebroadcast produces a green check beside our message. No explicit acknowledgment packets. Retry three times without a rebroadcast acknowledgment.
@@ -18,7 +18,7 @@ Status: initial implementation complete; firmware, host tests, Android debug, an
 - Six-byte hexadecimal message identifiers requested, with gap detection and requests for missing messages.
 - An old missing message may be requested only upon hearing an upvote for that message.
 - A 200-message cap across rooms (user called these channels); unvoted messages and inactive rooms fall off the list.
-- Apply minimal application-layer encryption with a built-in key, without user key configuration, so broker payloads are not human readable. Shared built-in keys do not provide secrecy from other Meshit users or anyone inspecting the implementation.
+- Apply minimal application-layer encryption with a built-in key, without user key configuration, so broker payloads are not human readable. Shared built-in keys do not provide secrecy from other meshit users or anyone inspecting the implementation.
 
 ## Final interview decisions and implementation choices
 
@@ -27,11 +27,11 @@ Status: initial implementation complete; firmware, host tests, Android debug, an
 - First hearing skips history; subsequent live gaps trigger bounded requests. Old missing posts are fetched on a newly heard positive upvote.
 - The 200-message cap includes replies. Evict lowest-voted first, oldest first on ties. Upvoted messages stay until displaced. Evicting a parent deletes all descendants, regardless of reply votes. Rooms with no retained messages disappear.
 - The implementation preserves the 160-character limit, including multibyte Unicode, using up to seven bounded fragments when metadata and encryption do not fit a carrier packet.
-- Meshtastic private application port 256 and MeshCore flood group datagrams carry Meshit. Upstream protocol sources and independent cryptographic vectors validate framing; physical interoperability is still to be verified. MQTT gateway filters may affect passage.
+- Meshtastic private application port 256 and MeshCore flood group datagrams carry meshit. Upstream protocol sources and independent cryptographic vectors validate framing; physical interoperability is still to be verified. MQTT gateway filters may affect passage.
 - ChaCha20-Poly1305 application encryption uses a built-in shared key and hardware-generated random nonces. No user key configuration; no custom cipher.
 - One initial transmission plus three retries, stopping on a matching rebroadcast. A green check denotes rebroadcast evidence only.
 - Compact persistent radio history, votes, tombstones, and pending sends; companion caches 200 messages and drafts locally.
-- Initial targets are Heltec V3, RAK4631 S140 7.3.0, and RAK4631 S140 6.1.1. Additional Form8 board targets remain future work.
+- Targets are Heltec V3, V4.2 OLED / GC1109, V4.3 OLED / KCT8103L, RAK4631 S140 7.3.0 and 6.1.1, and Heltec T114 S140 7.3.0. Other Form8 targets remain future work.
 - See `docs/PROTOCOL.md` for resource bounds and `docs/VALIDATION.md` for evidence and remaining physical checks.
 
 ## Protocol references

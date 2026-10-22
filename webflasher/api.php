@@ -47,7 +47,7 @@ function github_file(string $url, bool $asset = false): string {
     $received = 0;
     try {
         curl_setopt_array($curl, [
-            CURLOPT_USERAGENT => 'Meshit-WebFlasher',
+            CURLOPT_USERAGENT => 'meshit-WebFlasher',
             CURLOPT_HTTPHEADER => ['Accept: ' . ($asset ? 'application/octet-stream' : 'application/vnd.github+json')],
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 5,
@@ -173,6 +173,6 @@ try {
         }
     } finally { $zip->close(); }
 } catch (Throwable $error) {
-    error_log('Meshit webflasher: ' . $error->getMessage());
+    error_log('meshit webflasher: ' . $error->getMessage());
     fail_request($error instanceof RuntimeException ? $error->getMessage() : 'Cannot load GitHub release data. Please try again.');
 }

@@ -18,7 +18,7 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   class Radio {
     constructor(){this.mode='wifi';this.devices=[];this.link={};this.generation=1;}
     async request(req){
-      if(req.op==='state')return {node:'test',ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester'},presets:[]};
+      if(req.op==='state')return {node:'test',ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester'},board:'Heltec V4.3',wifiSupported:true,presets:[]};
       if(req.op==='messages')return {revision,messages:feed};
       if(req.op==='post')return new Promise((resolve,reject)=>{resolvePost=resolve;rejectPost=reject;});
     }
@@ -26,6 +26,7 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   const source=(await readFile(new URL('../web/app.js',import.meta.url),'utf8')).replace("import {RadioConnection} from './transport.js';",'const RadioConnection=Radio;');
   const context={Radio,TextEncoder,console,document:{documentElement:new Element(),getElementById:get,createElement:()=>new Element(),querySelector:get,querySelectorAll:()=>[],addEventListener(){}},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},matchMedia:()=>({matches:false,addEventListener(){}}),setInterval(){}};
   await vm.runInNewContext('(async()=>{'+source+'})()',context);
+  assert.equal(get('wifi-settings').hidden,false,'V4 exposes Wi-Fi configuration');
   get('message').value='Hello radio';get('message').oninput();get('compose').onsubmit({preventDefault(){}});
   assert.match(get('feed').textContent,/Hello radio/);assert.equal(get('notice').textContent,'Sending message…');assert.equal(get('send').disabled,true);
   rejectPost(new Error('Connection timed out'));await tick();

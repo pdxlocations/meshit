@@ -4,7 +4,7 @@
 struct BatteryReading {uint16_t millivolts=0;};
 inline BatteryReading& batteryReading(){static BatteryReading reading;return reading;}
 #if defined(MESHIT_ESP32) && defined(MESHIT_HAS_OLED)
-// Heltec V3: GPIO1, 390k/100k divider, GPIO37 enable. Detect V3/V3.2 polarity.
+// Heltec V3/V4: GPIO1, 390k/100k divider, GPIO37 enable. Detect V3/V3.2 polarity.
 inline void updateBattery(uint32_t now) {
   static bool initialized=false,sampling=false;
   static uint32_t next=0,settledAt=0;
@@ -15,7 +15,11 @@ inline void updateBattery(uint32_t now) {
   }
   if(!sampling){
     if(int32_t(now-next)<0)return;
+#if defined(MESHIT_HELTEC_V4)
+    const int enabled=HIGH;
+#else
     const int enabled=digitalRead(37)==HIGH?LOW:HIGH;
+#endif
     digitalWrite(37,enabled);pinMode(37,OUTPUT);
     settledAt=now+10;sampling=true;return;
   }

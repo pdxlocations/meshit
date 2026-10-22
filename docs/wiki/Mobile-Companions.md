@@ -1,6 +1,6 @@
 # Android and iOS companions
 
-Install `meshit-android-debug.apk` from [the selected release](https://github.com/pdxlocations/meshit/releases). It is a debug APK; iOS requires a locally built and provisioned app. The bundled UI opens offline, while sending needs Bluetooth or ESP local Wi-Fi. RAK4631 supports Bluetooth and has no Wi-Fi.
+Install `meshit-android-debug.apk` from [the selected release](https://github.com/pdxlocations/meshit/releases). It is a debug APK; iOS requires a locally built and provisioned app. The bundled UI opens offline, while sending needs Bluetooth or ESP local Wi-Fi. RAK4631 and T114 support Bluetooth and have no Wi-Fi.
 
 ## Build the companions
 

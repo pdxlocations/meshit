@@ -44,10 +44,10 @@ jobs:
               exit 1
             fi
             tag="v${VERSION_INPUT}.${commit:0:7}-beta"
-            title="Meshit ${VERSION_INPUT}.${commit:0:7} Beta"
+            title="meshit ${VERSION_INPUT}.${commit:0:7} Beta"
           else
             tag="$PUBLISHED_TAG"
-            title="Meshit $tag"
+            title="meshit $tag"
           fi
           MESHIT_VERSION="$tag" python3 tools/build_info.py
           echo "tag=$tag" >> "$GITHUB_OUTPUT"

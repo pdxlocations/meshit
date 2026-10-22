@@ -1,6 +1,6 @@
-# Meshit web flasher
+# meshit web flasher
 
-The Meshit installer will live at **https://meshit.pdxlocs.com**. For board-specific steps, see the [installation guide](../docs/wiki/Installation.md).
+The meshit installer will live at **https://meshit.pdxlocs.com**. For board-specific steps, see the [installation guide](../docs/wiki/Installation.md).
 
 Upload the **contents of this folder** to a PHP-enabled HTTPS host, as with the Form8 installer. Firmware is loaded automatically from published releases in **pdxlocations/meshit**; you do not re-upload binaries to the host for every release.
 
@@ -16,29 +16,30 @@ The repository is configured in `config.php`; links in `index.html` and `app.js`
 
 ## ESP installation
 
-Choose the firmware version, **Heltec WiFi LoRa 32 V3**, and installation type:
+Choose the firmware version, your exact **Heltec V3 / V4.2 OLED / V4.3 OLED** target, and installation type:
 
-- **Update:** app-only image at `0x10000`. Existing Meshit messages and settings are preserved when the board/partition layout matches and **Erase device stays unchecked** in the installer.
-- **First installation / start fresh:** complete 8 MiB image at `0x0`, including the bootloader, partition table, OTA initialization, application, and cleared remaining flash. It replaces all stored data even when the installer’s erase checkbox is unchecked.
+- **Update:** app-only image at `0x10000`. Existing meshit messages and settings are preserved when the board/partition layout matches and **Erase device stays unchecked** in the installer.
+- **First installation / start fresh:** complete 8 MiB (V3) or 16 MiB (V4) image at `0x0`, including the bootloader, partition table, OTA initialization, application, and cleared remaining flash. It replaces all stored data even when the installer’s erase checkbox is unchecked.
 
 Confirm your board and, for a fresh install, data replacement. **Download & verify firmware** checks size and SHA-256 before enabling **Connect USB & install**. The USB tool identifies the processor family, not the board model. Browser access to the USB port happens only after the visitor clicks and selects it.
 
-The companion webpage is embedded in the firmware. No separate filesystem upload is needed. After restart, the Heltec V3 OLED shows its `Meshit-…` AP name, eight-digit numeric password, and `http://192.168.4.1`. The password is a four-digit PIN repeated twice (for example, `48214821`) and stays the same across restarts. If the supported display is absent or fails to initialize, the AP password is **`12345678`**. Join the setup Wi-Fi and open the displayed address; **no serial monitor is needed**. Current firmware automatically replaces older saved setup passwords with this policy; home Wi-Fi credentials are unchanged. Older firmware must be updated for this setup flow. After configuring your LAN and restarting, use `http://meshit.local`. After one minute on the LAN, the setup AP closes and the OLED switches to `meshit.local` and the LAN IP. Bluetooth follows the Form8 handoff: disconnect Wi-Fi clients, use Find radios / select / Connect in the companion, and pair ESP32 with the last six digits of the setup password (`345678` without a display). Authenticated Bluetooth pauses Wi-Fi until disconnect; the hotspot and saved LAN connection are then restored.
+The companion webpage is embedded in the firmware. No separate filesystem upload is needed. After restart, the Heltec V3/V4 OLED shows its `meshit-…` AP name, eight-digit numeric password, and `http://192.168.4.1`. The password is a four-digit PIN repeated twice (for example, `48214821`) and stays the same across restarts. If the supported display is absent or fails to initialize, the AP password is **`12345678`**. Join the setup Wi-Fi and open the displayed address; **no serial monitor is needed**. Current firmware automatically replaces older saved setup passwords with this policy; home Wi-Fi credentials are unchanged. Older firmware must be updated for this setup flow. After configuring your LAN and restarting, use `http://meshit.local`. After one minute on the LAN, the setup AP closes and the OLED switches to `meshit.local` and the LAN IP. Bluetooth follows the Form8 handoff: disconnect Wi-Fi clients, use Find radios / select / Connect in the companion, and pair ESP32 with the last six digits of the setup password (`345678` without a display). Authenticated Bluetooth pauses Wi-Fi until disconnect; the hotspot and saved LAN connection are then restored.
 
-## RAK4631 installation
+## RAK4631 / T114 installation
 
-RAK targets offer verified **UF2/HEX downloads**, not ESP browser flashing. Double-press Reset and read the **SoftDevice** line in `INFO_UF2.TXT` on the bootloader’s USB drive:
+RAK4631 and T114 targets offer verified **UF2/HEX downloads**, not ESP browser flashing. Double-press Reset and read the **SoftDevice** line in `INFO_UF2.TXT` on the bootloader’s USB drive:
 
 | Installed S140 | Select | UF2 |
 | --- | --- | --- |
 | 6.1.1 | RAK4631 / stock S140 6.1.1 | `meshit-rak4631-s140-6-1-1.uf2` |
 | 7.3.0 | RAK4631 / S140 7.3.0 | `meshit-rak4631.uf2` |
+| 7.3.0 | Heltec T114 / S140 7.3.0 | `meshit-heltec-t114.uf2` |
 
 The bootloader version is a different number. An unknown or mismatched SoftDevice blocks downloading. After verification, save the UF2 and copy it to the bootloader drive. HEX is for programming tools that preserve the installed matching SoftDevice and bootloader.
 
-Both file formats are checked for size, SHA-256, valid records, application start, vector table, overlapping data, and Meshit’s reserved memory boundary at **`0x80000`**. Application images do not replace the SoftDevice or bootloader. The board/SoftDevice requirements come from the selected release’s own catalog, so hosting files cannot silently substitute another release’s layout. Changing the release, board, format, or SoftDevice clears any prepared download.
+Both file formats are checked for size, SHA-256, valid records, application start, vector table, overlapping data, and meshit’s reserved memory boundary at **`0x80000`**. Application images do not replace the SoftDevice or bootloader. The board/SoftDevice requirements come from the selected release’s own catalog, so hosting files cannot silently substitute another release’s layout. Changing the release, board, format, or SoftDevice clears any prepared download.
 
-Use `meshit-android-debug.apk` from the same GitHub release, or build the iOS companion. RAK4631 has no Wi-Fi interface.
+Use `meshit-android-debug.apk` from the same GitHub release, or build the iOS companion. RAK4631 and T114 have no Wi-Fi interface.
 
 ## Releases and caching
 
@@ -46,7 +47,7 @@ The bridge reads the newest **20 published GitHub releases** and offers those co
 
 ```text
 esp32/       app-only/factory images, manifest, checksums
-nrf52/       RAK UF2/HEX, per-release target catalog, checksums
+nrf52/       RAK4631 / T114 UF2/HEX, per-release target catalog, checksums
 webflasher/  this uploadable PHP site
 ```
 

@@ -86,7 +86,7 @@ if (($argv[1] ?? '') === '--bundle') {
             check(strlen($body) === $image['bytes'] && hash('sha256', $body) === $image['sha256'], 'packaged ESP image bytes');
         }
         $catalog = json_decode(bundle_member($bundle, 'nrf52-targets.json', $assets), true, 512, JSON_THROW_ON_ERROR);
-        check(count($catalog) === 2, 'both RAK SoftDevice profiles');
+        check(count($catalog) === count(json_decode(file_get_contents(__DIR__ . '/../config/nrf52-targets.json'), true)), 'all nRF profiles');
         foreach (explode("\n", trim(bundle_member($bundle, 'SHA256SUMS-NRF52', $assets))) as $line) {
             [$digest, $file] = explode('  ', $line);
             check(hash('sha256', bundle_member($bundle, $file, $assets)) === $digest, 'packaged nRF image bytes');

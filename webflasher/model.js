@@ -35,7 +35,7 @@ export async function verifyImage(buffer, image, cryptoProvider = globalThis.cry
 export function installManifest(target, image, version, binaryURL) {
   const chipFamily=target.chipFamily===undefined?'ESP32-S3':target.chipFamily;
   if(!['ESP32','ESP32-S3'].includes(chipFamily))throw new Error('Unsupported processor family.');
-  return {name: `Meshit · ${target.board}`, version, new_install_prompt_erase: true,
+  return {name: `meshit · ${target.board}`, version, new_install_prompt_erase: true,
     new_install_improv_wait_time: 0,
     builds: [{chipFamily, parts: [{path: binaryURL, offset: Number(image.flashOffset)}]}]};
 }

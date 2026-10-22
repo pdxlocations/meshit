@@ -15,5 +15,5 @@ const server=http.createServer(async(req,res)=>{
     res.writeHead(200,{'Content-Type':mime['.'+file.split('.').pop()],'Cache-Control':'no-store'}).end(await readFile('web/'+file));
   }catch(e){res.writeHead(400,{'Content-Type':'application/json'}).end(JSON.stringify({error:e.message}));}
 });
-const port=Number(process.env.PORT||8787);server.listen(port,'127.0.0.1',()=>console.log(`Meshit SIMULATOR: http://127.0.0.1:${port} (no radio traffic; rebroadcasts simulated)`));
+const port=Number(process.env.PORT||8787);server.listen(port,'127.0.0.1',()=>console.log(`meshit SIMULATOR: http://127.0.0.1:${port} (no radio traffic; rebroadcasts simulated)`));
 function close(){sim.kill();server.close();}process.on('SIGINT',close);process.on('SIGTERM',close);

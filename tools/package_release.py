@@ -57,14 +57,15 @@ def package(root=ROOT, require_android=False):
         shutil.copytree(root/'webflasher', tree/'webflasher')
         (tree/'build-info.json').write_text(json.dumps(info, indent=2)+'\n')
         (tree/'README.txt').write_text(
-            f'Meshit {info["version"]}\nCommit: {info["commit"]}\n\n'
+            f'meshit {info["version"]}\nCommit: {info["commit"]}\n\n'
             'esp32/      App-only updates at 0x10000; full-flash factory images at 0x0.\n'
-            'nrf52/      RAK4631 application UF2/HEX; match the installed S140 version.\n'
+            'nrf52/      RAK4631 / T114 application UF2/HEX; match the installed S140 version.\n'
             'webflasher/ Upload these contents to a PHP 8.1+ HTTPS web host.\n\n'
-            'ESP updates: leave Erase device unchecked to preserve existing Meshit storage.\n'
+            'ESP updates: leave Erase device unchecked to preserve existing meshit storage.\n'
             'Factory images replace ALL flash, including messages and Wi-Fi settings.\n'
             'RAK S140 6.1.1: meshit-rak4631-s140-6-1-1.uf2.\n'
             'RAK S140 7.3.0: meshit-rak4631.uf2. These do not replace the SoftDevice.\n'
+            'T114 S140 7.3.0: meshit-heltec-t114.uf2. No SoftDevice replacement.\n'
             'The Android development APK is a separate asset on the same GitHub release.\n'
             'Setup: https://github.com/pdxlocations/meshit#readme\n')
         checks = []

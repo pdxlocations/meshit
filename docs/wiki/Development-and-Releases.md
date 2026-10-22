@@ -15,11 +15,11 @@ Open **http://127.0.0.1:8787**. The preview uses the actual C++ chat core and **
 ## Firmware builds
 
 ```sh
-pio run -e heltec-v3 -e rak4631 -e rak4631-s140-6-1-1
+npm run build:firmware
 npm run package:firmware
 ```
 
-Packages appear in `dist/firmware/` with a SHA-256 manifest. RAK UF2 packages contain application firmware only. **Match the installed SoftDevice:** `meshit-rak4631.uf2` is S140 7.3.0; `meshit-rak4631-s140-6-1-1.uf2` is S140 6.1.1. The packager checks the application offset, MCU family, and reserved-storage boundary. No bootloader replacement is needed or performed.
+Packages appear in `dist/firmware/` with a SHA-256 manifest. nRF52840 UF2 packages contain application firmware only. **Match the installed SoftDevice:** `meshit-rak4631.uf2` is S140 7.3.0; `meshit-rak4631-s140-6-1-1.uf2` is S140 6.1.1. The packager checks the application offset, MCU family, and reserved-storage boundary. T114 uses `meshit-heltec-t114.uf2` with S140 7.3.0. No bootloader replacement is needed or performed.
 
 Heltec packages contain an app-only update (`meshit-heltec-v3.bin`, offset `0x10000`) and a full-flash fresh-install image (`meshit-heltec-v3-factory.bin`, offset `0x0`). The latter replaces saved data. The companion website is embedded in the application; neither path needs a separate filesystem upload. PlatformIO can also install directly:
 
@@ -27,11 +27,11 @@ Heltec packages contain an app-only update (`meshit-heltec-v3.bin`, offset `0x10
 pio run -e heltec-v3 -t upload
 ```
 
-The nRF builds reserve `0x80000–0xECFFF` for Meshit storage; linker limits prevent application overlap. Board pin mappings and the two RAK SoftDevice layouts take cues from the neighboring Form8 project. Other Form8 board targets have not been ported yet.
+The nRF builds reserve `0x80000–0xECFFF` for meshit storage; linker limits prevent application overlap. Board pin mappings and the two RAK SoftDevice layouts take cues from the neighboring Form8 project. V4.2 OLED / GC1109, V4.3 OLED / KCT8103L, and T114 are included. See the [board profiles](Hardware-and-Presets.md) for display limitations and physical validation status.
 
 ## Release workflow
 
-The [web flasher](../../webflasher/README.md) installs ESP firmware over browser USB and provides verified RAK UF2/HEX downloads with explicit SoftDevice matching. Upload `webflasher/` to a PHP 8.1+ HTTPS host, as with Form8. It automatically discovers published builds from `pdxlocations/meshit`.
+The [web flasher](../../webflasher/README.md) installs ESP firmware over browser USB and provides verified RAK4631 / T114 UF2/HEX downloads with explicit SoftDevice matching. Upload `webflasher/` to a PHP 8.1+ HTTPS host, as with Form8. It automatically discovers published builds from `pdxlocations/meshit`.
 
 GitHub workflows run CI on pushes and pull requests, build all firmware plus Android/iOS companions, and package release downloads. **Release firmware → Run workflow** accepts a numeric version and publishes a beta named `vVERSION.COMMIT-beta` after all checks pass. Publishing an existing tagged release also builds and attaches its downloads. Only the publishing job receives repository write permission.
 
@@ -70,7 +70,7 @@ Edit the Markdown sources in `docs/wiki/` and commit them with the repository. T
 git clone https://github.com/pdxlocations/meshit.wiki.git /tmp/meshit-wiki
 python3 tools/export_wiki.py /tmp/meshit-wiki
 git -C /tmp/meshit-wiki add '*.md'
-git -C /tmp/meshit-wiki commit -m "Update Meshit wiki"
+git -C /tmp/meshit-wiki commit -m "Update meshit wiki"
 git -C /tmp/meshit-wiki push
 ```
 

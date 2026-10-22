@@ -65,3 +65,9 @@ The companion now has one Wi-Fi (ESP32) mode and a Bluetooth (ESP32 / nRF52) flo
 ESP32 requires authenticated, encrypted pairing with the last six digits of its setup password. Wi-Fi clients take priority over Bluetooth discovery, and authenticated Bluetooth pauses Wi-Fi until disconnect, following Form8. All three firmware targets compile. Native scan behavior, OS pairing prompts, and Wi-Fi/Bluetooth handoff still need testing with physical radios and phones.
 
 Meshtastic channel-name entry is removed. Firmware selects its internal transport value from the preset and ignores/removes saved overrides. The README contains light-mode screenshots only; the wiki contains usage and setup guidance without screenshots or styling commentary.
+
+## Additional board profiles and branding
+
+The target catalog and build command include Heltec V3, V4.2 OLED (GC1109), V4.3 OLED (KCT8103L), RAK4631 with S140 7.3.0 or 6.1.1, and Heltec T114 with S140 7.3.0. V4 uses its own 16 MiB partition layout and FEM power/switch pins; T114 uses its SX1262 SPI/IRQ/reset/busy pins and peripheral enable instead of the RAK mapping. New board profiles require physical verification. T114's TFT and optional V4 TFT are not initialized.
+
+The webflasher uses a logo-only header and a slate dark palette. Brand text, setup AP/Bluetooth names, USB product name, native app labels, docs, and release titles use lowercase meshit. Protocol key-derivation literals retain their original bytes for compatibility with existing radios.

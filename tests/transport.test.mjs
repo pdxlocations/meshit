@@ -20,11 +20,11 @@ test('HTTP forwards structured commands and surfaces firmware errors',async()=>{
   try{await assert.rejects(new HttpTransport('http://meshit.local/').request({op:'state'}),/radio offline/);}finally{globalThis.fetch=previous;}
 });
 
-test('BLE discovery filters Meshit radios and uses explicit selected-device connections',async()=>{
+test('BLE discovery filters meshit radios and uses explicit selected-device connections',async()=>{
   const calls=[];
   const client={
     async initialize(){calls.push('initialize');},
-    async requestLEScan(options,found){assert.deepEqual(options.services,[SERVICE]);found({device:{deviceId:'other',name:'Form8-test'}});found({device:{deviceId:'one',name:'Meshit-one'}});found({device:{deviceId:'two',name:'Meshit-two'}});},
+    async requestLEScan(options,found){assert.deepEqual(options.services,[SERVICE]);found({device:{deviceId:'other',name:'Form8-test'}});found({device:{deviceId:'one',name:'meshit-one'}});found({device:{deviceId:'two',name:'Meshit-two'}});},
     async stopLEScan(){calls.push('stop scan');},
     async connect(id,disconnected){calls.push('connect '+id);this.disconnected=disconnected;},
     async startNotifications(id,service,tx,callback){calls.push('notify '+id);this.notification=callback;},
@@ -32,7 +32,7 @@ test('BLE discovery filters Meshit radios and uses explicit selected-device conn
   };
   const link=new BleTransport({client,scanMs:0});
   const devices=await link.findRadios();assert.deepEqual(devices.map(d=>d.id),['one','two']);
-  await link.connect('two');assert.equal(link.label,'Meshit-two');assert.ok(calls.includes('connect two'));
+  await link.connect('two');assert.equal(link.label,'meshit-two');assert.ok(calls.includes('connect two'));
   let disconnected='';link.onDisconnect=message=>disconnected=message;client.disconnected();assert.match(disconnected,/disconnected/);
   await link.close();assert.ok(calls.includes('disconnect two'));
 });
@@ -52,7 +52,7 @@ test('Wi-Fi/Bluetooth switches reject a late response from the previous radio',a
 });
 test('Form8-style find, connect, disconnect and reconnect use a verified radio handshake',async()=>{
   const created=[];
-  const ble=()=>{const link={devices:new Map(),async findRadios(){return [{id:'radio',name:'Meshit-radio'}];},async connect(id){assert.equal(id,'radio');},async request(data){assert.equal(data.op,'state');return {settings:{},presets:[],board:'Heltec V3'};},async close(){this.closed=true;}};created.push(link);return link;};
+  const ble=()=>{const link={devices:new Map(),async findRadios(){return [{id:'radio',name:'meshit-radio'}];},async connect(id){assert.equal(id,'radio');},async request(data){assert.equal(data.op,'state');return {settings:{},presets:[],board:'Heltec V3'};},async close(){this.closed=true;}};created.push(link);return link;};
   const connection=new RadioConnection({mode:'ble',ble});
   await connection.findRadios();await connection.connect('radio');assert.equal((await connection.request({op:'state'})).board,'Heltec V3');
   await connection.disconnect();assert.equal(created[0].closed,true);
@@ -62,5 +62,5 @@ test('Form8-style find, connect, disconnect and reconnect use a verified radio h
 test('failed Bluetooth handshake closes the candidate and keeps sending disabled',async()=>{
   let closed=false;const candidate={async findRadios(){return [{id:'one'}];},async connect(){},async request(){return {wrong:'protocol'};},async close(){closed=true;}};
   const connection=new RadioConnection({mode:'ble',ble:()=>candidate});await connection.findRadios();
-  await assert.rejects(connection.connect('one'),/compatible Meshit/);assert.equal(closed,true);assert.equal(connection.link,null);
+  await assert.rejects(connection.connect('one'),/compatible meshit/);assert.equal(closed,true);assert.equal(connection.link,null);
 });

@@ -32,16 +32,16 @@ export class BleTransport {
     if(this.native){
       try{
         await this.native.requestLEScan({services:[SERVICE]},result=>{
-          const device=result.device,name=result.localName||device?.name;if(!device||!name?.startsWith('Meshit-'))return;
-          this.devices.set(device.deviceId,{id:device.deviceId,name,device});
+          const device=result.device,name=result.localName||device?.name;if(!device||!name?.toLowerCase().startsWith('meshit-'))return;
+          this.devices.set(device.deviceId,{id:device.deviceId,name:name.replace(/^meshit-/i,'meshit-'),device});
         });
         await new Promise(resolve=>{this.finishScan=resolve;this.scanTimer=setTimeout(resolve,this.scanMs);});
       }finally{clearTimeout(this.scanTimer);this.finishScan=null;await this.native.stopLEScan();}
     }else{
       const bluetooth=this.bluetooth||globalThis.navigator?.bluetooth;
       if(!bluetooth)throw new Error('Use the mobile companion or a browser with Bluetooth support.');
-      const device=await bluetooth.requestDevice({filters:[{services:[SERVICE],namePrefix:'Meshit-'}]});
-      this.devices.set(device.id,{id:device.id,name:device.name||'Meshit radio',device});
+      const device=await bluetooth.requestDevice({filters:[{services:[SERVICE],namePrefix:'meshit-'},{services:[SERVICE],namePrefix:'Meshit-'}]});
+      this.devices.set(device.id,{id:device.id,name:device.name?.replace(/^meshit-/i,'meshit-')||'meshit radio',device});
     }
     return [...this.devices.values()];
   }
@@ -52,7 +52,7 @@ export class BleTransport {
   }
   fail(error){++this.generation;for(const p of this.waiting.values()){clearTimeout(p.timer);p.reject(error);}this.waiting.clear();this.buffer='';this.decoder=new TextDecoder();}
   async connect(id){
-    await this.initialize();const selected=this.devices.get(id);if(!selected)throw new Error('Find radios and select a Meshit radio first.');
+    await this.initialize();const selected=this.devices.get(id);if(!selected)throw new Error('Find radios and select a meshit radio first.');
     this.device=selected.device;const generation=this.generation;
     const disconnected=()=>{if(generation!==this.generation)return;this.fail(new Error('Bluetooth disconnected'));this.onDisconnect('Bluetooth disconnected. Reconnect in Settings.');};
     try{
@@ -111,7 +111,7 @@ export class RadioConnection {
     try{
       await next.connect(id);if(generation!==this.generation)throw changed();
       const state=await next.request({op:'state'});if(generation!==this.generation)throw changed();
-      if(!state?.settings||!Array.isArray(state.presets))throw new Error('Not a compatible Meshit radio. Update its firmware.');
+      if(!state?.settings||!Array.isArray(state.presets))throw new Error('Not a compatible meshit radio. Update its firmware.');
       this.link=next;
     }catch(error){await next.close();throw error;}
   }

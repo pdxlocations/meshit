@@ -31,7 +31,7 @@ function regions(prefix,network){const select=$(prefix+'region');select.replaceC
 function presets(prefix,network){const select=$(prefix+'preset');select.replaceChildren();for(const p of state.presets.filter(p=>p.network===network&&p.region===$(prefix+'region').value)){const o=element('option',null,p.name);o.value=p.id;select.append(o);}details(prefix);}
 function details(prefix){const p=state.presets.find(p=>p.id===$(prefix+'preset').value);if(!p)return;$(prefix==='setup-'?'setup-detail':'preset-detail').textContent=`${p.frequency} MHz · BW ${p.bandwidth} kHz · SF${p.sf} · CR 4/${p.cr}`;}
 function settingsUI(){
-  const s=state.settings;$('nickname').value=s.nickname||'';$('ssid').value=s.ssid||'';$('wifi-settings').hidden=state.board!=='Heltec V3';$('radio-info').textContent=`${state.board} · ${state.ready?'radio ready':s.configured?'radio unavailable':'setup needed'}`;
+  const s=state.settings;$('nickname').value=s.nickname||'';$('ssid').value=s.ssid||'';$('wifi-settings').hidden=!(state.wifiSupported??/^Heltec V[34]/.test(state.board));$('radio-info').textContent=`${state.board} · ${state.ready?'radio ready':s.configured?'radio unavailable':'setup needed'}`;
   const network=s.network||'meshtastic';document.querySelector(`[name=network][value=${network}]`).checked=true;regions('',network);
   const p=state.presets.find(p=>p.id===s.preset);if(p){$('region').value=p.region;presets('',network);$('preset').value=p.id;details('');}
 }
@@ -71,7 +71,7 @@ async function refresh(){
     $('connection').textContent=`${next.settings.network||'Choose a network'} · ${next.ready?'connected':'radio not ready'}${next.demo?' · SIMULATOR':''}`;
     if(first)settingsUI();if(!next.settings.configured&&!$('onboarding').open&&view==='chat')$('onboarding').showModal();
     if(!next.storageReady||!next.identityReady)notify('Radio storage is unavailable. Sending is disabled until it is repaired.');
-  }catch(e){if(epoch!==transport.generation||e.code==='CONNECTION_CHANGED')return;connectionStatus(e.message);if(state)state.ready=false;$('connection').textContent='Radio disconnected · showing saved messages';if(state){state.ready=false;count();}else{show('settings');notify('Connect to a Meshit radio to begin. '+e.message);}}finally{polling=false;}
+  }catch(e){if(epoch!==transport.generation||e.code==='CONNECTION_CHANGED')return;connectionStatus(e.message);if(state)state.ready=false;$('connection').textContent='Radio disconnected · showing saved messages';if(state){state.ready=false;count();}else{show('settings');notify('Connect to a meshit radio to begin. '+e.message);}}finally{polling=false;}
 }
 $('chat-tab').onclick=()=>show('chat');$('settings-tab').onclick=()=>{if(state)settingsUI();show('settings');};
 $('message').oninput=()=>{count();localStorage.setItem(`meshit.draft.${room}`,JSON.stringify({text:$('message').value,parent:reply}));};
@@ -106,7 +106,7 @@ function connectionStatus(message){$('link-status').textContent=message;connecti
 function connectionControls(){
   const bluetooth=transport.mode==='ble';$('transport').value=transport.mode;
   $('ble-controls').hidden=!bluetooth;$('wifi-help').hidden=bluetooth;
-  $('wifi-help').textContent=native?'Join Meshit-… in your device’s Wi-Fi settings. The app connects at 192.168.4.1.':'Join the radio’s Wi-Fi network and open http://192.168.4.1, or use meshit.local on its LAN.';
+  $('wifi-help').textContent=native?'Join meshit-… in your device’s Wi-Fi settings. The app connects at 192.168.4.1.':'Join the radio’s Wi-Fi network and open http://192.168.4.1, or use meshit.local on its LAN.';
   $('devices').disabled=busy||!transport.devices.length;
   $('scan').disabled=busy;$('connect').disabled=busy||!transport.devices.length;
   $('disconnect').disabled=busy||!transport.link;$('transport').disabled=busy;
@@ -124,10 +124,10 @@ $('transport').onchange=()=>{const mode=$('transport').value;act(async()=>{
   if(mode==='wifi')await refresh();
 });};
 $('scan').onclick=()=>act(async()=>{
-  $('devices').replaceChildren();connectionStatus('Finding Meshit radios…');
+  $('devices').replaceChildren();connectionStatus('Finding meshit radios…');
   const devices=await transport.findRadios();$('devices').replaceChildren();
-  for(const device of devices){const option=element('option',null,device.name||'Meshit radio');option.value=device.id;$('devices').append(option);}
-  connectionStatus(devices.length?'Select a radio and tap Connect.':'No Meshit radios found. Check Bluetooth and radio power.');
+  for(const device of devices){const option=element('option',null,device.name||'meshit radio');option.value=device.id;$('devices').append(option);}
+  connectionStatus(devices.length?'Select a radio and tap Connect.':'No meshit radios found. Check Bluetooth and radio power.');
 });
 $('connect').onclick=()=>act(async()=>{
   changingRadio();connectionStatus('Connecting… ESP32 may request its 6-digit pairing PIN.');

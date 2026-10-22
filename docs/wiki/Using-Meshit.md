@@ -1,4 +1,4 @@
-# Using Meshit
+# Using meshit
 
 ## Rooms and conversations
 

@@ -17,7 +17,7 @@ int main(){
     core.tick(now,[&](const Event& e,bool history){if(!history)echoes.push_back({now+1000,e});return true;});
     JsonDocument req,res;if(deserializeJson(req,input)){res["error"]="Invalid request";}
     else {res["id"]=req["id"];std::string op=req["op"]|"";
-      if(op=="state"){res["node"]="12345678";res["revision"]=revision;res["count"]=core.messages.size();res["settings"]=settings;res["presets"]=presets;res["ready"]=settings["configured"]|false;res["board"]="Heltec V3";res["storageReady"]=true;res["identityReady"]=true;res["demo"]=true;}
+      if(op=="state"){res["node"]="12345678";res["revision"]=revision;res["count"]=core.messages.size();res["settings"]=settings;res["presets"]=presets;res["ready"]=settings["configured"]|false;res["board"]="Heltec V3";res["wifiSupported"]=true;res["storageReady"]=true;res["identityReady"]=true;res["demo"]=true;}
       else if(op=="messages"){
         res["revision"]=revision;auto list=res["messages"].to<JsonArray>();size_t offset=req["offset"]|0;
         for(size_t i=offset;i<core.messages.size()&&i<offset+8;++i){auto& m=core.messages[i];auto& e=m.event;auto o=list.add<JsonObject>();o["id"]=hex(e.id);o["parent"]=e.ref?hex(e.ref):"";o["room"]=e.room;o["nickname"]=e.nick;o["text"]=e.text;o["order"]=m.order;o["mine"]=m.mine;o["acknowledged"]=m.acked;o["votes"]=core.score(e.id);o["voted"]=core.voted(e.id,0x12345678);o["status"]=m.acked?"rebroadcast heard":"sending";}

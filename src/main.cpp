@@ -76,6 +76,9 @@ void initRadio(){
   radioError=radio.begin(p["frequency"],p["bandwidth"],p["sf"],p["cr"],mt?0x2b:0x12,p["power"],preamble,1.8);
   if(!radioError)radioError=radio.setCRC(1);
   if(!radioError)radioError=radio.setDio2AsRfSwitch(true);
+#if defined(MESHIT_HELTEC_V4) && !defined(MESHIT_HELTEC_V4_KCT8103L)
+  if(!radioError)radio.setRfSwitchPins(RADIOLIB_NC,46);
+#endif
   if(!radioError){ready=true;startRx();}
 }
 Bytes wrap(const Bytes& fragment){
@@ -123,11 +126,23 @@ String dispatch(const String& input){
       res["version"]=FIRMWARE_VERSION;res["node"]=String(identity,HEX);
       res["revision"]=revision;res["count"]=core.messages.size();res["settings"]=settings;res["settings"].remove("password");res["settings"].remove("setupPassword");res["settings"].remove("channel");res["settings"]["wifiConfigured"]=String(settings["ssid"]|"").length()>0;
       res["presets"]=presets;res["ready"]=ready;res["radioError"]=radioError;res["storageReady"]=fsReady;res["identityReady"]=identityReady;res["rx"]=rxCount;res["tx"]=txCount;
+      res["wifiSupported"]=
+#if defined(MESHIT_ESP32)
+      true;
+#else
+      false;
+#endif
       res["board"]=
 #if defined(MESHIT_ESP32)
-      "Heltec V3";
+#if defined(MESHIT_HELTEC_V4_KCT8103L)
+      "Heltec V4.3";
+#elif defined(MESHIT_HELTEC_V4)
+      "Heltec V4.2";
 #else
-      "RAK4631";
+      "Heltec V3";
+#endif
+#else
+      NRF_BOARD_NAME;
 #endif
     }else if(op=="messages"){
       res["revision"]=revision;auto a=res["messages"].to<JsonArray>();size_t offset=req["offset"]|0;for(size_t i=offset;i<core.messages.size()&&i<offset+8;++i)eventJson(a.add<JsonObject>(),core.messages[i]);
@@ -184,7 +199,7 @@ void setupWifi(){
   const String saved=settings["setupPassword"]|"";
   setupPass=meshit::setupPassword(displayReady,saved.c_str(),random32()).c_str();
   if(setupPass!=saved){settings["setupPassword"]=setupPass;String s;serializeJson(settings,s);writeFile("/settings.json",s);}
-  setupName="Meshit-"+String(identity&65535,HEX);
+  setupName="meshit-"+String(identity&65535,HEX);
   const bool apStarted=WiFi.softAP(setupName.c_str(),setupPass.c_str());
   if(apStarted)setupDisplay.showAccessPoint(setupName,setupPass);
   else setupDisplay.showNetwork(false,"");
@@ -206,14 +221,23 @@ void setup(){
   JsonDocument id;bool have=fsReady&&!deserializeJson(id,recoverFile("/identity.json"));identity=have?id["sender"].as<uint32_t>():random32();if(!identity)identity=1;
   counter=reserved=have?id["reserved"].as<uint32_t>():0;identityReady=fsReady&&counter<=65535&&saveIdentity();core.allocate=allocateId;core.jitter=random32;restore();
 #if defined(MESHIT_ESP32)
+#if defined(MESHIT_HELTEC_V4)
+  pinMode(7,OUTPUT);digitalWrite(7,HIGH);pinMode(2,OUTPUT);digitalWrite(2,HIGH);
+#if defined(MESHIT_HELTEC_V4_KCT8103L)
+  pinMode(5,OUTPUT);digitalWrite(5,LOW);
+#else
+  pinMode(46,OUTPUT);digitalWrite(46,LOW);
+#endif
+  delay(10);
+#endif
   SPI.begin(9,11,10);setupWifi();
 #else
-  pinMode(37,OUTPUT);digitalWrite(37,HIGH);delay(10);SPI.begin();
+  pinMode(MESHIT_BOARD_POWER,OUTPUT);digitalWrite(MESHIT_BOARD_POWER,HIGH);delay(10);SPI.begin();
 #endif
 #if defined(MESHIT_ESP32)
   ble.begin(setupName,setupPass.substring(2).toInt());
 #else
-  ble.begin("Meshit-"+String(identity&65535,HEX));
+  ble.begin("meshit-"+String(identity&65535,HEX));
 #endif
   initRadio();
 }
