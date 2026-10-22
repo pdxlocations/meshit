@@ -19,7 +19,7 @@ updateTheme();
 const native=!!globalThis.Capacitor?.isNativePlatform();
 let rememberedMode='wifi';try{rememberedMode=localStorage.getItem('meshit.connection')==='ble'?'ble':'wifi';}catch{}
 const transport=new RadioConnection({mode:rememberedMode,wifiBase:native?'http://192.168.4.1':''});
-let state=null,messages=[],room=localStorage.getItem('meshit.room')||'general',sort='new',reply='',view='chat',loadedRevision=0,busy=false,polling=false;
+let state=null,messages=[],room=localStorage.getItem('meshit.room')||'general',sort='top',reply='',view='chat',loadedRevision=0,busy=false,polling=false;
 function saved(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
 let draftRooms=saved('meshit.rooms',[]).filter(s=>typeof s==='string').slice(0,20);
 const outgoing=new Map();
