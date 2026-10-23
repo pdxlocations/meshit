@@ -14,11 +14,13 @@ class Element {
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('post appears before RPC resolves; errors retain text with retry; acknowledgment replaces retry',async()=>{
   const elements=new Map(),get=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);};
-  let feed=[],revision=1,resolvePost,rejectPost,poll,offline=false;const viewed=[];let visibilityChanged;
+  let feed=[],revision=1,resolvePost,rejectPost,poll,offline=false,waitState,waitMessages;const viewed=[];let visibilityChanged;
   class Radio {
     constructor(){this.mode='wifi';this.devices=[];this.link={};this.generation=1;}
     async request(req){
       if(req.op==='viewed'){viewed.push(req);return {ok:true};}
+      if(req.op==='state'&&waitState)await waitState;
+      if(req.op==='messages'&&waitMessages)await waitMessages;
       if(req.op==='state'&&offline)throw new Error('Connection lost');
       if(req.op==='state')return {viewedSupported:true,node:'test',ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester'},board:'Heltec V4.3',wifiSupported:true,presets:[]};
       if(req.op==='messages')return {revision,messages:feed};
@@ -98,7 +100,13 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   get('notice').textContent='Previous error';offline=true;poll();await tick();
   assert.equal(get('radio-connection').dataset.connected,'false');
   assert.equal(get('radio-connection')['aria-label'],'Radio disconnected');
-  offline=false;poll();await tick();
+  offline=false;let finishState,finishMessages;
+  waitState=new Promise(resolve=>finishState=resolve);waitMessages=new Promise(resolve=>finishMessages=resolve);revision++;
+  poll();await tick();assert.equal(get('download-status').textContent,'Downloading messages…','show progress while waiting for state');
+  finishState();await tick();assert.equal(get('download-status').textContent,'Downloading messages…','keep progress while message pages arrive');
+  get('chat-tab').onclick();assert.equal(get('download-status').textContent,'Downloading messages…','tab navigation does not hide an active download');
+  finishMessages();await tick();waitState=null;waitMessages=null;
+  assert.equal(get('download-status').textContent,'','clear progress after messages load');
   assert.equal(get('radio-connection').dataset.connected,'true');
   assert.equal(get('notice').textContent,'','reconnecting clears stale notices');
   // Navigating while a slow action is pending must not restore a completion banner.

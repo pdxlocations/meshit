@@ -87,11 +87,11 @@ function render(){
 function resizeComposer(){const input=$('message');input.style.height='auto';input.style.height=`${input.scrollHeight}px`;}
 function count(){resizeComposer();const n=Array.from($('message').value).length;$('char-count').textContent=`${n} / 160`;$('send').disabled=busy||n>160||!$('message').value.trim()||!state?.ready||state.storageReady===false||state.identityReady===false;
   const parent=messages.find(m=>m.id===reply);if(reply&&!parent)reply='';$('reply-context').hidden=!reply;$('cancel-reply').hidden=!reply;$('message').placeholder=reply?'Post a reply':'Write something interesting...';$('message').setAttribute('aria-label',$('message').placeholder);$('reply-context').textContent=parent?`${parent.nickname||'Anonymous'}: ${parent.text.slice(0,70)}`:'';$('send').textContent=busy?'Sending…':reply?'Reply':'Post';}
-async function act(action,label='Working…'){if(busy)return;busy=true;count();connectionControls();notify(label);try{await action();if($('notice').textContent===label)notify();}catch(e){notify(e.message);}finally{busy=false;render();connectionControls();}}
+async function act(action,label='Working…'){if(busy)return;busy=true;count();connectionControls();notify(label);try{await action();if($('notice').textContent===label)notify();}catch(e){downloadStatus(false);notify(e.message);}finally{busy=false;render();connectionControls();}}
 async function refresh(){
-  if(polling)return;polling=true;const epoch=transport.generation;try{
+  if(polling)return;polling=true;const epoch=transport.generation;if(!radioConnected)downloadStatus(true);try{
     const next=await transport.request({op:'state'});if(epoch!==transport.generation)return;const switched=!!(next.node&&state?.node&&next.node!==state.node),first=!state||switched;if(switched){outgoing.clear();messages=[];loadedRevision=0;reply='';}state=next;setConnected(true);
-    if(next.revision!==loadedRevision){const result=[];let version=next.revision;for(let offset=0;offset<next.count;offset+=8){const p=await transport.request({op:'messages',offset});if(epoch!==transport.generation)return;if(p.revision!==version){version=0;break;}result.push(...p.messages);}if(version){messages=result;loadedRevision=version;draftRooms=draftRooms.filter(r=>!messages.some(m=>m.room===r));localStorage.setItem('meshit.rooms',JSON.stringify(draftRooms));localStorage.setItem('meshit.cache',JSON.stringify({state:next,messages:messages.slice(-200)}));render();}}
+    if(next.revision!==loadedRevision){downloadStatus(true);const result=[];let version=next.revision;for(let offset=0;offset<next.count;offset+=8){const p=await transport.request({op:'messages',offset});if(epoch!==transport.generation)return;if(p.revision!==version){version=0;break;}result.push(...p.messages);}if(version){messages=result;loadedRevision=version;draftRooms=draftRooms.filter(r=>!messages.some(m=>m.room===r));localStorage.setItem('meshit.rooms',JSON.stringify(draftRooms));localStorage.setItem('meshit.cache',JSON.stringify({state:next,messages:messages.slice(-200)}));render();downloadStatus(false);}}else downloadStatus(false);
     connectionStatus(`Connected via ${transport.mode==='wifi'?'Wi-Fi':'Bluetooth'}${transport.link?.label?' · '+transport.link.label:''}`);
     $('connection').textContent=`${next.settings.network||'Choose a network'} · ${next.ready?'connected':'radio not ready'}${next.demo?' · SIMULATOR':''}`;
     if(first)settingsUI();if(!next.settings.configured&&!$('onboarding').open&&view==='chat')$('onboarding').showModal();
@@ -130,10 +130,11 @@ $('setup-connect').onclick=()=>{$('onboarding').close();show('settings');};
 $('settings-form').onsubmit=e=>{e.preventDefault();act(async()=>{if(utf8($('nickname').value)>16)throw new Error('Nickname must fit 16 UTF-8 bytes');const data={op:'settings',network:document.querySelector('[name=network]:checked').value,preset:$('preset').value,nickname:$('nickname').value};const wifiChanged=$('ssid').value!==(state.settings.ssid||'')||$('password').value.length;if(wifiChanged){data.ssid=$('ssid').value;data.password=$('password').value;}await transport.request(data);loadedRevision=0;await refresh();notify(wifiChanged?'Restart the radio to join Wi-Fi, then open meshit.local.':'');$('password').value='';},'Saving settings…');};
 function setConnected(connected){
   if(connected&&!radioConnected)notify();
-  radioConnected=connected;
+  radioConnected=connected;if(!connected)downloadStatus(false);
   const indicator=$('radio-connection'),label=connected?`Radio connected via ${transport.mode==='wifi'?'Wi-Fi':'Bluetooth'}`:'Radio disconnected';
   indicator.dataset.connected=String(connected);indicator.title=label;indicator.setAttribute('aria-label',label);
 }
+function downloadStatus(active){$('download-status').textContent=active?'Downloading messages…':'';}
 function connectionStatus(message){$('link-status').textContent=message;connectionControls();}
 function connectionControls(){
   const bluetooth=transport.mode==='ble';$('transport').value=transport.mode;
@@ -163,7 +164,7 @@ $('scan').onclick=()=>act(async()=>{
   connectionStatus(devices.length?'Select a radio and tap Connect.':'No meshit radios found. Check Bluetooth and radio power.');
 });
 $('connect').onclick=()=>act(async()=>{
-  changingRadio();connectionStatus('Connecting… ESP32 may request its 6-digit pairing PIN.');
+  changingRadio();downloadStatus(true);connectionStatus('Connecting… ESP32 may request its 6-digit pairing PIN.');
   await transport.connect($('devices').value);await refresh();
 });
 $('disconnect').onclick=()=>act(async()=>{

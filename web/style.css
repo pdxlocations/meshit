@@ -16,8 +16,8 @@ nav button{display:grid;place-items:center;width:38px;height:38px;padding:8px}
 nav svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 nav button[aria-current=page]{background:var(--header-hover)}
 nav button:hover{background:var(--header-hover)}
-#notice{max-width:1180px;margin:auto;padding:0 12px;font-size:14px;color:var(--notice-ink)}
-#notice:not(:empty){padding:8px 12px;background:var(--notice-bg)}
+#notice,#download-status{max-width:1180px;margin:auto;padding:0 12px;font-size:14px;color:var(--notice-ink)}
+#notice:not(:empty),#download-status:not(:empty){padding:8px 12px;background:var(--notice-bg)}
 .shell{max-width:1180px;margin:12px auto;padding:0 12px;display:grid;grid-template-columns:180px minmax(0,1fr);gap:18px}
 [hidden]{display:none!important}
 .shell>aside{min-width:0}
