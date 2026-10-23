@@ -7,7 +7,7 @@ inline void deckRequest(JsonDocument& req,const DeckAction& action){
   if(action.op=="post"){req["room"]=action.room;req["text"]=action.text;req["parent"]=action.target?hex(action.target):"";}
   else if(action.op=="vote"||action.op=="resend"){req["target"]=hex(action.target);if(action.op=="vote"){req["up"]=action.up;req["value"]=action.down?-1:action.up?1:0;}}
   else if(action.op=="settings"){req["network"]=action.network;req["preset"]=action.preset;}
-  else if(action.op=="txEnabled")req["enabled"]=action.enabled;
+  else if(action.op=="txEnabled"||action.op=="deckBluetoothEnabled"||action.op=="deckWifiEnabled")req["enabled"]=action.enabled;
   else if(action.op=="deckAppearance")req["appearance"]=action.text=="2"?2:action.text=="1"?1:0;
   else if(action.op=="nickname")req["nickname"]=action.text;
   else if(action.op=="wifi"){req["ssid"]=action.ssid;if(!action.password.empty())req["password"]=action.password;}

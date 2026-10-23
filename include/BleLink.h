@@ -35,7 +35,13 @@ class BleLink {
     }
   } connections{*this};
 public:
+  bool begun()const{return queue!=nullptr;}
+  void end(){
+    if(!queue)return;NimBLEDevice::deinit(true);if(NimBLEDevice::getInitialized())return;linked=false;authorized=false;tx=nullptr;++generation;
+    vQueueDelete(queue);queue=nullptr;part={};partAt=0;overflow=false;accessPointOccupied=false;
+  }
   void begin(const String& name,uint32_t pin=0){
+    if(queue)return;
     queue=xQueueCreate(80,sizeof(Chunk));if(!queue)return;
     NimBLEDevice::init(name.c_str());NimBLEDevice::setSecurityAuth(true,true,true);
     NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_ONLY);NimBLEDevice::setSecurityPasskey(pin);

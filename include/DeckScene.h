@@ -45,28 +45,27 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     draw(DeckShape::Outline,{point.first-4,point.second-4,9,9},p.ink);
     return s;
   }
-  draw(DeckShape::Poop,{7,5,20,20},p.ink);hit(DeckTap::Chat,{0,0,102,30});text(108,18,"New "+std::to_string(unread),DeckFont::Small,unread?p.ink:p.muted);hit(DeckTap::Rooms,{103,0,60,30});hit(DeckTap::Chat,{163,0,42,30});text(33,19,"meshit",DeckFont::Bold);if(!battery.empty())text(165,18,battery,DeckFont::Small,p.muted);
-  draw(DeckShape::Radio,{208,5,21,20},connected?(activity==RadioActivity::Standby?0x260b:p.ink):p.muted,connected?radioActivityName(activity):"disconnected");hit(DeckTap::Connection,{205,0,28,30});
+  draw(DeckShape::Poop,{7,5,20,20},p.ink);hit(DeckTap::Chat,{0,0,94,30});text(96,18,"New "+std::to_string(unread),DeckFont::Small,unread?p.ink:p.muted);hit(DeckTap::Rooms,{94,0,80,30});hit(DeckTap::Chat,{174,0,35,30});text(33,19,"meshit",DeckFont::Bold);if(!battery.empty())text(175,18,battery,DeckFont::Small,p.muted);
+  draw(DeckShape::Radio,{212,5,21,20},connected?(activity==RadioActivity::Standby?0x260b:p.ink):p.muted,connected?radioActivityName(activity):"disconnected");hit(DeckTap::Connection,{209,0,24,30});
   const bool settings=chat.page==DeckChat::Settings||chat.page==DeckChat::Presets||chat.page==DeckChat::Nickname||chat.page==DeckChat::Credentials||chat.page==DeckChat::Wifi||chat.page==DeckChat::Ssid||chat.page==DeckChat::WifiPassword||chat.page==DeckChat::Appearance||chat.page==DeckChat::Network||chat.page==DeckChat::Regions;
   draw(DeckShape::Round,{237,2,34,25},settings?p.header:p.selected);draw(DeckShape::Chat,{245,7,17,15},p.ink);hit(DeckTap::Chat,{233,0,42,30});
   draw(DeckShape::Round,{278,2,34,25},settings?p.selected:p.header);draw(DeckShape::Gear,{287,7,17,17},p.ink);hit(DeckTap::Settings,{277,0,43,30});
   if(chat.page==DeckChat::Chat){
-    text(8,46,"# "+chat.room,DeckFont::Bold);hit(DeckTap::Rooms,{0,30,200,23});
-    draw(DeckShape::Round,{235,33,38,18},chat.top?p.card:p.selected);text(242,46,"New");hit(DeckTap::New,{232,30,42,23});
-    draw(DeckShape::Round,{276,33,36,18},chat.top?p.selected:p.card);text(284,46,"Top");hit(DeckTap::Top,{275,30,45,23});
+    text(8,46,deckFit("# "+chat.room,220,DeckFont::Bold,measure),DeckFont::Bold);hit(DeckTap::Rooms,{0,30,230,23});
+    draw(DeckShape::Round,{231,32,43,21},chat.top?p.card:p.selected);text(236,47,"New");hit(DeckTap::New,{230,30,45,25});
+    draw(DeckShape::Round,{277,32,36,21},chat.top?p.selected:p.card);text(280,47,"Top");hit(DeckTap::Top,{275,30,45,25});
     const auto draft=deckWrap(chat.draft,290,DeckFont::Body,measure);const int count=std::min(3,int(draft.size()));
     const int replyHeight=chat.reply?34:0,composerHeight=42+(count-1)*18+replyHeight,composerBottom=55+composerHeight;
     draw(DeckShape::Round,{7,55,306,composerHeight},p.card);draw(DeckShape::Outline,{7,55,306,composerHeight},chat.focused?p.muted:p.line);hit(DeckTap::Focus,{8,56,304,composerHeight-23});
-    if(chat.reply){const auto* parent=core.find(chat.reply);text(14,76,deckFit(parent?(parent->event.nick.empty()?"Anonymous":parent->event.nick)+": "+parent->event.text:"Reply",178,DeckFont::Small,measure),DeckFont::Small,p.muted);draw(DeckShape::Round,{203,57,108,30},p.selected);text(222,76,"Cancel reply");hit(DeckTap::Cancel,{201,55,112,34});}
+    if(chat.reply){const auto* parent=core.find(chat.reply);text(14,76,deckFit(parent?(parent->event.nick.empty()?"Anonymous":parent->event.nick)+": "+parent->event.text:"Reply",178,DeckFont::Small,measure),DeckFont::Small,p.muted);draw(DeckShape::Round,{199,57,112,30},p.selected);text(201,76,"Cancel reply");hit(DeckTap::Cancel,{197,55,116,34});}
     if(chat.draft.empty())text(14,72+replyHeight,chat.reply?"Post a reply":"Write something interesting...",DeckFont::Small,p.muted);
     else for(int i=0;i<count;++i)text(14,73+replyHeight+i*18,draft[draft.size()-count+i],DeckFont::Body);
     if(chat.focused){const std::string last=chat.draft.empty()?"":draft.back();const int caret=14+measure(last,DeckFont::Body);draw(DeckShape::Line,{std::min(caret,303),60+replyHeight+(count-1)*18,0,14},p.ink);}
     draw(DeckShape::Line,{14,composerBottom-19,290,0},p.line);text(14,composerBottom-5,std::to_string(chat.draft.size())+" / 160",DeckFont::Small,p.muted);
-    draw(DeckShape::Round,{264,composerBottom-17,41,14},chat.draft.empty()||!connected||!chat.transmitEnabled?p.selected:p.button);text(273,composerBottom-6,"Post",DeckFont::Small,chat.draft.empty()||!connected||!chat.transmitEnabled?p.muted:p.buttonInk);hit(DeckTap::Post,{255,composerBottom-22,58,22});
+    draw(DeckShape::Round,{264,composerBottom-17,41,14},chat.draft.empty()||!connected||!chat.transmitEnabled?p.selected:p.button);text(266,composerBottom-6,"Post",DeckFont::Small,chat.draft.empty()||!connected||!chat.transmitEnabled?p.muted:p.buttonInk);hit(DeckTap::Post,{255,composerBottom-22,58,22});
     const int feedTop=composerBottom+7,feedBottom=chat.error.empty()?240:220,viewport=std::max(0,feedBottom-feedTop);
     const auto rows=chat.rows(core);std::vector<int> heights;std::vector<std::vector<std::string>> bodies;int total=0,selectedTop=0,selectedHeight=0;
-    for(const auto& row:rows){const auto* m=core.find(row.id);const int indent=std::min(row.depth,4u)*14;auto body=deckWrap(m->event.text,264-indent,DeckFont::Body,measure);
-      if(body.size()>3){body.resize(3);body.back()=deckFit(body.back()+"...",264-indent,DeckFont::Body,measure);}
+    for(const auto& row:rows){const auto* m=core.find(row.id);const int indent=std::min(row.depth,4u)*14;auto body=deckWrap(m->event.text,252-indent,DeckFont::Body,measure);
       // Reserve a separate footer so Reply does not cover the last line of message text.
       const int height=38+int(body.size())*18;if(row.id==chat.selected){selectedTop=total;selectedHeight=height;}heights.push_back(height);bodies.push_back(std::move(body));total+=height;
     }
@@ -74,24 +73,24 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     s.scroll=std::max(0,std::min(previousScroll,s.maxScroll));
     if(followSelection){if(selectedTop<s.scroll)s.scroll=selectedTop;else if(selectedTop+selectedHeight>s.scroll+viewport)s.scroll=std::min(selectedTop,selectedTop+selectedHeight-viewport);}
     int y=feedTop-s.scroll;const DeckBox clip{0,feedTop,320,viewport};
-    for(size_t i=0;i<rows.size();++i){const auto& row=rows[i];const auto* m=core.find(row.id);const int h=heights[i],indent=std::min(row.depth,4u)*14,x=8+indent,bodyX=x+32;
+    for(size_t i=0;i<rows.size();++i){const auto& row=rows[i];const auto* m=core.find(row.id);const int h=heights[i],indent=std::min(row.depth,4u)*14,x=8+indent,bodyX=x+44;
       if(y+h>feedTop&&y<feedBottom){
         if(row.id==chat.selected)draw(DeckShape::Fill,{x,y,305-indent,h},p.selected,"",DeckFont::Small,clip);
         draw(DeckShape::Line,{x,y,305-indent,0},p.line,"",DeckFont::Small,clip);
         if(row.depth)draw(DeckShape::Line,{x,y+4,0,h-8},p.line,"",DeckFont::Small,clip);
         const uint16_t voteColor=identity&&core.voted(row.id,identity)?p.button:p.muted;
-        draw(DeckShape::Up,{x+7,y+9,12,12},voteColor,"",DeckFont::Small,clip);const auto score=std::to_string(core.score(row.id));draw(DeckShape::Text,{x+13-measure(score,DeckFont::Small)/2,y+33,0,0},p.muted,score,DeckFont::Small,clip);
+        draw(DeckShape::Up,{x+16,y+9,12,12},voteColor,"",DeckFont::Small,clip);const auto score=std::to_string(core.score(row.id));draw(DeckShape::Text,{x+22-measure(score,DeckFont::Small)/2,y+35,0,0},p.muted,score,DeckFont::Small,clip);
         draw(DeckShape::Text,{bodyX,y+14,0,0},p.ink,deckFit(m->event.nick.empty()?"Anonymous":m->event.nick,175,DeckFont::Small,measure),DeckFont::Small,clip);
         if(m->mine){draw(DeckShape::Text,{251,y+14,0,0},p.muted,"you",DeckFont::Small,clip);bool pending=false;for(const auto& job:core.pending)if(job.event.id==row.id&&!job.ack&&!job.history)pending=true;
           draw(m->acked?DeckShape::Check:pending?DeckShape::Pending:DeckShape::Retry,{291,y+4,14,14},p.ink,"",DeckFont::Small,clip);
-          if(!m->acked&&!pending)hit(DeckTap::Resend,{280,std::max(feedTop,y),33,std::max(0,std::min(feedBottom,y+24)-std::max(feedTop,y))},row.id);
+          if(DeckChat::canResend(core,row.id))hit(DeckTap::Resend,{280,std::max(feedTop,y),33,std::max(0,std::min(feedBottom,y+24)-std::max(feedTop,y))},row.id);
         }
         for(size_t j=0;j<bodies[i].size();++j)draw(DeckShape::Text,{bodyX,y+33+int(j)*18,0,0},p.ink,bodies[i][j],DeckFont::Body,clip);
         draw(DeckShape::Reply,{bodyX,y+h-14,11,10},p.muted,"",DeckFont::Small,clip);draw(DeckShape::Text,{bodyX+15,y+h-5,0,0},p.muted,"Reply",DeckFont::Small,clip);
         const int top=std::max(y,feedTop),bottom=std::min(y+h,feedBottom);
         const int split=std::max(top,std::min(bottom,y+29));
-        hit(DeckTap::Vote,{x+1,top,28,split-top},row.id);hit(DeckTap::Downvote,{x+1,split,28,bottom-split},row.id);
-        draw(DeckShape::Down,{x+7,y+37,12,12},core.downvoted(row.id,identity)?p.button:p.muted,"",DeckFont::Small,clip);
+        hit(DeckTap::Vote,{x+1,top,40,split-top},row.id);hit(DeckTap::Downvote,{x+1,split,40,bottom-split},row.id);
+        draw(DeckShape::Down,{x+16,y+37,12,12},core.downvoted(row.id,identity)?p.button:p.muted,"",DeckFont::Small,clip);
         const int replyTop=std::max(feedTop,y+h-23);if(replyTop<bottom)hit(DeckTap::Reply,{bodyX,replyTop,95,bottom-replyTop},row.id);
         // The whole visible row is tappable, including the gutter of indented replies.
         hit(DeckTap::Select,{0,top,320,bottom-top},row.id);
@@ -106,14 +105,14 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     else if(chat.page==DeckChat::Regions){title="Region";items=chat.regions(presets);}
     else if(chat.page==DeckChat::Navigation){title="Navigation";items=chat.navigationItems;}
     else if(chat.page==DeckChat::Menu){title="Message";items=chat.menuItems(core,identity);}
-    else if(chat.page==DeckChat::Rooms){title="Rooms";items=chat.rooms(core);draw(DeckShape::Round,{244,35,68,23},p.selected);text(253,51,"+ New room");hit(DeckTap::NewRoom,{238,31,82,30});}
+    else if(chat.page==DeckChat::Rooms){title="Rooms";items=chat.rooms(core);draw(DeckShape::Round,{225,33,88,26},p.selected);text(232,51,"+ Room");hit(DeckTap::NewRoom,{220,31,100,30});}
     else if(chat.page==DeckChat::Presets){title="Radio preset";for(const auto& preset:chat.filtered(presets))items.push_back(preset.label);}
     else if(chat.page==DeckChat::Credentials){const size_t outgoing=outgoingCount(core);title="Radio connection";items={name,"Password: "+password,"http://192.168.4.1","Bluetooth PIN: "+(password.size()>2?password.substr(2):""),"http://meshit.local","New: "+std::to_string(unread)+"  Out: "+std::to_string(outgoing)};}
     else if(chat.page==DeckChat::Wifi){title="Local Wi-Fi";items={"Network: "+chat.wifiSsid,"Password: "+(chat.wifiPassword.empty()?std::string("keep saved"):std::string(chat.wifiPassword.size(),'*')),"Save settings"};}
     else if(chat.isEditor()){title=chat.page==DeckChat::NewRoom?"New room":chat.page==DeckChat::Nickname?"Nickname":chat.page==DeckChat::Ssid?"Network name":"Wi-Fi password";}
 
     else {title="# "+chat.room;if(const auto* m=core.find(chat.selected)){items=deckWrap(m->event.text,294,DeckFont::Body,measure);}}
-    text(10,50,"Back",DeckFont::Small);hit(DeckTap::Back,{0,30,60,30});text(65,51,deckFit(title,chat.page==DeckChat::Rooms?170:243,DeckFont::Bold,measure),DeckFont::Bold);
+    text(10,50,"Back",DeckFont::Small);hit(DeckTap::Back,{0,30,60,30});text(65,51,deckFit(title,chat.page==DeckChat::Rooms?150:243,DeckFont::Bold,measure),DeckFont::Bold);
     if(chat.isEditor()){
       draw(DeckShape::Round,{8,68,304,56},p.card);draw(DeckShape::Outline,{8,68,304,56},chat.focused?p.muted:p.line);
       std::string value=chat.page==DeckChat::WifiPassword?std::string(chat.draft.size(),'*'):chat.draft;
@@ -142,7 +141,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         text(70,226,"Reply");hit(DeckTap::Reply,{64,207,64,33},chat.selected);
         text(134,226,"Up");hit(DeckTap::Vote,{128,207,64,33},chat.selected);
         text(198,226,"Down");hit(DeckTap::Downvote,{192,207,64,33},chat.selected);
-        const auto* m=core.find(chat.selected);if(m&&m->mine&&!m->acked){text(260,226,"Resend");hit(DeckTap::Resend,{256,207,64,33},chat.selected);}
+        const auto* m=core.find(chat.selected);if(m&&DeckChat::canResend(core,chat.selected)){text(260,226,"Resend");hit(DeckTap::Resend,{256,207,64,33},chat.selected);}
       }
     }
     if(chat.page==DeckChat::Presets){const auto list=chat.filtered(presets);if(chat.cursor>0&&chat.cursor<=list.size())text(8,215,deckFit(list[chat.cursor-1].detail,304,DeckFont::Small,measure),DeckFont::Small,p.muted);text(8,234,"Changing preset clears history",DeckFont::Small,p.muted);}
@@ -168,7 +167,7 @@ inline DeckAction activateDeckHit(const DeckHit& hit,DeckChat& chat,const Core& 
     case T::Reply:chat.selected=chat.reply=hit.target;chat.page=DeckChat::Chat;break;
     case T::Vote:action.op="vote";action.target=hit.target;action.up=!core.voted(hit.target,identity);break;
     case T::Downvote:action.op="vote";action.target=hit.target;action.up=false;action.down=!core.downvoted(hit.target,identity);break;
-    case T::Resend:action.op="resend";action.target=hit.target;break;
+    case T::Resend:if(!DeckChat::canResend(core,hit.target)){chat.error="Cannot resend this message";break;}action.op="resend";action.target=hit.target;break;
     case T::Focus:chat.focused=true;break;
     case T::Save:action=chat.key('\r',core,catalog,identity);break;
     case T::CancelEditor:if(chat.isEditor())chat.back();break;

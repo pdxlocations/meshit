@@ -25,6 +25,7 @@ class DeckUi {
     if(!state.allowInput)keyboard.cancelCenter();
     return state.allowInput;
   }
+  meshit::DeckTextScroll textScroll;
   uint32_t syncedRevision=0;bool hasSynced=false;
   std::vector<meshit::DeckPreset> catalog;
 #if defined(MESHIT_TDECK_PLUS)
@@ -33,10 +34,10 @@ class DeckUi {
   struct RenderState {
     uint32_t revision=0;uint16_t battery=0;size_t unread=0,cursor=0;
     int page=0,appearance=0,scroll=0;meshit::RadioActivity activity=meshit::RadioActivity::Standby;meshit::Id selected=0,reply=0;
-    bool ready=false,bluetooth=false,keyboardReady=false,top=false,dark=false,focused=false,systemDark=false,followSelection=false,transmitEnabled=true;
+    bool ready=false,bluetooth=false,keyboardReady=false,top=false,dark=false,focused=false,systemDark=false,followSelection=false,transmitEnabled=true,bluetoothEnabled=false,wifiEnabled=false;
     std::string room,draft,error,network,region,wifiSsid,wifiPassword,savedNickname,name,password;
     bool operator==(const RenderState& other)const{
-      return activity==other.activity&&transmitEnabled==other.transmitEnabled&&followSelection==other.followSelection&&revision==other.revision&&battery==other.battery&&unread==other.unread&&cursor==other.cursor&&page==other.page&&appearance==other.appearance&&scroll==other.scroll&&selected==other.selected&&reply==other.reply&&ready==other.ready&&bluetooth==other.bluetooth&&keyboardReady==other.keyboardReady&&top==other.top&&dark==other.dark&&focused==other.focused&&systemDark==other.systemDark&&room==other.room&&draft==other.draft&&error==other.error&&network==other.network&&region==other.region&&wifiSsid==other.wifiSsid&&wifiPassword==other.wifiPassword&&savedNickname==other.savedNickname&&name==other.name&&password==other.password;
+      return bluetoothEnabled==other.bluetoothEnabled&&wifiEnabled==other.wifiEnabled&&activity==other.activity&&transmitEnabled==other.transmitEnabled&&followSelection==other.followSelection&&revision==other.revision&&battery==other.battery&&unread==other.unread&&cursor==other.cursor&&page==other.page&&appearance==other.appearance&&scroll==other.scroll&&selected==other.selected&&reply==other.reply&&ready==other.ready&&bluetooth==other.bluetooth&&keyboardReady==other.keyboardReady&&top==other.top&&dark==other.dark&&focused==other.focused&&systemDark==other.systemDark&&room==other.room&&draft==other.draft&&error==other.error&&network==other.network&&region==other.region&&wifiSsid==other.wifiSsid&&wifiPassword==other.wifiPassword&&savedNickname==other.savedNickname&&name==other.name&&password==other.password;
     }
   } renderedState;
   bool hasRendered=false;
@@ -64,7 +65,7 @@ public:
             const std::function<String(const String&)>& rpc,meshit::RadioActivity activity=meshit::RadioActivity::Standby,bool pairing=false){
     if(!initialized||int32_t(millis()-next)<0)return;next=millis()+20;
     if(catalog.empty())catalog=choices(presets);
-    chat.transmitEnabled=settings["txEnabled"]|true;
+    chat.transmitEnabled=settings["txEnabled"]|true;chat.bluetoothEnabled=settings["deckBluetoothEnabled"]|false;chat.wifiEnabled=settings["deckWifiEnabled"]|false;
     chat.savedSsid=settings["ssid"]|"";chat.savedNickname=settings["nickname"]|"";
     const auto previousPage=chat.page;const auto previousRoom=chat.room;
     int key=keyboard.read();meshit::DeckAction action;bool touchHandled=false;
@@ -100,6 +101,9 @@ public:
     if(!screenInput(keyboard.active()||key,core.messageActivity))return;
     if(pairing)return;
 #endif
+#if !defined(MESHIT_TDECK_PLUS)
+    if(chat.page==meshit::DeckChat::Chat&&(key==meshit::DeckUp||key==meshit::DeckDown)){textScroll.move(key==meshit::DeckUp?-1:1);key=0;}
+#endif
     if(key&&!touchHandled){action=chat.key(key,core,catalog,identity);
 #if defined(MESHIT_TDECK_PLUS)
       if(key==meshit::DeckUp||key==meshit::DeckDown){if(chat.page==meshit::DeckChat::Read)scroll.move(key==meshit::DeckDown?28:-28,millis());else scroll.select(millis());}
@@ -122,6 +126,9 @@ public:
         }
       }
     }
+#if !defined(MESHIT_TDECK_PLUS)
+    if(chat.room!=previousRoom)textScroll.reset();else if(chat.page!=previousPage||action.op=="post")textScroll.select();
+#endif
     if(!hasSynced||syncedRevision!=revision){chat.sync(core);syncedRevision=revision;hasSynced=true;}
 #if defined(MESHIT_TDECK_PLUS)
     if(!keyboardReady)chat.error="Keyboard unavailable";
@@ -131,7 +138,7 @@ public:
     current.cursor=chat.cursor;current.page=chat.page;current.appearance=chat.appearance;current.scroll=requestedScroll;
     current.selected=chat.selected;current.reply=chat.reply;current.ready=ready;current.bluetooth=bluetooth;
     current.keyboardReady=keyboardReady;current.top=chat.top;current.dark=chat.dark;current.focused=chat.focused;
-    current.transmitEnabled=chat.transmitEnabled;current.followSelection=scroll.followSelection;current.systemDark=chat.systemDark;current.room=chat.room;current.draft=chat.draft;current.error=chat.error;
+    current.bluetoothEnabled=chat.bluetoothEnabled;current.wifiEnabled=chat.wifiEnabled;current.transmitEnabled=chat.transmitEnabled;current.followSelection=scroll.followSelection;current.systemDark=chat.systemDark;current.room=chat.room;current.draft=chat.draft;current.error=chat.error;
     current.network=chat.network;current.region=chat.region;current.wifiSsid=chat.wifiSsid;
     current.wifiPassword=chat.wifiPassword;current.savedNickname=chat.savedNickname;
     current.name=name.c_str();current.password=password.c_str();
@@ -176,17 +183,19 @@ public:
     }else {
       lines={"# "+chat.room+" / "+(chat.top?"Top":"New")+" / "+batteryText,
              std::string(ready?(activity==meshit::RadioActivity::Tx?"Radio TX ^":activity==meshit::RadioActivity::Rx?"Radio RX v":"Radio standby"):(settings["configured"]|false)?"Radio unavailable":"Choose radio preset")+"  Out:"+std::to_string(outgoing)+" New:"+std::to_string(unread.count())+(bluetooth?" BT":"")};
-      const auto list=chat.rows(core);size_t start=0;for(size_t i=0;i<list.size();++i)if(list[i].id==chat.selected){start=i;break;}
-      if(list.empty())lines.push_back("No messages");
-      const size_t bodyLimit=maxLines-4;
-      for(size_t i=start;i<list.size()&&lines.size()<bodyLimit;++i){const auto* m=core.find(list[i].id);if(!m)continue;
-        if(i==start&&m->event.ref){const auto* parent=core.find(m->event.ref);lines.push_back(parent?"Reply to: "+parent->event.text:"Parent requested...");}
-        bool pending=false;for(const auto& p:core.pending)if(p.event.id==m->event.id&&!p.ack&&!p.history)pending=true;
-        lines.push_back(std::string(i==start?"> ":"  ")+(m->event.nick.empty()?"Anonymous":m->event.nick)+" "+std::to_string(core.score(m->event.id))+(m->mine?(m->acked?" [ok]":pending?" [...]":" [retry]"):""));
-        std::vector<std::string> body;deckPanel().wrap(body,m->event.text,list[i].depth);
-        if(lines.size()<bodyLimit)visible.push_back(m->event.id);
-        for(const auto& line:body)if(lines.size()<bodyLimit)lines.push_back(line);
+      const auto list=chat.rows(core);const size_t bodyLimit=maxLines-4;
+      std::vector<std::string> feed;std::vector<meshit::Id> owners;int selectedTop=0,selectedHeight=0;
+      for(const auto& row:list){const auto* m=core.find(row.id);if(!m)continue;const int top=feed.size();
+        bool pending=false;for(const auto& job:core.pending)if(job.event.id==row.id&&!job.ack&&!job.history)pending=true;
+        feed.push_back(std::string(row.id==chat.selected?"> ":"  ")+(m->event.nick.empty()?"Anonymous":m->event.nick)+" "+std::to_string(core.score(row.id))+(m->mine?(m->acked?" [ok]":pending?" [...]":" [retry]"):""));
+        deckPanel().wrap(feed,m->event.text,row.depth);while(owners.size()<feed.size())owners.push_back(row.id);
+        if(row.id==chat.selected){selectedTop=top;selectedHeight=int(feed.size())-top;}
       }
+      const int viewport=std::max(1,int(bodyLimit)-int(lines.size()));
+      const int first=textScroll.layout(feed.size(),viewport,selectedTop,selectedHeight);
+      if(!textScroll.followsSelection()&&!owners.empty())chat.selected=owners[first];
+      if(feed.empty())lines.push_back("No messages");
+      for(int i=first;i<int(feed.size())&&lines.size()<bodyLimit;++i){lines.push_back(feed[i]);if(std::find(visible.begin(),visible.end(),owners[i])==visible.end())visible.push_back(owners[i]);}
       while(lines.size()<bodyLimit)lines.push_back("");
       lines.push_back(chat.reply?"Post a reply:":"Write something interesting...");
       std::vector<std::string> draft;deckPanel().wrap(draft,chat.draft+"_");

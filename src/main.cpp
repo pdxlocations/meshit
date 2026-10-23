@@ -27,7 +27,7 @@
 WebServer server(80);
 SetupDisplay setupDisplay;
 String setupName,setupPass;
-bool wifiSuspended=false,boardReady=true;
+bool wifiSuspended=false,wifiRunning=false,boardReady=true;
 #if defined(MESHIT_TDECK)
 DeckUi deckUi;
 #endif
@@ -169,6 +169,16 @@ String dispatch(const String& input){
       else res["ok"]=unreadMessages.viewed(req["room"]|"",req["revision"]|0u,revision,core);
     }else if(op=="messages"){
       res["revision"]=revision;auto a=res["messages"].to<JsonArray>();size_t offset=req["offset"]|0;for(size_t i=offset;i<core.messages.size()&&i<offset+8;++i)eventJson(a.add<JsonObject>(),core.messages[i]);
+    }else if(op=="deckBluetoothEnabled"||op=="deckWifiEnabled"){
+#if defined(MESHIT_TDECK)
+      if(!req["enabled"].is<bool>())res["error"]="Enabled must be true or false";
+      else {JsonDocument next;next.set(settings);next[op]=req["enabled"].as<bool>();String serialized;serializeJson(next,serialized);
+        if(!fsReady||!writeFile("/settings.json",serialized))res["error"]="Could not save connectivity setting";
+        else {settings.set(next);changed();res["ok"]=true;}
+      }
+#else
+      res["error"]="Connectivity switches are available on T-Deck";
+#endif
     }else if(op=="txEnabled"){
       if(!req["enabled"].is<bool>())res["error"]="Transmit enabled must be true or false";
       else {JsonDocument next;next.set(settings);next["txEnabled"]=req["enabled"].as<bool>();String serialized;serializeJson(next,serialized);
@@ -230,8 +240,27 @@ void pollLinks(){
   }
 }
 #if defined(MESHIT_ESP32)
+bool localWifiEnabled(){
+#if defined(MESHIT_TDECK)
+  return settings["deckWifiEnabled"]|false;
+#else
+  return true;
+#endif
+}
+bool localBluetoothEnabled(){
+#if defined(MESHIT_TDECK)
+  return settings["deckBluetoothEnabled"]|false;
+#else
+  return true;
+#endif
+}
+void startLocalWifi(){
+  WiFi.setHostname("meshit");WiFi.mode(WIFI_AP_STA);WiFi.softAP(setupName.c_str(),setupPass.c_str());
+  const String ssid=settings["ssid"]|"";if(ssid.length())WiFi.begin(ssid.c_str(),settings["password"]|"");
+  MDNS.begin("meshit");MDNS.addService("http","tcp",80);server.begin();wifiRunning=true;
+}
+void stopLocalWifi(){server.stop();MDNS.end();WiFi.softAPdisconnect(true);WiFi.disconnect();WiFi.mode(WIFI_OFF);wifiRunning=false;webClientSeen=false;}
 void setupWifi(){
-  WiFi.setHostname("meshit");WiFi.mode(WIFI_AP_STA);
   uint8_t mac[6]={};esp_efuse_mac_get_default(mac);
   const uint16_t macSuffix=(uint16_t(mac[4])<<8)|mac[5];
   const bool displayReady=setupDisplay.begin();
@@ -239,18 +268,14 @@ void setupWifi(){
   setupPass=meshit::setupPassword(displayReady,saved.c_str(),macSuffix).c_str();
   if(setupPass!=saved){settings["setupPassword"]=setupPass;String s;serializeJson(settings,s);writeFile("/settings.json",s);}
   setupName=meshit::setupRadioName(macSuffix).c_str();
-  const bool apStarted=WiFi.softAP(setupName.c_str(),setupPass.c_str());
-  if(apStarted)setupDisplay.showAccessPoint(setupName,setupPass);
-  else setupDisplay.showNetwork(false,"");
   Serial.println("Setup Wi-Fi: "+setupName+" password: "+setupPass);
-  String ssid=settings["ssid"]|"";if(ssid.length())WiFi.begin(ssid.c_str(),settings["password"]|"");
-  MDNS.begin("meshit");MDNS.addService("http","tcp",80);
   server.on("/api/rpc",HTTP_POST,[]{
     if(server.hasHeader("Origin")){String origin=server.header("Origin"),host=server.hostHeader();if(origin!="http://"+host){server.send(403,"application/json","{\"error\":\"Origin rejected\"}");return;}}
     lastWebActivity=millis();webClientSeen=true;String result=dispatch(server.arg("plain"));server.send(200,"application/json",result);
   });
   const char* headers[]={"Origin"};server.collectHeaders(headers,1);
-  server.onNotFound([]{String uri=server.uri();if(uri=="/")uri="/index.html";for(const auto& asset:WEB_ASSETS)if(uri==asset.path){server.sendHeader("Content-Encoding","gzip");server.sendHeader("Cache-Control","no-cache");server.sendHeader("X-Content-Type-Options","nosniff");server.sendHeader("Content-Security-Policy","default-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'");server.send_P(200,asset.mime,(const char*)asset.data,asset.size);return;}server.send(404,"text/plain","Not found");});server.begin();
+  server.onNotFound([]{String uri=server.uri();if(uri=="/")uri="/index.html";for(const auto& asset:WEB_ASSETS)if(uri==asset.path){server.sendHeader("Content-Encoding","gzip");server.sendHeader("Cache-Control","no-cache");server.sendHeader("X-Content-Type-Options","nosniff");server.sendHeader("Content-Security-Policy","default-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'");server.send_P(200,asset.mime,(const char*)asset.data,asset.size);return;}server.send(404,"text/plain","Not found");});
+  if(localWifiEnabled()){startLocalWifi();setupDisplay.showAccessPoint(setupName,setupPass);}else WiFi.mode(WIFI_OFF);
 }
 #endif
 void setup(){
@@ -277,7 +302,7 @@ void setup(){
   pinMode(MESHIT_BOARD_POWER,OUTPUT);digitalWrite(MESHIT_BOARD_POWER,HIGH);delay(10);SPI.begin();
 #endif
 #if defined(MESHIT_ESP32)
-  ble.begin(setupName,setupPass.substring(2).toInt());
+  if(localBluetoothEnabled())ble.begin(setupName,setupPass.substring(2).toInt());
 #else
   ble.begin(meshit::setupRadioName(uint16_t(NRF_FICR->DEVICEADDR[0])).c_str());
 #endif
@@ -290,20 +315,15 @@ void setup(){
 }
 void loop(){
 #if defined(MESHIT_ESP32)
-  ble.setAccessPointOccupied(!wifiSuspended&&WiFi.softAPgetStationNum()>0);
-  ble.maintain();
-  const bool bluetooth=ble.connected();
+  if(localBluetoothEnabled()){if(!ble.begun())ble.begin(setupName,setupPass.substring(2).toInt());}
+  else if(ble.begun()){ble.end();line[1]="";output[1]="";outputAt[1]=0;discard[1]=false;}
+  ble.setAccessPointOccupied(wifiRunning&&WiFi.softAPgetStationNum()>0);ble.maintain();
+  const bool bluetooth=ble.connected();wifiSuspended=bluetooth;
   static uint32_t connectedAt=0;
-  if(bluetooth!=wifiSuspended){
-    wifiSuspended=bluetooth;connectedAt=0;
-    if(bluetooth){server.stop();MDNS.end();WiFi.softAPdisconnect(true);WiFi.disconnect();WiFi.mode(WIFI_OFF);}
-    else{
-      WiFi.mode(WIFI_AP_STA);WiFi.softAP(setupName.c_str(),setupPass.c_str());
-      const String ssid=settings["ssid"]|"";if(ssid.length())WiFi.begin(ssid.c_str(),settings["password"]|"");
-      MDNS.begin("meshit");MDNS.addService("http","tcp",80);server.begin();
-    }
-  }
-  if(!wifiSuspended){
+  const bool wantWifi=localWifiEnabled()&&!bluetooth;
+  if(wantWifi&&!wifiRunning){startLocalWifi();connectedAt=0;}
+  else if(!wantWifi&&wifiRunning){stopLocalWifi();connectedAt=0;}
+  if(wifiRunning){
     server.handleClient();
     if(WiFi.status()==WL_CONNECTED){if(!connectedAt)connectedAt=millis();if(uint32_t(millis()-connectedAt)>60000)WiFi.softAPdisconnect(true);}else connectedAt=0;
   }

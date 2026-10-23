@@ -26,31 +26,22 @@ public:
 };
 class DeckGraphics {
   DeckSurface surface;
-  static const GFXfont& font(meshit::DeckFont f){return f==meshit::DeckFont::Bold?FreeSansBold9pt7b:FreeSans9pt7b;}
+  static const GFXfont& font(meshit::DeckFont f){return f==meshit::DeckFont::Body?FreeSans9pt7b:FreeSansBold9pt7b;}
   static std::string printable(const std::string& value){std::string out;for(unsigned char c:value){if(c>=32&&c<127)out+=char(c);else if(c>=0xc0)out+='?';else if(c=='\n')out+=' ';}return out;}
   void label(int x,int baseline,const std::string& value,meshit::DeckFont f,uint16_t color){
     const GFXfont& face=font(f);const GFXglyph* glyphs=reinterpret_cast<const GFXglyph*>(pgm_read_ptr(&face.glyph));const uint8_t* bitmap=reinterpret_cast<const uint8_t*>(pgm_read_ptr(&face.bitmap));
-    const int num=f==meshit::DeckFont::Small?2:1,den=f==meshit::DeckFont::Small?3:1;
     for(unsigned char c:printable(value)){const GFXglyph* g=glyphs+c-32;
       const int w=pgm_read_byte(&g->width),h=pgm_read_byte(&g->height),xo=int8_t(pgm_read_byte(&g->xOffset)),yo=int8_t(pgm_read_byte(&g->yOffset));
       const int offset=pgm_read_word(&g->bitmapOffset);
-      if(f==meshit::DeckFont::Small){
-        auto floorDiv=[](int n,int d){return n>=0?n/d:-((-n+d-1)/d);};
-        for(int py=floorDiv(yo*2,3);py<-floorDiv(-(yo+h)*2,3);++py)for(int px=floorDiv(xo*2,3);px<-floorDiv(-(xo+w)*2,3);++px){
-          unsigned coverage=0;
-          for(int dy:{1,3})for(int dx:{1,3}){const int sx=floorDiv((px*4+dx)*3,8)-xo,sy=floorDiv((py*4+dy)*3,8)-yo;
-            if(sx>=0&&sy>=0&&sx<w&&sy<h){const int bit=sy*w+sx;if(pgm_read_byte(bitmap+offset+bit/8)&(0x80>>(bit%8)))++coverage;}}
-          if(coverage){const uint16_t bg=surface.pixel(x+px,baseline+py);const unsigned r=(((color>>11)*coverage+(bg>>11)*(4-coverage)+2)/4),g=((((color>>5)&63)*coverage+((bg>>5)&63)*(4-coverage)+2)/4),b=(((color&31)*coverage+(bg&31)*(4-coverage)+2)/4);surface.drawPixel(x+px,baseline+py,(r<<11)|(g<<5)|b);}
-        }
-      }else for(int sy=0;sy<h;++sy)for(int sx=0;sx<w;++sx){const int bit=sy*w+sx;if(pgm_read_byte(bitmap+offset+bit/8)&(0x80>>(bit%8)))surface.drawPixel(x+xo+sx,baseline+yo+sy,color);}
-      x+=pgm_read_byte(&g->xAdvance)*num/den;
+      for(int sy=0;sy<h;++sy)for(int sx=0;sx<w;++sx){const int bit=sy*w+sx;if(pgm_read_byte(bitmap+offset+bit/8)&(0x80>>(bit%8)))surface.drawPixel(x+xo+sx,baseline+yo+sy,color);}
+      x+=pgm_read_byte(&g->xAdvance);
     }
   }
 public:
   void invalidate(){surface.invalidate();}
   static int measure(const std::string& value,meshit::DeckFont f){
     const auto& face=font(f);const auto* glyphs=reinterpret_cast<const GFXglyph*>(pgm_read_ptr(&face.glyph));int width=0;
-    for(unsigned char c:printable(value)){const int advance=pgm_read_byte(&glyphs[c-32].xAdvance);width+=f==meshit::DeckFont::Small?advance*2/3:advance;}return width;
+    for(unsigned char c:printable(value)){const int advance=pgm_read_byte(&glyphs[c-32].xAdvance);width+=advance;}return width;
   }
   void draw(const meshit::DeckScene& scene,Adafruit_ST7789& display){
     surface.begin(display);
