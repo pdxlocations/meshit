@@ -7,6 +7,7 @@
 #include <Fonts/FreeSans9pt7b.h>
 #endif
 #include <vector>
+#include "DeckBatteryIcon.h"
 #include <string>
 #include "../firmware/esp32/Pins.h"
 #if defined(MESHIT_TDECK_PRO)
@@ -96,9 +97,9 @@ public:
   // All glyphs on the device use the sans-serif font; unsupported Unicode is
   // replaced only for display. The stored/transmitted UTF-8 remains untouched.
   static std::string printable(const std::string& value){std::string out;for(unsigned char c:value){if(c>=32&&c<127)out+=char(c);else if(c>=0xc0)out+='?';else if(c=='\n')out+=' ';}return out;}
-  bool draw(const std::vector<std::string>& lines,bool force=false){
+  bool draw(const std::vector<std::string>& lines,bool force=false,int batteryMv=-1){
     if(!ready||sleeping)return false;
-    std::string signature;for(const auto& line:lines){signature+=line;signature+='\n';}
+    std::string signature;for(const auto& line:lines){signature+=line;signature+='\n';}if(batteryMv>=0)signature+="battery:"+std::to_string(plausibleBatteryVoltage(batteryMv)?int(batteryBars(batteryMv)):-1);
     if(signature==previous)return true;
 #if defined(MESHIT_TDECK_PLUS)
     graphics.invalidate();
@@ -111,9 +112,10 @@ public:
       screen.fillScreen(0xffff);screen.setTextColor(0);screen.setFont(&FreeSans9pt7b);
       for(size_t i=0;i<lines.size()&&i<lineCount();++i){
         std::string text=printable(lines[i]);int16_t x,y;uint16_t w,h;
-        do {screen.getTextBounds(text.c_str(),0,0,&x,&y,&w,&h);if(w>screen.width()-8&&!text.empty())text.pop_back();else break;}while(true);
+        do {screen.getTextBounds(text.c_str(),0,0,&x,&y,&w,&h);if(w>screen.width()-(i==0&&batteryMv>=0?42:8)&&!text.empty())text.pop_back();else break;}while(true);
         screen.setCursor(4,18+i*20);screen.print(text.c_str());
       }
+      if(batteryMv>=0)meshit::drawDeckBattery(screen,screen.width()-34,4,29,14,plausibleBatteryVoltage(batteryMv)?int(batteryBars(batteryMv)):-1,0);
 #if defined(MESHIT_TDECK_PRO)
     }while(screen.nextPage());
 #endif

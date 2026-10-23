@@ -5,6 +5,7 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSansBold9pt7b.h>
 #include "DeckScene.h"
+#include "DeckBatteryIcon.h"
 class DeckSurface:public Adafruit_GFX {
   uint16_t* pixels=nullptr;uint16_t* previous=nullptr;bool firstFrame=true;Adafruit_ST7789* target=nullptr;
 public:
@@ -53,6 +54,7 @@ public:
         case S::Outline:surface.drawRoundRect(x,y,w,h,4,c);break;
         case S::Line:surface.drawLine(x,y,x+w,y+h,c);break;
         case S::Text:label(x,y,op.text,op.font,c);break;
+        case S::Battery:meshit::drawDeckBattery(surface,x,y,w,h,atoi(op.text.c_str()),c);break;
         case S::Radio:{
           if(op.text=="tx"){surface.drawLine(x+10,y+17,x+10,y+3,c);surface.drawLine(x+5,y+8,x+10,y+3,c);surface.drawLine(x+10,y+3,x+15,y+8,c);}
           else if(op.text=="rx"){surface.drawLine(x+10,y+3,x+10,y+17,c);surface.drawLine(x+5,y+12,x+10,y+17,c);surface.drawLine(x+10,y+17,x+15,y+12,c);}

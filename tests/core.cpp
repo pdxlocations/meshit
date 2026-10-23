@@ -65,7 +65,7 @@ int main(){
     assert(activateDeckHit({DeckTap::Resend,{},message.id},d,core,{},950).op.empty());assert(!core.resend(message.id,0));
     auto measure=[](const std::string& text,DeckFont){return int(text.size())*12;};d.page=DeckChat::Chat;
     auto scene=makeDeckScene(d,core,{},true,"radio","password",measure);std::string body;for(const auto& paint:scene.paint)if(paint.shape==DeckShape::Text&&paint.font==DeckFont::Body)body+=paint.text;assert(body==message.text&&scene.maxScroll>0);
-    auto bottom=makeDeckScene(d,core,{},true,"radio","password",measure,scene.maxScroll,"",0,false);int lastBody=0;for(const auto& paint:bottom.paint)if(paint.shape==DeckShape::Text&&paint.font==DeckFont::Body)lastBody=paint.box.y;assert(lastBody>=bottom.viewport.y&&lastBody<240);
+    auto bottom=makeDeckScene(d,core,{},true,"radio","password",measure,scene.maxScroll,0,0,false);int lastBody=0;for(const auto& paint:bottom.paint)if(paint.shape==DeckShape::Text&&paint.font==DeckFont::Body)lastBody=paint.box.y;assert(lastBody>=bottom.viewport.y&&lastBody<240);
     DeckTextScroll scroll;assert(scroll.layout(20,6,0,15)==0);for(int n=0;n<14;++n)scroll.move(1);assert(scroll.layout(20,6,0,15)==14);scroll.move(100);assert(scroll.layout(20,6,0,15)==14);scroll.reset();assert(scroll.layout(20,6,0,15)==0);
   }
   {
@@ -87,7 +87,7 @@ int main(){
     unread.viewedIds("general",{a.id,other.id},c);assert(unread.count()==2&&unread.count("general",c)==1&&unread.count("camp",c)==1);
     unread.viewedIds("general",{a.id},c);assert(unread.count()==2); // Repeated views never clear later arrivals.
     DeckChat d;d.page=DeckChat::Rooms;auto measure=[](const std::string& text,DeckFont){return int(text.size())*5;};
-    auto scene=makeDeckScene(d,c,{},true,"meshit-0001","12345678",measure,0,"4.1V",unread.count(),true,[&](const std::string& room){return unread.count(room,c);});
+    auto scene=makeDeckScene(d,c,{},true,"meshit-0001","12345678",measure,0,4100,unread.count(),true,[&](const std::string& room){return unread.count(room,c);});
     assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& p){return p.text=="New 2";}));
     assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& p){return p.text=="2 / 1 new";}));
     assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& p){return p.text=="1 / 1 new";}));
@@ -226,7 +226,7 @@ int main(){
       feed.receive(first,0,false);feed.receive(reply,0,false);feed.receive(last,0,false);
       DeckChat touchChat;touchChat.selected=last.id;
       DeckScroll touchScroll;touchScroll.move(50,100);
-      auto scrolled=makeDeckScene(touchChat,feed,catalog,true,"meshit-00af","12345678",measure,touchScroll.position(),"",0,touchScroll.followSelection);
+      auto scrolled=makeDeckScene(touchChat,feed,catalog,true,"meshit-00af","12345678",measure,touchScroll.position(),0,0,touchScroll.followSelection);
       assert(touchChat.selected==last.id);
       size_t tappedRows=0;
       for(const auto& hit:scrolled.hits)if(hit.action==DeckTap::Select&&hit.target!=last.id){
@@ -271,7 +271,7 @@ int main(){
     d.draft="Touch reply";auto action=activateDeckHit(find(DeckTap::Post),d,c,catalog,400);assert(action.op=="post"&&action.target==root.id&&action.text=="Touch reply");
     action=activateDeckHit(find(DeckTap::Vote,root.id),d,c,catalog,400);assert(action.op=="vote"&&action.up);
     c.receive(vote(400,2,root.id),1,false);d.selected=root.id;
-    scene=makeDeckScene(d,c,catalog,true,"meshit-00af","12345678",measure,0,"",0,true,{},400);
+    scene=makeDeckScene(d,c,catalog,true,"meshit-00af","12345678",measure,0,0,0,true,{},400);
     assert(std::any_of(scene.paint.begin(),scene.paint.end(),[&](const DeckPaint& op){return op.shape==DeckShape::Up&&op.color==deckPalette(d.dark).button;}));
     activateDeckHit(find(DeckTap::Settings),d,c,catalog,400);assert(d.page==DeckChat::Settings);
     activateDeckHit({DeckTap::MenuItem,{},0,d.settingsItems().size()},d,c,catalog,400);assert(d.page==DeckChat::Appearance);activateDeckHit({DeckTap::MenuItem,{},0,3},d,c,catalog,400);assert(d.dark);
@@ -307,7 +307,7 @@ int main(){
       // Include controls below the fold on selection menus.
       auto targets=frame.hits;
       for(int offset:{84,168,252}){
-        auto scrolled=makeDeckScene(chat,core,presets,true,"meshit-00af","12345678",measure,offset,"",0,false);
+        auto scrolled=makeDeckScene(chat,core,presets,true,"meshit-00af","12345678",measure,offset,0,0,false);
         for(const auto& candidate:scrolled.hits)if(candidate.action==DeckTap::MenuItem){
           const int x=candidate.box.x+candidate.box.w/2,y=candidate.box.y+candidate.box.h/2;
           DeckGesture finger;DeckTapLatch latch;auto copy=chat;finger.contact(x,y);latch.begin(scrolled,copy,x,y);
@@ -352,7 +352,7 @@ int main(){
     touchMove.dragY=-40;reverseScroll.drag(deckTouchScrollDelta(d,touchScene,touchMove),132);assert(reverseScroll.position()==100);
     touchMove.originY=10;assert(!deckTouchScrollDelta(d,touchScene,touchMove));
     d.page=DeckChat::Settings;touchMove.originY=150;assert(deckTouchScrollDelta(d,touchScene,touchMove)==-40);d.page=DeckChat::Chat;
-    auto frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure,120,"",0,false);
+    auto frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure,120,0,0,false);
     assert(frame.scroll==120&&d.selected==selected); // Touch scrolling must not snap to the selected message.
     for(const auto& hit:frame.hits)assert(hit.box.h>=0&&hit.box.y>=0&&hit.box.y+hit.box.h<=240);
     auto tap=[&](DeckTap kind){for(const auto& hit:frame.hits)if(hit.action==kind)return activateDeckHit(hit,d,c,{},450);assert(false);return DeckAction{};};
@@ -436,7 +436,7 @@ int main(){
     unsigned boundedReceipts=0;for(uint32_t now=1000;now<=6000;now+=1000)boundedPeer.tick(now,[&](const Event& event,bool){assert(event.kind==Kind::Ack);++boundedReceipts;return true;});assert(boundedReceipts==4);
     for(auto status:{RadioActivity::Standby,RadioActivity::Rx,RadioActivity::Tx}){
       DeckChat view;auto measure=[](const std::string& text,DeckFont){return int(text.size())*5;};
-      auto scene=makeDeckScene(view,source,{},true,"meshit-test","12345678",measure,0,"",0,true,{},700,status);
+      auto scene=makeDeckScene(view,source,{},true,"meshit-test","12345678",measure,0,0,0,true,{},700,status);
       assert(std::any_of(scene.paint.begin(),scene.paint.end(),[&](const DeckPaint& paint){return paint.shape==DeckShape::Radio&&paint.text==radioActivityName(status);}));
       const auto* connection=deckHitAt(scene,215,15);assert(connection&&connection->action==DeckTap::Connection);
     }

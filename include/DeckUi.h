@@ -134,7 +134,7 @@ public:
     if(!keyboardReady)chat.error="Keyboard unavailable";
     unread.prune(core);
     const int requestedScroll=scroll.tick(millis(),scene.maxScroll);
-    RenderState current;current.activity=activity;current.revision=revision;current.battery=battery;current.unread=unread.count();
+    RenderState current;current.activity=activity;current.revision=revision;current.battery=plausibleBatteryVoltage(battery)?batteryBars(battery)+1:0;current.unread=unread.count();
     current.cursor=chat.cursor;current.page=chat.page;current.appearance=chat.appearance;current.scroll=requestedScroll;
     current.selected=chat.selected;current.reply=chat.reply;current.ready=ready;current.bluetooth=bluetooth;
     current.keyboardReady=keyboardReady;current.top=chat.top;current.dark=chat.dark;current.focused=chat.focused;
@@ -143,7 +143,7 @@ public:
     current.wifiPassword=chat.wifiPassword;current.savedNickname=chat.savedNickname;
     current.name=name.c_str();current.password=password.c_str();
     if(hasRendered&&current==renderedState)return;
-    {scene=meshit::makeDeckScene(chat,core,catalog,ready,name.c_str(),password.c_str(),DeckGraphics::measure,requestedScroll,battery?std::to_string(battery/1000)+"."+std::to_string((battery%1000)/100)+"V":"",unread.count(),scroll.followSelection,[&](const std::string& room){return unread.count(room,core);},identity,activity);
+    {scene=meshit::makeDeckScene(chat,core,catalog,ready,name.c_str(),password.c_str(),DeckGraphics::measure,requestedScroll,battery,unread.count(),scroll.followSelection,[&](const std::string& room){return unread.count(room,core);},identity,activity);
     scroll.setPosition(scene.scroll);const uint32_t renderedRevision=revision;
     const bool painted=deckPanel().drawScene(scene);if(painted){renderedState=std::move(current);hasRendered=true;}
     if(painted&&chat.page==meshit::DeckChat::Chat&&renderedRevision==revision){std::vector<meshit::Id> visible;for(const auto& hit:scene.hits)if(hit.action==meshit::DeckTap::Select&&hit.box.h>=40)visible.push_back(hit.target);unread.viewedIds(chat.room,visible,core);}
@@ -181,7 +181,7 @@ public:
     }else if(chat.isEditor()){
       lines={page==meshit::DeckChat::NewRoom?"meshit / new room":page==meshit::DeckChat::Nickname?"meshit / nickname":page==meshit::DeckChat::Ssid?"meshit / network name":"meshit / Wi-Fi password"};deckPanel().wrap(lines,(page==meshit::DeckChat::WifiPassword?std::string(chat.draft.size(),'*'):chat.draft)+"_");lines.push_back("Enter: save  Menu: cancel");
     }else {
-      lines={"# "+chat.room+" / "+(chat.top?"Top":"New")+" / "+batteryText,
+      lines={"# "+chat.room+" / "+(chat.top?"Top":"New"),
              std::string(ready?(activity==meshit::RadioActivity::Tx?"Radio TX ^":activity==meshit::RadioActivity::Rx?"Radio RX v":"Radio standby"):(settings["configured"]|false)?"Radio unavailable":"Choose radio preset")+"  Out:"+std::to_string(outgoing)+" New:"+std::to_string(unread.count())+(bluetooth?" BT":"")};
       const auto list=chat.rows(core);const size_t bodyLimit=maxLines-4;
       std::vector<std::string> feed;std::vector<meshit::Id> owners;int selectedTop=0,selectedHeight=0;
@@ -211,7 +211,7 @@ public:
     if(!chat.error.empty()){if(lines.size()>=maxLines)lines.resize(maxLines-1);lines.push_back(chat.error);}
     unread.prune(core);
     const uint32_t renderedRevision=revision;
-    if(deckPanel().draw(lines)&&(page==meshit::DeckChat::Chat||page==meshit::DeckChat::Read)&&renderedRevision==revision){unread.viewedIds(chat.room,visible,core);}
+    if(deckPanel().draw(lines,false,battery)&&(page==meshit::DeckChat::Chat||page==meshit::DeckChat::Read)&&renderedRevision==revision){unread.viewedIds(chat.room,visible,core);}
   }
 };
 #endif

@@ -2,10 +2,11 @@
 #include "DeckChat.h"
 #include "DeckCalibration.h"
 #include "RadioStats.h"
+#include "BatteryGauge.h"
 #include <cmath>
 namespace meshit {
 struct DeckBox {int x=0,y=0,w=0,h=0;bool contains(int px,int py)const{return px>=x&&py>=y&&px<x+w&&py<y+h;}};
-enum class DeckShape {Fill,Round,Outline,Line,Text,Poop,Chat,Gear,Dot,Up,Reply,Check,Retry,Pending,Radio,Down};
+enum class DeckShape {Fill,Round,Outline,Line,Text,Poop,Chat,Gear,Dot,Up,Reply,Check,Retry,Pending,Radio,Down,Battery};
 enum class DeckFont {Small,Body,Bold};
 enum class DeckTap {Chat,Settings,Rooms,NewRoom,Top,New,Post,Cancel,Select,Reply,Vote,Resend,MenuItem,Focus,Save,Back,Connection,CancelEditor,Downvote};
 struct DeckPaint {DeckShape shape;DeckBox box;uint16_t color;std::string text;DeckFont font=DeckFont::Small;DeckBox clip;};
@@ -27,7 +28,7 @@ inline std::vector<std::string> deckWrap(const std::string& text,int width,DeckF
 }
 // A display-independent scene also supplies the exact touch targets used to draw it.
 inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector<DeckPreset>& presets,
- bool connected,const std::string& name,const std::string& password,const DeckMeasure& measure,int previousScroll=0,const std::string& battery="",size_t unread=0,bool followSelection=true,const std::function<size_t(const std::string&)>& roomUnread={},uint32_t identity=0,RadioActivity activity=RadioActivity::Standby){
+ bool connected,const std::string& name,const std::string& password,const DeckMeasure& measure,int previousScroll=0,uint16_t battery=0,size_t unread=0,bool followSelection=true,const std::function<size_t(const std::string&)>& roomUnread={},uint32_t identity=0,RadioActivity activity=RadioActivity::Standby){
   DeckScene s;const auto p=deckPalette(chat.dark);const DeckBox full{0,0,320,240};
   auto draw=[&](DeckShape shape,DeckBox b,uint16_t color,const std::string& text="",DeckFont f=DeckFont::Small,DeckBox clip=DeckBox{}){s.paint.push_back({shape,b,color,text,f,clip.w?clip:full});};
   auto text=[&](int x,int y,const std::string& value,DeckFont f=DeckFont::Small,uint16_t color=0){draw(DeckShape::Text,{x,y,0,0},color?color:p.ink,value,f);};
@@ -45,7 +46,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     draw(DeckShape::Outline,{point.first-4,point.second-4,9,9},p.ink);
     return s;
   }
-  draw(DeckShape::Poop,{7,5,20,20},p.ink);hit(DeckTap::Chat,{0,0,94,30});text(96,18,"New "+std::to_string(unread),DeckFont::Small,unread?p.ink:p.muted);hit(DeckTap::Rooms,{94,0,80,30});hit(DeckTap::Chat,{174,0,35,30});text(33,19,"meshit",DeckFont::Bold);if(!battery.empty())text(175,18,battery,DeckFont::Small,p.muted);
+  draw(DeckShape::Poop,{7,5,20,20},p.ink);hit(DeckTap::Chat,{0,0,94,30});text(96,18,"New "+std::to_string(unread),DeckFont::Small,unread?p.ink:p.muted);hit(DeckTap::Rooms,{94,0,80,30});hit(DeckTap::Chat,{174,0,35,30});text(33,19,"meshit",DeckFont::Bold);draw(DeckShape::Battery,{177,8,29,14},plausibleBatteryVoltage(battery)?(batteryBars(battery)?p.ink:0xf800):p.muted,std::to_string(plausibleBatteryVoltage(battery)?int(batteryBars(battery)):-1));
   draw(DeckShape::Radio,{212,5,21,20},connected?(activity==RadioActivity::Standby?0x260b:p.ink):p.muted,connected?radioActivityName(activity):"disconnected");hit(DeckTap::Connection,{209,0,24,30});
   const bool settings=chat.page==DeckChat::Settings||chat.page==DeckChat::Presets||chat.page==DeckChat::Nickname||chat.page==DeckChat::Credentials||chat.page==DeckChat::Wifi||chat.page==DeckChat::Ssid||chat.page==DeckChat::WifiPassword||chat.page==DeckChat::Appearance||chat.page==DeckChat::Network||chat.page==DeckChat::Regions;
   draw(DeckShape::Round,{237,2,34,25},settings?p.header:p.selected);draw(DeckShape::Chat,{245,7,17,15},p.ink);hit(DeckTap::Chat,{233,0,42,30});
