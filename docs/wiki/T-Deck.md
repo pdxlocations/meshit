@@ -61,3 +61,5 @@ Touch is enabled on T-Deck Plus when its GT911 controller is detected. Other mod
 Pin assignments and panel setup follow LILYGO’s [T-Deck sources](https://github.com/Xinyuan-LilyGO/T-Deck), [Pro v1.0 sources](https://github.com/Xinyuan-LilyGO/T-Deck-Pro/tree/HD-V1-250326), [Pro v1.1 sources](https://github.com/Xinyuan-LilyGO/T-Deck-Pro/tree/HD-V2-250915), and [Pro Max sources](https://github.com/Xinyuan-LilyGO/T-Deck-Pro/tree/HD-V3-250911). The 433 MHz preset follows [Meshtastic’s radio settings](https://meshtastic.org/docs/overview/radio-settings/).
 
 [Wiki home](Home.md)
+
+Touch page navigation uses the header buttons and Back controls. Horizontal swipes do not switch pages, preventing finger drift on messages from opening Rooms. Small movements under 18 pixels remain taps; vertical scrolling starts after that threshold.

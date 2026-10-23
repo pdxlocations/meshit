@@ -20,10 +20,10 @@ class DeckUi {
   struct RenderState {
     uint32_t revision=0;uint16_t battery=0;size_t unread=0,cursor=0;
     int page=0,appearance=0,scroll=0;meshit::Id selected=0,reply=0;
-    bool ready=false,bluetooth=false,keyboardReady=false,top=false,dark=false,focused=false,systemDark=false;
+    bool ready=false,bluetooth=false,keyboardReady=false,top=false,dark=false,focused=false,systemDark=false,followSelection=false;
     std::string room,draft,error,network,region,wifiSsid,wifiPassword,savedNickname,name,password;
     bool operator==(const RenderState& other)const{
-      return revision==other.revision&&battery==other.battery&&unread==other.unread&&cursor==other.cursor&&page==other.page&&appearance==other.appearance&&scroll==other.scroll&&selected==other.selected&&reply==other.reply&&ready==other.ready&&bluetooth==other.bluetooth&&keyboardReady==other.keyboardReady&&top==other.top&&dark==other.dark&&focused==other.focused&&systemDark==other.systemDark&&room==other.room&&draft==other.draft&&error==other.error&&network==other.network&&region==other.region&&wifiSsid==other.wifiSsid&&wifiPassword==other.wifiPassword&&savedNickname==other.savedNickname&&name==other.name&&password==other.password;
+      return followSelection==other.followSelection&&revision==other.revision&&battery==other.battery&&unread==other.unread&&cursor==other.cursor&&page==other.page&&appearance==other.appearance&&scroll==other.scroll&&selected==other.selected&&reply==other.reply&&ready==other.ready&&bluetooth==other.bluetooth&&keyboardReady==other.keyboardReady&&top==other.top&&dark==other.dark&&focused==other.focused&&systemDark==other.systemDark&&room==other.room&&draft==other.draft&&error==other.error&&network==other.network&&region==other.region&&wifiSsid==other.wifiSsid&&wifiPassword==other.wifiPassword&&savedNickname==other.savedNickname&&name==other.name&&password==other.password;
     }
   } renderedState;
   bool hasRendered=false;
@@ -54,8 +54,9 @@ public:
     const auto event=touch.poll();
     if(event.pressed){scroll.stop(millis());tapLatch.begin(scene,chat,event.x,event.y);}
     const int drag=meshit::deckTouchScrollDelta(chat,scene,event);if(drag)scroll.drag(drag,millis());
-    if(event.released){scroll.release(millis());if(event.swipeX)chat.swipe(event.swipeX);}
-    if(event.released){if(const auto* hit=tapLatch.finish(chat,event.tap)){action=meshit::activateDeckHit(*hit,chat,core,catalog,identity);touchHandled=true;}}
+    // Page navigation uses explicit buttons; horizontal finger drift must never open Rooms.
+    if(event.released)scroll.release(millis());
+    if(event.released){if(const auto* hit=tapLatch.finish(chat,event.tap)){action=meshit::activateDeckHit(*hit,chat,core,catalog,identity);if(hit->action==meshit::DeckTap::Cancel)scroll.reset(millis());touchHandled=true;}}
 #endif
     if(key&&!touchHandled){action=chat.key(key,core,catalog,identity);
 #if defined(MESHIT_TDECK_PLUS)
@@ -88,7 +89,7 @@ public:
     current.cursor=chat.cursor;current.page=chat.page;current.appearance=chat.appearance;current.scroll=requestedScroll;
     current.selected=chat.selected;current.reply=chat.reply;current.ready=ready;current.bluetooth=bluetooth;
     current.keyboardReady=keyboardReady;current.top=chat.top;current.dark=chat.dark;current.focused=chat.focused;
-    current.systemDark=chat.systemDark;current.room=chat.room;current.draft=chat.draft;current.error=chat.error;
+    current.followSelection=scroll.followSelection;current.systemDark=chat.systemDark;current.room=chat.room;current.draft=chat.draft;current.error=chat.error;
     current.network=chat.network;current.region=chat.region;current.wifiSsid=chat.wifiSsid;
     current.wifiPassword=chat.wifiPassword;current.savedNickname=chat.savedNickname;
     current.name=name.c_str();current.password=password.c_str();

@@ -85,6 +85,11 @@ int main(){
     assert((deckTouchPoint(239,319,true)==std::make_pair(0,239)));
     assert((deckTouchPoint(0,319,false)==std::make_pair(319,239)));
     DeckGesture pointer;pointer.contact(100,150);pointer.contact(102,151);auto e=pointer.release();assert(e.tap&&e.x==100);
+    // Small finger movement must not turn a tap into a discarded scroll gesture.
+    for(const auto delta:{std::make_pair(12,0),std::make_pair(0,12),std::make_pair(-16,2),std::make_pair(2,-16)}){
+      pointer.contact(140,160);auto jitter=pointer.contact(140+delta.first,160+delta.second);assert(jitter.dragY==0);
+      auto tap=pointer.release();assert(tap.tap&&tap.x==140&&tap.y==160&&!tap.swipeX);
+    }
     assert(!pointer.release().tap); // Held fingers and repeated release frames never post twice.
     pointer.contact(100,180);pointer.contact(100,110);e=pointer.release();assert(!e.tap&&e.swipe==1);
     pointer.contact(100,100);pointer.contact(150,100);pointer.contact(100,100);assert(!pointer.release().tap); // Dragging away and back is not a tap.
@@ -105,20 +110,51 @@ int main(){
     assert(scene.width==320&&scene.height==240);
     auto find=[&](DeckTap action,Id id=0){for(const auto& hit:scene.hits)if(hit.action==action&&(!id||hit.target==id))return hit;assert(false);return DeckHit{};};
     for(const auto& hit:scene.hits)if(hit.action==DeckTap::Select){
-      const auto* bodyTap=deckHitAt(scene,hit.box.x+45,hit.box.y+3);assert(bodyTap&&bodyTap->action==DeckTap::Select&&bodyTap->target==hit.target);
+      const auto* bodyTap=deckHitAt(scene,hit.box.x+100,hit.box.y+3);assert(bodyTap&&bodyTap->action==DeckTap::Select&&bodyTap->target==hit.target);
       d.selected=0;activateDeckHit(*bodyTap,d,c,catalog,400);assert(d.page==DeckChat::Menu&&d.selected==hit.target&&d.cursor==0&&d.menu.front()=="Back");
       d.key('\r',c,catalog,400);assert(d.page==DeckChat::Chat);
       activateDeckHit(*bodyTap,d,c,catalog,400);assert(d.page==DeckChat::Menu); // Repeated taps also open actions, never Rooms or the full-text view.
       activateDeckHit({DeckTap::MenuItem,{},0,1},d,c,catalog,400);assert(d.page==DeckChat::Chat&&d.reply==hit.target);d.reply=0;
     }
+    // Body text on replies must open that reply's menu, including its last line.
+    for(unsigned depth=0;depth<5;++depth){
+      auto threaded=client(450);Id parent=0,leaf=0;
+      for(unsigned level=0;level<=depth;++level){auto message=post(451,level+1,parent);message.text="Reply body";threaded.receive(message,0,false);parent=leaf=message.id;}
+      DeckChat replyChat;replyChat.selected=leaf;
+      auto replyScene=makeDeckScene(replyChat,threaded,catalog,true,"mesit-00af","12345678",measure);
+      const DeckHit* leafHit=nullptr;for(const auto& hit:replyScene.hits)if(hit.action==DeckTap::Select&&hit.target==leaf)leafHit=&hit;
+      assert(leafHit);
+      const auto* tapped=deckHitAt(replyScene,50+int(std::min(depth,4u))*14,leafHit->box.y+30);
+      assert(tapped&&tapped->action==DeckTap::Select&&tapped->target==leaf);
+      activateDeckHit(*tapped,replyChat,threaded,catalog,450);assert(replyChat.page==DeckChat::Menu&&replyChat.selected==leaf);
+    }
+    // Swiping leaves keyboard selection alone; taps must target every visible row anyway.
+    {
+      auto feed=client(460);auto first=post(461,1),reply=post(461,2,first.id),last=post(461,3);
+      feed.receive(first,0,false);feed.receive(reply,0,false);feed.receive(last,0,false);
+      DeckChat touchChat;touchChat.selected=last.id;
+      DeckScroll touchScroll;touchScroll.move(50,100);
+      auto scrolled=makeDeckScene(touchChat,feed,catalog,true,"mesit-00af","12345678",measure,touchScroll.position(),"",0,touchScroll.followSelection);
+      assert(touchChat.selected==last.id);
+      size_t tappedRows=0;
+      for(const auto& hit:scrolled.hits)if(hit.action==DeckTap::Select&&hit.target!=last.id){
+        touchChat.page=DeckChat::Chat;touchChat.selected=last.id;
+        DeckGesture finger;const int tapY=hit.box.y+hit.box.h/2;
+        auto down=finger.contact(4,tapY);DeckTapLatch rowTap;rowTap.begin(scrolled,touchChat,down.x,down.y);
+        assert(!finger.contact(16,tapY+1).dragY);auto up=finger.release();
+        const auto* target=rowTap.finish(touchChat,up.tap);assert(target&&target->action==DeckTap::Select&&target->target==hit.target);
+        activateDeckHit(*target,touchChat,feed,catalog,460);assert(touchChat.page==DeckChat::Menu&&touchChat.selected==hit.target);++tappedRows;
+      }
+      assert(tappedRows>=2);
+    }
     DeckTapLatch latch;const auto selectedHit=find(DeckTap::Select,root.id);d.page=DeckChat::Chat;
-    latch.begin(scene,d,selectedHit.box.x+45,selectedHit.box.y+3);
+    latch.begin(scene,d,selectedHit.box.x+100,selectedHit.box.y+3);
     auto movedScene=scene;movedScene.hits.clear();movedScene.hits.push_back({DeckTap::Rooms,selectedHit.box});
     const auto* latched=latch.finish(d,true);assert(latched&&latched->action==DeckTap::Select&&latched->target==root.id);
     activateDeckHit(*latched,d,c,catalog,400);assert(d.page==DeckChat::Menu&&d.selected==root.id);assert(!latch.finish(d,true));
-    d.page=DeckChat::Chat;latch.begin(scene,d,selectedHit.box.x+45,selectedHit.box.y+3);assert(!latch.finish(d,false));
-    latch.begin(scene,d,selectedHit.box.x+45,selectedHit.box.y+3);d.page=DeckChat::Rooms;assert(!latch.finish(d,true));d.page=DeckChat::Chat;
-    latch.begin(scene,d,selectedHit.box.x+45,selectedHit.box.y+3);const auto originalRoom=d.room;d.room="other";assert(!latch.finish(d,true));d.room=originalRoom;
+    d.page=DeckChat::Chat;latch.begin(scene,d,selectedHit.box.x+100,selectedHit.box.y+3);assert(!latch.finish(d,false));
+    latch.begin(scene,d,selectedHit.box.x+100,selectedHit.box.y+3);d.page=DeckChat::Rooms;assert(!latch.finish(d,true));d.page=DeckChat::Chat;
+    latch.begin(scene,d,selectedHit.box.x+100,selectedHit.box.y+3);const auto originalRoom=d.room;d.room="other";assert(!latch.finish(d,true));d.room=originalRoom;
     auto replyHit=find(DeckTap::Reply,root.id);assert(replyHit.box.y>=100&&replyHit.box.y+replyHit.box.h<=240);
     const auto* picked=deckHitAt(scene,replyHit.box.x+2,replyHit.box.y+2);assert(picked&&picked->action==DeckTap::Reply);
     activateDeckHit(*picked,d,c,catalog,400);assert(d.reply==root.id);
@@ -127,6 +163,18 @@ int main(){
     auto cancel=find(DeckTap::Cancel);assert(cancel.box.w>=100&&cancel.box.h>=32);
     const auto* cancelEdge=deckHitAt(scene,cancel.box.x+1,cancel.box.y+cancel.box.h-1);assert(cancelEdge&&cancelEdge->action==DeckTap::Cancel);
     d.draft="Keep this text";activateDeckHit(*cancelEdge,d,c,catalog,400);assert(!d.reply&&d.draft=="Keep this text");
+    assert(d.page==DeckChat::Chat&&!d.focused);
+    // Exercise a real press/release on Cancel and rebuild the resulting message list.
+    d.reply=root.id;d.focused=true;d.cursor=3;
+    auto replying=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);
+    DeckTapLatch cancelTap;cancelTap.begin(replying,d,cancel.box.x+cancel.box.w/2,cancel.box.y+cancel.box.h/2);
+    const auto* cancelTarget=cancelTap.finish(d,true);assert(cancelTarget&&cancelTarget->action==DeckTap::Cancel);
+    auto canceledReply=activateDeckHit(*cancelTarget,d,c,catalog,400);
+    assert(canceledReply.op.empty()&&d.page==DeckChat::Chat&&!d.reply&&!d.focused&&d.cursor==0&&d.draft=="Keep this text");
+    auto afterCancel=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);
+    assert(std::none_of(afterCancel.hits.begin(),afterCancel.hits.end(),[](const DeckHit& hit){return hit.action==DeckTap::Cancel;}));
+    assert(afterCancel.viewport.y==replying.viewport.y-34);
+    d.reply=root.id;d.key(27,c,catalog,400);assert(!d.reply&&d.page==DeckChat::Chat&&!d.focused);
     d.reply=root.id;
     d.draft="Touch reply";auto action=activateDeckHit(find(DeckTap::Post),d,c,catalog,400);assert(action.op=="post"&&action.target==root.id&&action.text=="Touch reply");
     action=activateDeckHit(find(DeckTap::Vote,root.id),d,c,catalog,400);assert(action.op=="vote"&&action.up);
@@ -154,6 +202,44 @@ int main(){
       backAction=d.key('\r',c,regional,400);assert(backAction.op.empty()&&d.page!=page);
     }
     c.messages.clear();action=activateDeckHit(replyHit,d,c,catalog,400);assert(action.op.empty()&&!d.error.empty()); // Stale frames cannot target evicted posts.
+  }
+  {
+    // Audit actual touch targets on every page, including the bottom editor Cancel.
+    auto core=client(470);auto message=post(471,1);core.receive(message,0,false);
+    const std::vector<DeckPreset> presets={{"mt-us","meshtastic","US","US","915 MHz"}};
+    auto measure=[](const std::string& text,DeckFont f){return int(text.size())*(f==DeckFont::Small?5:8);};
+    for(const auto page:{DeckChat::Chat,DeckChat::Menu,DeckChat::Rooms,DeckChat::NewRoom,DeckChat::Presets,DeckChat::Nickname,DeckChat::Credentials,DeckChat::Read,DeckChat::Settings,DeckChat::Wifi,DeckChat::Ssid,DeckChat::WifiPassword,DeckChat::Appearance,DeckChat::Network,DeckChat::Regions}){
+      DeckChat chat;chat.selected=message.id;chat.reply=message.id;chat.network="meshtastic";chat.page=page;
+      if(chat.isEditor()){chat.page=DeckChat::Chat;chat.draft="Preserved draft";chat.edit(page,"Edited value",DeckChat::Rooms);}
+      auto frame=makeDeckScene(chat,core,presets,true,"mesit-00af","12345678",measure);
+      // Include controls below the fold on selection menus.
+      auto targets=frame.hits;
+      for(int offset:{84,168,252}){
+        auto scrolled=makeDeckScene(chat,core,presets,true,"mesit-00af","12345678",measure,offset,"",0,false);
+        for(const auto& candidate:scrolled.hits)if(candidate.action==DeckTap::MenuItem){
+          const int x=candidate.box.x+candidate.box.w/2,y=candidate.box.y+candidate.box.h/2;
+          DeckGesture finger;DeckTapLatch latch;auto copy=chat;finger.contact(x,y);latch.begin(scrolled,copy,x,y);
+          const auto* target=latch.finish(copy,finger.release().tap);assert(target&&target->action==candidate.action&&target->index==candidate.index);
+          activateDeckHit(*target,copy,core,presets,470);
+        }
+      }
+      for(const auto& hit:targets){
+        if(hit.action==DeckTap::Focus||hit.action==DeckTap::Select||hit.box.w<=0||hit.box.h<=0)continue;
+        for(const auto point:{std::make_pair(hit.box.x+1,hit.box.y+1),std::make_pair(hit.box.x+hit.box.w/2,hit.box.y+hit.box.h/2),std::make_pair(hit.box.x+hit.box.w-1,hit.box.y+hit.box.h-1)}){
+          auto tappedChat=chat;DeckGesture finger;DeckTapLatch latch;auto down=finger.contact(point.first,point.second);latch.begin(frame,tappedChat,down.x,down.y);
+          finger.contact(point.first+2,point.second+1);auto up=finger.release();const auto* target=latch.finish(tappedChat,up.tap);
+          assert(target&&target->action==hit.action&&target->index==hit.index&&target->target==hit.target);
+          auto action=activateDeckHit(*target,tappedChat,core,presets,470);
+          if(hit.action==DeckTap::CancelEditor){assert(action.op.empty()&&tappedChat.page==DeckChat::Rooms&&tappedChat.draft=="Preserved draft"&&tappedChat.reply==message.id);}
+          if(chat.isEditor()&&hit.action==DeckTap::Chat)assert(tappedChat.page==DeckChat::Chat&&tappedChat.draft=="Preserved draft");
+          if(hit.action==DeckTap::Save){
+            if(page==DeckChat::NewRoom)assert(action.op.empty()&&tappedChat.page==DeckChat::Chat&&tappedChat.room=="edited value");
+            else if(page==DeckChat::Nickname)assert(action.op=="nickname"&&action.text=="Edited value");
+            else assert(tappedChat.page==DeckChat::Rooms&&tappedChat.draft=="Preserved draft");
+          }
+        }
+      }
+    }
   }
   {
     // Drag distance controls pixels directly, with the content following the finger.

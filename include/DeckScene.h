@@ -6,7 +6,7 @@ namespace meshit {
 struct DeckBox {int x=0,y=0,w=0,h=0;bool contains(int px,int py)const{return px>=x&&py>=y&&px<x+w&&py<y+h;}};
 enum class DeckShape {Fill,Round,Outline,Line,Text,Poop,Chat,Gear,Dot,Up,Reply,Check,Retry,Pending};
 enum class DeckFont {Small,Body,Bold};
-enum class DeckTap {Chat,Settings,Rooms,NewRoom,Top,New,Post,Cancel,Select,Reply,Vote,Resend,MenuItem,Focus,Save,Back,Connection};
+enum class DeckTap {Chat,Settings,Rooms,NewRoom,Top,New,Post,Cancel,Select,Reply,Vote,Resend,MenuItem,Focus,Save,Back,Connection,CancelEditor};
 struct DeckPaint {DeckShape shape;DeckBox box;uint16_t color;std::string text;DeckFont font=DeckFont::Small;DeckBox clip;};
 struct DeckHit {DeckTap action;DeckBox box;Id target=0;size_t index=0;};
 struct DeckScene {int width=320,height=240,scroll=0,maxScroll=0;DeckBox viewport;std::vector<DeckPaint> paint;std::vector<DeckHit> hits;};
@@ -54,7 +54,8 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     const auto rows=chat.rows(core);std::vector<int> heights;std::vector<std::vector<std::string>> bodies;int total=0,selectedTop=0,selectedHeight=0;
     for(const auto& row:rows){const auto* m=core.find(row.id);const int indent=std::min(row.depth,4u)*14;auto body=deckWrap(m->event.text,264-indent,DeckFont::Body,measure);
       if(body.size()>3){body.resize(3);body.back()=deckFit(body.back()+"...",264-indent,DeckFont::Body,measure);}
-      const int height=34+int(body.size())*18;if(row.id==chat.selected){selectedTop=total;selectedHeight=height;}heights.push_back(height);bodies.push_back(std::move(body));total+=height;
+      // Reserve a separate footer so Reply does not cover the last line of message text.
+      const int height=52+int(body.size())*18;if(row.id==chat.selected){selectedTop=total;selectedHeight=height;}heights.push_back(height);bodies.push_back(std::move(body));total+=height;
     }
     s.maxScroll=std::max(0,total-viewport);s.viewport={0,feedTop,320,viewport};
     s.scroll=std::max(0,std::min(previousScroll,s.maxScroll));
@@ -75,8 +76,10 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         for(size_t j=0;j<bodies[i].size();++j)draw(DeckShape::Text,{bodyX,y+33+int(j)*18,0,0},p.ink,bodies[i][j],DeckFont::Body,clip);
         draw(DeckShape::Reply,{bodyX,y+h-14,11,10},p.muted,"",DeckFont::Small,clip);draw(DeckShape::Text,{bodyX+15,y+h-5,0,0},p.muted,"Reply",DeckFont::Small,clip);
         const int top=std::max(y,feedTop),bottom=std::min(y+h,feedBottom);
-        hit(DeckTap::Vote,{x+1,top,28,bottom-top},row.id);hit(DeckTap::Reply,{bodyX,std::max(feedTop,y+h-23),95,std::max(0,bottom-std::max(feedTop,y+h-23))},row.id);
-        hit(DeckTap::Select,{x,top,305-indent,bottom-top},row.id);
+        hit(DeckTap::Vote,{x+1,top,28,bottom-top},row.id);
+        const int replyTop=std::max(feedTop,y+h-23);if(replyTop<bottom)hit(DeckTap::Reply,{bodyX,replyTop,95,bottom-replyTop},row.id);
+        // The whole visible row is tappable, including the gutter of indented replies.
+        hit(DeckTap::Select,{0,top,320,bottom-top},row.id);
       }y+=h;
     }
     if(rows.empty())text(116,feedTop+30,"No messages",DeckFont::Small,p.muted);
@@ -103,8 +106,8 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
       if(value.empty())text(15,89,"Type here...",DeckFont::Small,p.muted);
       if(chat.focused)draw(DeckShape::Line,{15+measure(wrapped.back(),DeckFont::Body),75+int(wrapped.size()-first-1)*18,0,14},p.ink);
       hit(DeckTap::Focus,{8,68,304,56});
-      draw(DeckShape::Round,{163,139,69,30},p.selected);text(180,158,"Cancel");hit(DeckTap::Back,{163,137,69,34});
-      draw(DeckShape::Round,{241,139,71,30},p.button);text(263,158,"Save",DeckFont::Small,p.buttonInk);hit(DeckTap::Save,{241,137,71,34});
+      draw(DeckShape::Round,{8,137,148,40},p.selected);text(62,162,"Cancel");hit(DeckTap::CancelEditor,{8,137,148,40});
+      draw(DeckShape::Round,{164,137,148,40},p.button);text(222,162,"Save",DeckFont::Small,p.buttonInk);hit(DeckTap::Save,{164,137,148,40});
     }else{
       if(chat.hasBackRow())items.insert(items.begin(),"Back");
       const int bottom=chat.page==DeckChat::Read?205:chat.page==DeckChat::Presets?200:240;
@@ -134,6 +137,7 @@ inline const DeckHit* deckHitAt(const DeckScene& scene,int x,int y){for(const au
 inline DeckAction activateDeckHit(const DeckHit& hit,DeckChat& chat,const Core& core,const std::vector<DeckPreset>& catalog,uint32_t identity){
   using T=DeckTap;chat.error.clear();DeckAction action;
   if((hit.action==T::Select||hit.action==T::Reply||hit.action==T::Vote||hit.action==T::Resend)&&!core.find(hit.target)){chat.error="Message no longer stored";return action;}
+  if(chat.isEditor()&&(hit.action==T::Chat||hit.action==T::Settings||hit.action==T::Rooms||hit.action==T::Connection||hit.action==T::NewRoom))chat.leaveEditor();
   switch(hit.action){
     case T::Chat:chat.page=DeckChat::Chat;break;
     case T::Settings:chat.page=DeckChat::Settings;chat.cursor=0;break;
@@ -141,13 +145,14 @@ inline DeckAction activateDeckHit(const DeckHit& hit,DeckChat& chat,const Core& 
     case T::NewRoom:chat.edit(DeckChat::NewRoom,"",DeckChat::Rooms);break;
     case T::Top:chat.top=true;break;case T::New:chat.top=false;break;
     case T::Post:if(!chat.draft.empty())action=chat.key('\r',core,catalog,identity);break;
-    case T::Cancel:chat.reply=0;break;
+    case T::Cancel:chat.cancelReply();break;
     case T::Select:chat.selected=hit.target;chat.page=DeckChat::Menu;chat.cursor=0;break;
     case T::Reply:chat.selected=chat.reply=hit.target;chat.page=DeckChat::Chat;break;
     case T::Vote:action.op="vote";action.target=hit.target;action.up=!core.voted(hit.target,identity);break;
     case T::Resend:action.op="resend";action.target=hit.target;break;
     case T::Focus:chat.focused=true;break;
     case T::Save:action=chat.key('\r',core,catalog,identity);break;
+    case T::CancelEditor:if(chat.isEditor())chat.back();break;
     case T::Back:chat.back();break;
     case T::Connection:chat.page=DeckChat::Credentials;chat.cursor=0;break;
     case T::MenuItem:if((chat.page==DeckChat::NewRoom||chat.page==DeckChat::Nickname)&&hit.index==0)break;chat.cursor=hit.index;action=chat.key('\r',core,catalog,identity);break;
@@ -169,7 +174,7 @@ class DeckGesture {
 public:
   DeckPointerEvent contact(int x,int y){const bool fresh=!active;if(fresh){active=true;dragged=false;axis=0;startX=x;startY=y;travel=0;}const int previousY=lastY;lastX=x;lastY=y;travel=std::max(travel,std::max(std::abs(x-startX),std::abs(y-startY)));
     int delta=0;const bool alreadyDragged=dragged;
-    if(!axis&&travel>8){const int dx=std::abs(x-startX),dy=std::abs(y-startY);if(dy>=dx+6)axis=2;else if(dx>=dy+6)axis=1;if(axis)dragged=true;}
+    if(!axis&&travel>=18){const int dx=std::abs(x-startX),dy=std::abs(y-startY);if(dy>=dx+6)axis=2;else if(dx>=dy+6)axis=1;if(axis)dragged=true;}
     if(axis==2)delta=alreadyDragged?y-previousY:y-startY;
     return {false,x,y,0,delta,false,fresh,startY};
   }

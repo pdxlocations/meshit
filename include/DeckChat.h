@@ -16,6 +16,7 @@ public:
   void edit(Page next,const std::string& value,Page back){savedDraft=draft;savedReply=reply;draft=value;editReturn=back;page=next;cursor=0;focused=true;}
   void leaveEditor(){draft=savedDraft;reply=savedReply;page=editReturn;cursor=0;}
   void back(){error.clear();if(isEditor())leaveEditor();else{if(page==Presets&&!network.empty()){page=Regions;cursor=0;return;}if(page==Regions){page=Network;cursor=0;return;}page=page==Read||page==Menu||page==Rooms||page==Settings?Chat:Settings;cursor=0;}}
+  void cancelReply(){reply=0;page=Chat;cursor=0;focused=false;error.clear();}
   bool hasBackRow()const{return page==Settings||page==Rooms||page==Presets||page==Appearance||page==Network||page==Regions||page==Wifi;}
   std::vector<DeckPreset> filtered(const std::vector<DeckPreset>& presets)const{std::vector<DeckPreset> out;for(const auto& p:presets)if((network.empty()||p.network==network)&&(region.empty()||p.region==region))out.push_back(p);return out;}
   std::vector<std::string> regions(const std::vector<DeckPreset>& presets)const{std::vector<std::string> out;for(const auto& p:presets)if(p.network==network&&std::find(out.begin(),out.end(),p.region)==out.end())out.push_back(p.region);return out;}
@@ -45,7 +46,7 @@ public:
     sync(core);error.clear();DeckAction action;
     if(key==DeckLeft||key==DeckRight)return action;
     if(key==DeckMenu||key==12){if(isEditor())leaveEditor();page=page==Menu?Chat:Menu;cursor=0;return action;}
-    if(key==DeckBack||key==27){if(page!=Chat)back();else reply=0;return action;}
+    if(key==DeckBack||key==27){if(page!=Chat)back();else cancelReply();return action;}
     if(key==DeckUp||key==DeckDown){
       if(page==Read){if(key==DeckDown&&cursor<MAX_TEXT)++cursor;else if(key==DeckUp&&cursor)--cursor;return action;}
       const bool down=key==DeckDown;size_t count=page==Menu?menu.size():page==Rooms?rooms(core).size():page==Presets?filtered(presets).size():page==Network?2:page==Regions?regions(presets).size():page==Appearance?3:page==Settings?settingsItems().size():page==Wifi?3:0;count+=hasBackRow()?1:0;
