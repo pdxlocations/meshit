@@ -91,7 +91,22 @@ async function act(action,label='Working…'){if(busy)return;busy=true;count();c
 async function refresh(){
   if(polling)return;polling=true;const epoch=transport.generation;if(!radioConnected)downloadStatus(true);try{
     const next=await transport.request({op:'state'});if(epoch!==transport.generation)return;const switched=!!(next.node&&state?.node&&next.node!==state.node),first=!state||switched;if(switched){outgoing.clear();messages=[];loadedRevision=0;reply='';}state=next;setConnected(true);
-    if(next.revision!==loadedRevision){downloadStatus(true);const result=[];let version=next.revision;for(let offset=0;offset<next.count;offset+=8){const p=await transport.request({op:'messages',offset});if(epoch!==transport.generation)return;if(p.revision!==version){version=0;break;}result.push(...p.messages);}if(version){messages=result;loadedRevision=version;draftRooms=draftRooms.filter(r=>!messages.some(m=>m.room===r));localStorage.setItem('meshit.rooms',JSON.stringify(draftRooms));localStorage.setItem('meshit.cache',JSON.stringify({state:next,messages:messages.slice(-200)}));render();downloadStatus(false);}}else downloadStatus(false);
+    if(next.revision!==loadedRevision||next.count!==messages.length){
+      downloadStatus(true);loadedRevision=0;const result=[];let stable=true;
+      for(let offset=0;offset<next.count;offset+=8){
+        const p=await transport.request({op:'messages',offset});if(epoch!==transport.generation)return;
+        if(p.revision!==next.revision)stable=false;
+        if(!Array.isArray(p.messages))throw new Error('Invalid message response');
+        result.push(...p.messages);
+        // Keep useful pages even while incoming radio traffic changes the revision.
+        // Only a complete, consistent pass may replace history or mark it viewed.
+        const merged=new Map(messages.map(m=>[m.id,m]));for(const m of p.messages)merged.set(m.id,m);
+        messages=[...merged.values()];render();
+      }
+      const unique=[...new Map(result.map(m=>[m.id,m])).values()];
+      if(stable&&unique.length===next.count){messages=unique;loadedRevision=next.revision;draftRooms=draftRooms.filter(r=>!messages.some(m=>m.room===r));localStorage.setItem('meshit.rooms',JSON.stringify(draftRooms));localStorage.setItem('meshit.cache',JSON.stringify({state:next,messages:messages.slice(-200)}));render();downloadStatus(false);}
+      else loadedRevision=0;
+    }else downloadStatus(false);
     connectionStatus(`Connected via ${transport.mode==='wifi'?'Wi-Fi':'Bluetooth'}${transport.link?.label?' · '+transport.link.label:''}`);
     $('connection').textContent=`${next.settings.network||'Choose a network'} · ${next.ready?'connected':'radio not ready'}${next.demo?' · SIMULATOR':''}`;
     if(first)settingsUI();if(!next.settings.configured&&!$('onboarding').open&&view==='chat')$('onboarding').showModal();
@@ -130,7 +145,7 @@ $('setup-connect').onclick=()=>{$('onboarding').close();show('settings');};
 $('settings-form').onsubmit=e=>{e.preventDefault();act(async()=>{if(utf8($('nickname').value)>16)throw new Error('Nickname must fit 16 UTF-8 bytes');const data={op:'settings',network:document.querySelector('[name=network]:checked').value,preset:$('preset').value,nickname:$('nickname').value};const wifiChanged=$('ssid').value!==(state.settings.ssid||'')||$('password').value.length;if(wifiChanged){data.ssid=$('ssid').value;data.password=$('password').value;}await transport.request(data);loadedRevision=0;await refresh();notify(wifiChanged?'Restart the radio to join Wi-Fi, then open meshit.local.':'');$('password').value='';},'Saving settings…');};
 function setConnected(connected){
   if(connected&&!radioConnected)notify();
-  radioConnected=connected;if(!connected)downloadStatus(false);
+  radioConnected=connected;if(!connected){loadedRevision=0;viewedKey='';downloadStatus(false);}
   const indicator=$('radio-connection'),label=connected?`Radio connected via ${transport.mode==='wifi'?'Wi-Fi':'Bluetooth'}`:'Radio disconnected';
   indicator.dataset.connected=String(connected);indicator.title=label;indicator.setAttribute('aria-label',label);
 }

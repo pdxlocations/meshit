@@ -14,7 +14,7 @@ class Element {
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('post appears before RPC resolves; errors retain text with retry; acknowledgment replaces retry',async()=>{
   const elements=new Map(),get=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);};
-  let feed=[],revision=1,resolvePost,rejectPost,poll,offline=false,waitState,waitMessages;const viewed=[];let visibilityChanged;
+  let feed=[],revision=1,resolvePost,rejectPost,poll,offline=false,waitState,waitMessages,churn=false;const viewed=[];let visibilityChanged;
   class Radio {
     constructor(){this.mode='wifi';this.devices=[];this.link={};this.generation=1;}
     async request(req){
@@ -23,7 +23,7 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
       if(req.op==='messages'&&waitMessages)await waitMessages;
       if(req.op==='state'&&offline)throw new Error('Connection lost');
       if(req.op==='state')return {viewedSupported:true,node:'test',ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester'},board:'Heltec V4.3',wifiSupported:true,presets:[]};
-      if(req.op==='messages')return {revision,messages:feed};
+      if(req.op==='messages'){if(churn)revision++;return {revision,messages:feed.slice(req.offset,req.offset+8)};}
       if(req.op==='resend'){feed.find(m=>m.id===req.target).status='sending';revision++;return {ok:true};}
       if(req.op==='post')return new Promise((resolve,reject)=>{resolvePost=resolve;rejectPost=reject;});
     }
@@ -109,6 +109,21 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   assert.equal(get('download-status').textContent,'','clear progress after messages load');
   assert.equal(get('radio-connection').dataset.connected,'true');
   assert.equal(get('notice').textContent,'','reconnecting clears stale notices');
+  // Incoming traffic must not starve downloads when revisions change between pages.
+  const viewedBeforeChurn=viewed.length;
+  feed.push({id:'during-download',parent:'',room:'general',text:'Arrived during download',mine:false,votes:0,order:20});revision++;churn=true;
+  poll();await tick();
+  assert.match(get('feed').textContent,/Arrived during download/,'valid pages appear despite revision changes');
+  assert.equal(viewed.length,viewedBeforeChurn,'partial history is not marked viewed');
+  assert.equal(get('download-status').textContent,'Downloading messages…');
+  churn=false;poll();await tick();
+  assert.equal(get('download-status').textContent,'','a stable retry completes the download');
+  assert.equal(viewed.at(-1).revision,revision);
+  // A reboot can reuse a revision: reconnect must fetch history again anyway.
+  offline=true;poll();await tick();
+  feed[0]={...feed[0],text:'History after radio restart'};
+  offline=false;poll();await tick();
+  assert.match(get('feed').textContent,/History after radio restart/);
   // Navigating while a slow action is pending must not restore a completion banner.
   get('message').value='Pending reply';get('message').oninput();get('compose').onsubmit({preventDefault(){}});
   assert.equal(get('notice').textContent,'Sending message…');
