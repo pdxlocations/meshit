@@ -13,6 +13,20 @@ class Core {
   std::vector<Peer> peers;
   std::vector<Missing> missing;
   std::vector<Vote> deferredVotes;
+  struct Receipt {Event event;uint32_t due,expires;};
+  struct ReceiptTime {Id target;uint32_t at;};
+  std::vector<Receipt> receipts;std::vector<ReceiptTime> receiptTimes;
+  void acknowledgeDirect(const Event& e,uint32_t now){
+    if(!directAckEnabled||!allocate||receipts.size()>=4||e.kind!=Kind::Post)return;
+    const auto* message=find(e.id);if(!message||message->mine||encode(message->event)!=encode(e))return;
+    for(const auto& receipt:receipts)if(receipt.event.ref==e.id)return;
+    for(const auto& recent:receiptTimes)if(recent.target==e.id&&uint32_t(now-recent.at)<10000)return;
+    Event ack;ack.kind=Kind::Ack;ack.id=allocate();ack.ref=e.id;if(!valid(ack))return;
+    receipts.push_back({ack,now+250+jitter()%750,now+60000});
+    receiptTimes.erase(std::remove_if(receiptTimes.begin(),receiptTimes.end(),[&](const ReceiptTime& r){return r.target==e.id;}),receiptTimes.end());
+    receiptTimes.push_back({e.id,now});bounded(receiptTimes,32);
+  }
+
   template<class T> static void bounded(std::vector<T>& v,size_t n){if(v.size()>n)v.erase(v.begin(),v.begin()+(v.size()-n));}
   bool contains(const std::vector<Id>& list,Id id)const{return std::find(list.begin(),list.end(),id)!=list.end();}
   void remember(const Event& e){seen.push_back(e.id);bounded(seen,512);if(e.kind==Kind::Vote){recent.push_back(e);bounded(recent,32);}}
@@ -59,6 +73,7 @@ class Core {
   }
   void trim(){while(messages.size()>MAX_MESSAGES){auto p=std::min_element(messages.begin(),messages.end(),[&](const Message& a,const Message& b){auto x=score(a.event.id),y=score(b.event.id);return x!=y?x<y:a.order<b.order;});removeTree(p->event.id);}}
 public:
+  bool directAckEnabled=true;
   Core(){messages.reserve(MAX_MESSAGES+1);}
   std::vector<Message> messages;
   std::vector<Vote> votes;
@@ -86,6 +101,16 @@ public:
   }
   void receive(const Event& e,uint32_t now,bool relayed,bool local=false){
     if(!valid(e))return;
+    if(e.kind==Kind::Ack){
+      // A receipt confirms only a locally sent post, never a queued-but-unsent post.
+      if(auto* message=find(e.ref))if(message->mine&&message->sent){message->acked=true;for(auto& job:pending)if(!job.history&&job.event.kind==Kind::Post&&job.event.id==e.ref&&job.attempts)job.ack=true;}
+      if(!contains(seen,e.id))remember(e); // Do not later request an ACK as a missing event.
+      // One receiver's receipt is enough; suppress other receivers' pending receipts.
+      receipts.erase(std::remove_if(receipts.begin(),receipts.end(),[&](const Receipt& r){return r.event.ref==e.ref;}),receipts.end());
+      return;
+    }
+    if(!local&&!relayed&&e.kind==Kind::Post&&find(e.id))acknowledgeDirect(e,now);
+
     if(auto m=find(e.id))if(m->mine&&m->sent&&relayed&&e.kind==Kind::Post&&encode(m->event)==encode(e))m->acked=true;
     // An echo only acknowledges an originated event, after a successful transmission.
     for(auto& p:pending)if(p.event.id==e.id&&p.attempts&&relayed&&!p.history&&encode(p.event)==encode(e)){p.ack=true;if(auto m=find(e.id))m->acked=true;}
@@ -105,7 +130,7 @@ public:
       }
       Event post=e;post.kind=Kind::Post;messages.push_back({post,++clock,local,false});
       for(auto it=deferredVotes.begin();it!=deferredVotes.end();)if(it->target==e.id){votes.push_back(*it);it=deferredVotes.erase(it);}else ++it;
-      trim();wantDependentThreads(e.id,now);
+      trim();wantDependentThreads(e.id,now);if(!local&&!relayed&&e.kind==Kind::Post)acknowledgeDirect(e,now);
     }else if(e.kind==Kind::Vote){
       if(contains(dead,e.ref))return;
       applyVote(e);if(e.up)wantThread(e.ref,now);
@@ -120,6 +145,12 @@ public:
   }
   // send() must return false for channel-busy or failed transmission: no retry consumed.
   void tick(uint32_t now,const std::function<bool(const Event&,bool)>& send){
+    receipts.erase(std::remove_if(receipts.begin(),receipts.end(),[&](const Receipt& r){return int32_t(now-r.expires)>=0||!find(r.event.ref);}),receipts.end());
+    for(auto& receipt:receipts)if(int32_t(now-receipt.due)>=0){
+      if(send(receipt.event,true)){const Id sent=receipt.event.id;receipts.erase(std::remove_if(receipts.begin(),receipts.end(),[&](const Receipt& r){return r.event.id==sent;}),receipts.end());}
+      else receipt.due=now+1000+jitter()%1000;
+      return;
+    }
     for(auto it=pending.begin();it!=pending.end();){
       if(it->ack){it=pending.erase(it);continue;}
       if(int32_t(now-it->due)<0){++it;continue;}

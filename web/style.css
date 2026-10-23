@@ -110,3 +110,10 @@ nav{margin-left:auto}
 .delivery{padding:0 3px;font-size:15px;line-height:1.2;color:var(--muted)}
 
 #tx-enabled{width:22px;height:22px;margin:0 8px 0 0;vertical-align:middle;accent-color:var(--accent)}
+
+#radio-state{display:inline-flex;width:24px;height:24px;margin-right:6px;color:var(--muted)}
+#radio-state svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#radio-state .rx,#radio-state .tx{display:none}
+#radio-state[data-state=rx]{color:#1682cb}#radio-state[data-state=tx]{color:#d57615}
+#radio-state[data-state=rx] .rx,#radio-state[data-state=tx] .tx{display:inline}
+#radio-state[data-state=rx] .standby,#radio-state[data-state=tx] .standby{display:none}

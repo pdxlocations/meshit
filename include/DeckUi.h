@@ -20,11 +20,11 @@ class DeckUi {
   std::array<std::pair<int,int>,3> calibrationSamples{};meshit::DeckCalibration pendingCalibration;
   struct RenderState {
     uint32_t revision=0;uint16_t battery=0;size_t unread=0,cursor=0;
-    int page=0,appearance=0,scroll=0;meshit::Id selected=0,reply=0;
+    int page=0,appearance=0,scroll=0;meshit::RadioActivity activity=meshit::RadioActivity::Standby;meshit::Id selected=0,reply=0;
     bool ready=false,bluetooth=false,keyboardReady=false,top=false,dark=false,focused=false,systemDark=false,followSelection=false,transmitEnabled=true;
     std::string room,draft,error,network,region,wifiSsid,wifiPassword,savedNickname,name,password;
     bool operator==(const RenderState& other)const{
-      return transmitEnabled==other.transmitEnabled&&followSelection==other.followSelection&&revision==other.revision&&battery==other.battery&&unread==other.unread&&cursor==other.cursor&&page==other.page&&appearance==other.appearance&&scroll==other.scroll&&selected==other.selected&&reply==other.reply&&ready==other.ready&&bluetooth==other.bluetooth&&keyboardReady==other.keyboardReady&&top==other.top&&dark==other.dark&&focused==other.focused&&systemDark==other.systemDark&&room==other.room&&draft==other.draft&&error==other.error&&network==other.network&&region==other.region&&wifiSsid==other.wifiSsid&&wifiPassword==other.wifiPassword&&savedNickname==other.savedNickname&&name==other.name&&password==other.password;
+      return activity==other.activity&&transmitEnabled==other.transmitEnabled&&followSelection==other.followSelection&&revision==other.revision&&battery==other.battery&&unread==other.unread&&cursor==other.cursor&&page==other.page&&appearance==other.appearance&&scroll==other.scroll&&selected==other.selected&&reply==other.reply&&ready==other.ready&&bluetooth==other.bluetooth&&keyboardReady==other.keyboardReady&&top==other.top&&dark==other.dark&&focused==other.focused&&systemDark==other.systemDark&&room==other.room&&draft==other.draft&&error==other.error&&network==other.network&&region==other.region&&wifiSsid==other.wifiSsid&&wifiPassword==other.wifiPassword&&savedNickname==other.savedNickname&&name==other.name&&password==other.password;
     }
   } renderedState;
   bool hasRendered=false;
@@ -49,7 +49,7 @@ public:
     keyboardReady=keyboard.begin();chat.page=configured?meshit::DeckChat::Chat:meshit::DeckChat::Presets;initialized=true;}
   void tick(meshit::Core& core,JsonDocument& settings,JsonDocument& presets,uint32_t identity,uint32_t& revision,
             UnreadMessages& unread,bool ready,bool bluetooth,uint16_t battery,const String& name,const String& password,
-            const std::function<String(const String&)>& rpc){
+            const std::function<String(const String&)>& rpc,meshit::RadioActivity activity=meshit::RadioActivity::Standby){
     if(!initialized||int32_t(millis()-next)<0)return;next=millis()+20;
     if(catalog.empty())catalog=choices(presets);
     chat.transmitEnabled=settings["txEnabled"]|true;
@@ -108,7 +108,7 @@ public:
     if(!keyboardReady)chat.error="Keyboard unavailable";
     unread.prune(core);
     const int requestedScroll=scroll.tick(millis(),scene.maxScroll);
-    RenderState current;current.revision=revision;current.battery=battery;current.unread=unread.count();
+    RenderState current;current.activity=activity;current.revision=revision;current.battery=battery;current.unread=unread.count();
     current.cursor=chat.cursor;current.page=chat.page;current.appearance=chat.appearance;current.scroll=requestedScroll;
     current.selected=chat.selected;current.reply=chat.reply;current.ready=ready;current.bluetooth=bluetooth;
     current.keyboardReady=keyboardReady;current.top=chat.top;current.dark=chat.dark;current.focused=chat.focused;
@@ -117,7 +117,7 @@ public:
     current.wifiPassword=chat.wifiPassword;current.savedNickname=chat.savedNickname;
     current.name=name.c_str();current.password=password.c_str();
     if(hasRendered&&current==renderedState)return;
-    {scene=meshit::makeDeckScene(chat,core,catalog,ready,name.c_str(),password.c_str(),DeckGraphics::measure,requestedScroll,battery?std::to_string(battery/1000)+"."+std::to_string((battery%1000)/100)+"V":"",unread.count(),scroll.followSelection,[&](const std::string& room){return unread.count(room,core);},identity);
+    {scene=meshit::makeDeckScene(chat,core,catalog,ready,name.c_str(),password.c_str(),DeckGraphics::measure,requestedScroll,battery?std::to_string(battery/1000)+"."+std::to_string((battery%1000)/100)+"V":"",unread.count(),scroll.followSelection,[&](const std::string& room){return unread.count(room,core);},identity,activity);
     scroll.setPosition(scene.scroll);const uint32_t renderedRevision=revision;
     const bool painted=deckPanel().drawScene(scene);if(painted){renderedState=std::move(current);hasRendered=true;}
     if(painted&&chat.page==meshit::DeckChat::Chat&&renderedRevision==revision){std::vector<meshit::Id> visible;for(const auto& hit:scene.hits)if(hit.action==meshit::DeckTap::Select&&hit.box.h>=40)visible.push_back(hit.target);unread.viewedIds(chat.room,visible,core);}
@@ -156,7 +156,7 @@ public:
       lines={page==meshit::DeckChat::NewRoom?"meshit / new room":page==meshit::DeckChat::Nickname?"meshit / nickname":page==meshit::DeckChat::Ssid?"meshit / network name":"meshit / Wi-Fi password"};deckPanel().wrap(lines,(page==meshit::DeckChat::WifiPassword?std::string(chat.draft.size(),'*'):chat.draft)+"_");lines.push_back("Enter: save  Menu: cancel");
     }else {
       lines={"# "+chat.room+" / "+(chat.top?"Top":"New")+" / "+batteryText,
-             std::string(ready?"Radio ready":(settings["configured"]|false)?"Radio unavailable":"Choose radio preset")+"  Out:"+std::to_string(outgoing)+" New:"+std::to_string(unread.count())+(bluetooth?" BT":"")};
+             std::string(ready?(activity==meshit::RadioActivity::Tx?"Radio TX ^":activity==meshit::RadioActivity::Rx?"Radio RX v":"Radio standby"):(settings["configured"]|false)?"Radio unavailable":"Choose radio preset")+"  Out:"+std::to_string(outgoing)+" New:"+std::to_string(unread.count())+(bluetooth?" BT":"")};
       const auto list=chat.rows(core);size_t start=0;for(size_t i=0;i<list.size();++i)if(list[i].id==chat.selected){start=i;break;}
       if(list.empty())lines.push_back("No messages");
       const size_t bodyLimit=maxLines-4;

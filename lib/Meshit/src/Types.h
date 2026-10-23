@@ -38,12 +38,13 @@ inline bool textValid(const std::string& s,size_t maxBytes,size_t maxChars,bool 
     if(++count>maxChars)return false;
   }return true;
 }
-enum class Kind:uint8_t{Post=1,Vote=2,Request=3,History=4};
+enum class Kind:uint8_t{Post=1,Vote=2,Request=3,History=4,Ack=5};
 struct Event {Kind kind=Kind::Post;Id id=0,ref=0;std::string room,nick,text;bool up=true;};
 inline bool valid(const Event& e){
   if(!sender(e.id)||!sequence(e.id))return false;
   if(e.kind==Kind::Post||e.kind==Kind::History)
     return e.ref!=e.id&&(!e.ref||(sender(e.ref)&&sequence(e.ref)))&&textValid(e.room,MAX_ROOM,MAX_ROOM)&&e.room.find('\n')==std::string::npos&&textValid(e.nick,MAX_NICK,MAX_NICK,true)&&e.nick.find('\n')==std::string::npos&&textValid(e.text,MAX_TEXT,MAX_CHARS);
+  if(e.kind==Kind::Ack)return sender(e.ref)&&sequence(e.ref)&&sender(e.id)!=sender(e.ref);
   if(e.kind==Kind::Vote||e.kind==Kind::Request)return sender(e.ref)&&sequence(e.ref);
   return false;
 }
@@ -65,7 +66,7 @@ inline bool decode(const Bytes& b,Event& e){
     if(17+r+n+t!=b.size())return false;
     e.room.assign((const char*)b.data()+17,r);e.nick.assign((const char*)b.data()+17+r,n);e.text.assign((const char*)b.data()+17+r+n,t);
   }else if(e.kind==Kind::Vote){if(b.size()!=14||b[13]>1)return false;e.up=b[13];}
-  else if(e.kind==Kind::Request){if(b.size()!=13)return false;}
+  else if(e.kind==Kind::Request||e.kind==Kind::Ack){if(b.size()!=13)return false;}
   else return false;
   return valid(e);
 }

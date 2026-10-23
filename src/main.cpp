@@ -43,6 +43,7 @@ uint32_t identity=0,reserved=0,counter=0,revision=1,dirtyAt=0,lastChange=0,nextT
 bool fsReady=false,identityReady=false,ready=false,txBusy=false,dirty=false,txStateChanged=false;
 volatile bool radioFlag=false;
 int radioError=0;size_t txIndex=0;std::vector<Bytes> txPackets;
+meshit::RadioActivityClock radioActivity;
 uint32_t rxCount=0,txCount=0;UnreadMessages unreadMessages;
 #if defined(MESHIT_ESP32)
 uint32_t lastWebActivity=0;bool webClientSeen=false;
@@ -67,7 +68,7 @@ Id allocateId(){
 }
 Network network(){return String(settings["network"]|"")=="meshcore"?Network::MeshCore:Network::Meshtastic;}
 JsonObjectConst preset(){for(JsonObjectConst p:presets.as<JsonArrayConst>())if(p["id"]==settings["preset"])return p;return {};}
-void eventJson(JsonObject o,const Message& m){const auto& e=m.event;o["id"]=hex(e.id);o["parent"]=e.ref?hex(e.ref):"";o["room"]=e.room;o["nickname"]=e.nick;o["text"]=e.text;o["order"]=m.order;o["mine"]=m.mine;o["acknowledged"]=m.acked;o["votes"]=core.score(e.id);o["voted"]=core.voted(e.id,identity);bool pending=false;for(const auto& p:core.pending)if(p.event.id==e.id&&!p.ack)pending=true;o["status"]=m.acked?"rebroadcast heard":pending?"sending":m.mine?"no rebroadcast heard":"received";}
+void eventJson(JsonObject o,const Message& m){const auto& e=m.event;o["id"]=hex(e.id);o["parent"]=e.ref?hex(e.ref):"";o["room"]=e.room;o["nickname"]=e.nick;o["text"]=e.text;o["order"]=m.order;o["mine"]=m.mine;o["acknowledged"]=m.acked;o["votes"]=core.score(e.id);o["voted"]=core.voted(e.id,identity);bool pending=false;for(const auto& p:core.pending)if(p.event.id==e.id&&!p.ack)pending=true;o["status"]=m.acked?"peer confirmed":pending?"sending":m.mine?"no rebroadcast heard":"received";}
 void persist(){
   if(fsReady&&saveHistory(core)){dirty=false;dirtyAt=0;}
 }
@@ -104,8 +105,8 @@ void initRadio(){
 #endif
   if(!radioError){ready=true;startRx();}
 }
-Bytes wrap(const Bytes& fragment){
-  auto p=preset();return network()==Network::Meshtastic?meshtasticPacket(fragment,identity,random32()|1,String(p["channel"]|"LongFast").c_str()):meshcorePacket(fragment);
+Bytes wrap(const Bytes& fragment,bool directReceipt=false){
+  auto p=preset();return network()==Network::Meshtastic?meshtasticPacket(fragment,identity,random32()|1,String(p["channel"]|"LongFast").c_str(),directReceipt?0:7):meshcorePacket(fragment);
 }
 bool beginPacket(){
   if(!transmitEnabled()||txIndex>=txPackets.size())return false;
@@ -118,7 +119,7 @@ bool sendEvent(const Event& e,bool){
   if(!transmitEnabled()||!ready||txBusy||!txPackets.empty()||int32_t(millis()-nextTx)<0)return false;
   std::array<uint8_t,12> nonce{};for(size_t i=0;i<12;i+=4){uint32_t n=random32();for(size_t j=0;j<4;++j)nonce[i+j]=n>>(8*j);}
   Id transfer=(Id(random32())<<16)|(random32()&65535);auto pieces=fragment(transfer,seal(encode(e),nonce));
-  for(const auto& piece:pieces){auto packet=wrap(piece);if(packet.empty()){txPackets.clear();return false;}txPackets.push_back(std::move(packet));}
+  for(const auto& piece:pieces){auto packet=wrap(piece,e.kind==Kind::Ack);if(packet.empty()){txPackets.clear();return false;}txPackets.push_back(std::move(packet));}
   txIndex=0;if(txPackets.empty())return false;
   if(!beginPacket()){txPackets.clear();return false;}txStateChanged=true;return true;
 }
@@ -134,7 +135,7 @@ void pollRadio(){
   }
   if(radioFlag){
     radioFlag=false;size_t len=radio.getPacketLength();Bytes raw(std::min(size_t(255),len));int err=radio.readData(raw.data(),raw.size());startRx();
-    if(!err&&len<=255){Received rx;bool ok=network()==Network::Meshtastic?parseMeshtastic(raw,String(preset()["channel"]|"LongFast").c_str(),rx):parseMeshcore(raw,rx);
+    if(!err&&len<=255){radioActivity.received(millis());Received rx;bool ok=network()==Network::Meshtastic?parseMeshtastic(raw,String(preset()["channel"]|"LongFast").c_str(),rx):parseMeshcore(raw,rx);
       Bytes encrypted,plain;bool relayed=false;Event e;
       if(ok&&assembler.accept(rx.payload,millis(),rx.relayed,encrypted,relayed)&&open(encrypted,plain)&&decode(plain,e)){++rxCount;const bool unseen=!core.find(e.id);core.receive(e,millis(),relayed);if(unseen&&e.kind==Kind::Post&&core.find(e.id)&&!core.find(e.id)->mine)unreadMessages.add(e.id,core);changed();}
     }
@@ -150,7 +151,7 @@ String dispatch(const String& input){
       res["revision"]=revision;res["count"]=core.messages.size();res["settings"]=settings;res["settings"].remove("password");res["settings"].remove("setupPassword");res["settings"].remove("channel");res["settings"]["txEnabled"]=transmitEnabled();res["settings"]["wifiConfigured"]=String(settings["ssid"]|"").length()>0;
       res["presets"]=presets;res["maxTxPowerDbm"]=maxTxPower(boardPowerProfile);
       if(ready){const auto power=selectTxPower(boardPowerProfile,preset()["power"]|0);res["txPowerDbm"]=power.output;res["radioDriveDbm"]=power.drive;}
-      res["ready"]=ready;res["radioError"]=radioError;res["storageReady"]=fsReady;res["identityReady"]=identityReady;res["rx"]=rxCount;res["tx"]=txCount;
+      res["ready"]=ready;res["radioError"]=radioError;res["storageReady"]=fsReady;res["identityReady"]=identityReady;res["rx"]=rxCount;res["tx"]=txCount;res["radioState"]=radioActivityName(radioActivity.state(ready,txBusy,millis()));
       res["wifiSupported"]=
 #if defined(MESHIT_ESP32)
       true;
@@ -329,7 +330,7 @@ void loop(){
   if(txStateChanged){txStateChanged=false;persist();}
   if(dirty&&uint32_t(millis()-lastChange)>5000)persist();
 #if defined(MESHIT_TDECK)
-  if(!ble.pairing())deckUi.tick(core,settings,presets,identity,revision,unreadMessages,ready,ble.connected(),batteryReading().millivolts,setupName,setupPass,dispatch);
+  if(!ble.pairing())deckUi.tick(core,settings,presets,identity,revision,unreadMessages,ready,ble.connected(),batteryReading().millivolts,setupName,setupPass,dispatch,radioActivity.state(ready,txBusy,millis()));
 #endif
   delay(1);
 }

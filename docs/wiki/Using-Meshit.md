@@ -10,9 +10,9 @@ Use **New room** to create a room name of up to 16 UTF-8 bytes. A new empty room
 
 Select the up arrow to upvote, and select it again to remove your vote. **New** sorts by recent local order; **Top** sorts by votes, with recent order breaking ties. Votes are bounded local state, not a globally synchronized ledger.
 
-## The rebroadcast check
+## The delivery check
 
-A check means the radio heard an authenticated rebroadcast of its message from another radio. It does not prove delivery to every participant or that anyone read it. No check means no qualifying rebroadcast was heard. Posts and replies appear immediately with a sending indicator. Acknowledgment is shown by the checkmark, without a completion banner. Actions such as voting and saving settings show progress while waiting for the radio, then clear it when complete. Reconnecting, returning from Settings to chat, and switching rooms clear old notices. The radio allows one initial transmission plus at most three retries. When those attempts finish without a check, a resend icon appears in the checkmark’s place. Resend queues the original message again without creating a duplicate post. Busy-channel waits do not consume attempts.
+A check means another radio confirmed receipt, either through an authenticated rebroadcast or a direct meshit receipt. It does not prove delivery to every participant or that anyone read it. No check means no qualifying confirmation was heard. Direct receipts work without a repeater when both peers have updated firmware and transmission is enabled. Posts and replies appear immediately with a sending indicator. Acknowledgment is shown by the checkmark, without a completion banner. Actions such as voting and saving settings show progress while waiting for the radio, then clear it when complete. Reconnecting, returning from Settings to chat, and switching rooms clear old notices. The radio allows one initial transmission plus at most three retries. When those attempts finish without a check, a resend icon appears in the checkmark’s place. Resend queues the original message again without creating a duplicate post. Busy-channel waits do not consume attempts.
 
 The header’s filled green indicator means the client is connected to the radio; a hollow indicator means disconnected. The indicator has a connection label available to screen readers and on hover.
 
@@ -23,3 +23,5 @@ The radio retains **200 posts and replies across all rooms**. When full, it evic
 Companions keep local drafts and a bounded cached feed while disconnected; sending requires a ready radio. Preview history lasts only for the simulator process. Radio history is persisted across restarts, subject to storage health and installation choices.
 
 [Wiki home](Home.md)
+
+The header antenna icon shows standby, receiving (down arrow), or transmitting (up arrow). Standby means listening with no recent packet activity. The download indicator appears for the initial history load after connection or a node switch; background updates remain quiet.

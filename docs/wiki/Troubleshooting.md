@@ -14,7 +14,7 @@
 | Radio disconnected | In Settings select Wi-Fi (ESP32) and join meshit-… in device Wi-Fi settings, or select Bluetooth, Find radios, choose a radio, and Connect. Saved messages remain visible offline. |
 | ESP32 Bluetooth not found / will not pair | Disconnect clients from the setup Wi-Fi first. ESP32 Bluetooth is hidden while Wi-Fi clients are attached. Its pairing PIN is the last 6 digits of the setup Wi-Fi password (345678 for the no-display fallback). Remove an old OS bond if firmware credentials changed. |
 | Connected but no messages | Confirm network, region, and preset match nearby meshit users and relay infrastructure. Ordinary network chat is not displayed. |
-| No rebroadcast check | No qualifying relayed echo was heard. This is not a read receipt; RF coverage and repeater behavior still require hardware checks. |
+| No delivery check | No qualifying relay echo or direct meshit receipt was heard. For repeater-free confirmation, update both peers and enable TX on the receiver. This is not a read receipt; physical RF verification remains necessary. |
 | Messages disappeared | Check for a network/preset change, fresh install, or the 200-message retention limit. Parent eviction also removes descendants. |
 | Sending disabled | Complete setup, restore the radio connection, and check storage/identity warnings. Keep text within 160 characters. |
 | Heltec reports “Radio storage is unavailable” | Older firmware used the wrong storage partition name. Update the existing installation with firmware containing the partition-name fix, then restart. Use an app-only update; a fresh install erases saved settings and messages. If the warning persists, report it before erasing the radio. |

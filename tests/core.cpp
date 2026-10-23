@@ -16,7 +16,7 @@ using namespace meshit;
 Id id(uint32_t who,uint16_t n){return (Id(who)<<16)|n;}
 Event post(uint32_t who,uint16_t n,Id parent=0){Event e;e.id=id(who,n);e.room="general";e.text="A lightweight conversation";e.ref=parent;return e;}
 Event vote(uint32_t who,uint16_t n,Id target,bool up=true){Event e;e.id=id(who,n);e.kind=Kind::Vote;e.ref=target;e.up=up;return e;}
-Core client(uint32_t who){Core c;c.allocate=[who,n=uint16_t(0)]()mutable{return id(who,++n);};return c;}
+Core client(uint32_t who){Core c;c.directAckEnabled=false;c.allocate=[who,n=uint16_t(0)]()mutable{return id(who,++n);};return c;}
 struct Memory {
   Bytes bytes;size_t at=0;
   size_t write(const uint8_t* b,size_t n){bytes.insert(bytes.end(),b,b+n);return n;}
@@ -370,6 +370,46 @@ int main(){
   assert(hex(id(0xabcdef01,0x1234))=="abcdef011234");assert(fromHex("abcdef011234")==id(0xabcdef01,0x1234));assert(!fromHex("gggggggggggg"));
   auto e=post(1,1);assert(valid(e));auto bytes=encode(e);Event decoded;assert(decode(bytes,decoded));assert(encode(decoded)==bytes);bytes.push_back(0);assert(!decode(bytes,decoded));
   e.text=std::string(160,'a');assert(valid(e));e.text+='a';assert(!valid(e));e.text="";for(int i=0;i<160;++i)e.text+="🙂";assert(valid(e));assert(e.text.size()==640);e.text+="a";assert(!valid(e));e.text="\xc0\x80";assert(!valid(e));e.text="\xed\xa0\x80";assert(!valid(e));e.text="\x01";assert(!valid(e));
+  // Direct meshit peers can confirm delivery without any relayed packet.
+  {
+    auto source=client(700),peer=client(701),otherPeer=client(702);peer.directAckEnabled=otherPeer.directAckEnabled=true;
+    assert(source.submit(post(1,1),0));const auto sent=source.messages.front().event;
+    Event receipt;receipt.kind=Kind::Ack;receipt.id=id(701,99);receipt.ref=sent.id;
+    Event roundTrip;assert(decode(encode(receipt),roundTrip)&&roundTrip.kind==Kind::Ack&&roundTrip.ref==sent.id);
+    auto invalidReceipt=receipt;invalidReceipt.id=id(700,99);assert(!valid(invalidReceipt));
+    auto malformed=encode(receipt);malformed.push_back(0);assert(!decode(malformed,roundTrip));
+    source.receive(receipt,10,false);assert(!source.find(sent.id)->acked); // No successful TX yet.
+    source.tick(200,[&](const Event& event,bool){peer.receive(event,200,false);otherPeer.receive(event,200,false);return true;});
+    assert(source.find(sent.id)->sent&&!source.find(sent.id)->acked);
+    unsigned receipts=0;
+    peer.tick(1500,[&](const Event& event,bool){assert(event.kind==Kind::Ack&&event.ref==sent.id);++receipts;source.receive(event,1500,false);otherPeer.receive(event,1500,false);return true;});
+    assert(receipts==1&&source.find(sent.id)->acked);
+    otherPeer.tick(1500,[](const Event&,bool){assert(false);return true;}); // Suppressed by first receipt.
+    source.tick(1600,[](const Event&,bool){assert(false);return true;});assert(source.pending.empty());
+    peer.receive(sent,2000,false);peer.tick(3000,[](const Event&,bool){assert(false);return true;}); // Duplicate throttled.
+    peer.receive(sent,46000,false);peer.tick(48000,[&](const Event& event,bool){assert(event.kind==Kind::Ack);++receipts;return true;});assert(receipts==2); // Lost receipts can be repaired by a post retry.
+    peer.receive(receipt,49000,false);peer.tick(50000,[](const Event&,bool){assert(false);return true;}); // No ACK-of-ACK.
+    auto historyPeer=client(703);historyPeer.directAckEnabled=true;auto history=sent;history.kind=Kind::History;historyPeer.receive(history,0,false);historyPeer.tick(2000,[](const Event&,bool){assert(false);return true;});
+    auto relayPeer=client(704);relayPeer.directAckEnabled=true;relayPeer.receive(sent,0,true);relayPeer.tick(2000,[](const Event&,bool){assert(false);return true;});
+    auto busyPeer=client(705);busyPeer.directAckEnabled=true;busyPeer.receive(sent,0,false);unsigned attempts=0;busyPeer.tick(2000,[&](const Event& event,bool){assert(event.kind==Kind::Ack);++attempts;return false;});busyPeer.tick(70000,[](const Event&,bool){assert(false);return true;});assert(attempts==1);
+    Memory snapshot;assert(writeSnapshot(snapshot,source));Core restored;assert(readSnapshot(snapshot,restored,2000)&&restored.find(sent.id)->acked);
+    for(auto network:{Network::Meshtastic,Network::MeshCore}){
+      const auto encrypted=seal(encode(receipt),{});const auto pieces=fragment(id(701,100),encrypted);Assembler assembler;Bytes complete;bool relayed=false;
+      for(const auto& piece:pieces){Received received;const auto packet=network==Network::Meshtastic?meshtasticPacket(piece,701,101,"LongFast"):meshcorePacket(piece);assert(network==Network::Meshtastic?parseMeshtastic(packet,"LongFast",received):parseMeshcore(packet,received));assembler.accept(received.payload,0,received.relayed,complete,relayed);}
+      Bytes plain;assert(open(complete,plain)&&decode(plain,roundTrip)&&roundTrip.kind==Kind::Ack&&!relayed);
+    }
+    auto boundedPeer=client(706);boundedPeer.directAckEnabled=true;
+    for(uint16_t n=1;n<=6;++n)boundedPeer.receive(post(707,n),0,false);
+    unsigned boundedReceipts=0;for(uint32_t now=1000;now<=6000;now+=1000)boundedPeer.tick(now,[&](const Event& event,bool){assert(event.kind==Kind::Ack);++boundedReceipts;return true;});assert(boundedReceipts==4);
+    for(auto status:{RadioActivity::Standby,RadioActivity::Rx,RadioActivity::Tx}){
+      DeckChat view;auto measure=[](const std::string& text,DeckFont){return int(text.size())*5;};
+      auto scene=makeDeckScene(view,source,{},true,"meshit-test","12345678",measure,0,"",0,true,{},700,status);
+      assert(std::any_of(scene.paint.begin(),scene.paint.end(),[&](const DeckPaint& paint){return paint.shape==DeckShape::Radio&&paint.text==radioActivityName(status);}));
+      const auto* connection=deckHitAt(scene,215,15);assert(connection&&connection->action==DeckTap::Connection);
+    }
+    RadioActivityClock activity;assert(activity.state(true,false,0)==RadioActivity::Standby);activity.received(100);assert(activity.state(true,false,100)==RadioActivity::Rx);assert(activity.state(true,true,100)==RadioActivity::Tx);assert(activity.state(false,true,100)==RadioActivity::Standby);assert(activity.state(true,false,1600)==RadioActivity::Standby);
+    activity.received(UINT32_MAX-100);assert(activity.state(true,false,100)==RadioActivity::Rx);
+  }
   auto c=client(11);assert(c.submit(post(1,1),0));auto own=c.messages[0].event;int sends=0;
   c.receive(own,50,true);assert(!c.messages[0].acked); // No TX yet.
   c.tick(200,[&](const Event&,bool){++sends;return true;});assert(sends==1);

@@ -23,7 +23,7 @@ let state=null,messages=[],room=localStorage.getItem('meshit.room')||'general',s
 function saved(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
 let draftRooms=saved('meshit.rooms',[]).filter(s=>typeof s==='string').slice(0,20);
 const outgoing=new Map();
-let deliveryNotice=null,radioConnected=false;
+let deliveryNotice=null,radioConnected=false,initialDownload=true;
 const notify=(text='')=>{deliveryNotice=null;$('notice').textContent=text;};
 function watchDelivery(id){
   notify();deliveryNotice={id,node:state?.node,revision:loadedRevision};updateDeliveryNotice();
@@ -83,7 +83,7 @@ function render(){
   const sorted=items=>items.sort((a,b)=>sort==='top'?(b.votes-a.votes||b.order-a.order):b.order-a.order);
   function post(m,depth=0){
     const row=element('article','post'),vote=element('div','vote'),up=element('button',null,'↑');up.setAttribute('aria-label',m.voted?'Remove upvote':'Upvote');up.setAttribute('aria-pressed',String(m.voted));up.disabled=busy||!!m.local||state?.settings?.txEnabled===false;up.onclick=()=>act(async()=>{await transport.request({op:'vote',target:m.id,up:!m.voted});loadedRevision=0;await refresh();},m.voted?'Removing upvote…':'Sending upvote…');vote.append(up,element('span',null,String(m.votes)));
-    const content=element('div'),meta=element('div','meta');meta.append(element('strong',null,m.nickname||'Anonymous'));if(m.mine)meta.append(element('span',null,'you'));if(m.acknowledged){const ack=element('span','ack','✓');ack.title='Your message was heard rebroadcast by another radio';ack.setAttribute('aria-label',ack.title);meta.append(ack);}else if(m.mine){
+    const content=element('div'),meta=element('div','meta');meta.append(element('strong',null,m.nickname||'Anonymous'));if(m.mine)meta.append(element('span',null,'you'));if(m.acknowledged){const ack=element('span','ack','✓');ack.title='Another radio confirmed receipt of your message';ack.setAttribute('aria-label',ack.title);meta.append(ack);}else if(m.mine){
       if(m.status==='sending'){const pending=element('span','delivery','…');pending.title='Sending message…';pending.setAttribute('aria-label',pending.title);meta.append(pending);}
       else {const retry=element('button','delivery','↻');retry.title='No acknowledgment received. Resend message';retry.setAttribute('aria-label',retry.title);retry.disabled=busy||!state?.ready||state?.settings?.txEnabled===false;retry.onclick=()=>act(async()=>{
         if(m.local)await sendOutgoing(m);
@@ -105,7 +105,7 @@ function count(){resizeComposer();const n=Array.from($('message').value).length;
 async function act(action,label='Working…'){if(busy)return;busy=true;count();connectionControls();notify(label);try{await action();if($('notice').textContent===label)notify();}catch(e){downloadStatus(false);notify(e.message);}finally{busy=false;render();connectionControls();}}
 async function refresh(){
   if(polling)return;polling=true;const epoch=transport.generation;if(!radioConnected)downloadStatus(true);try{
-    const next=await transport.request({op:'state'});if(epoch!==transport.generation)return;const switched=!!(next.node&&state?.node&&next.node!==state.node),first=!state||switched;if(switched){outgoing.clear();messages=[];loadedRevision=0;reply='';}state=next;setConnected(true);
+    const next=await transport.request({op:'state'});if(epoch!==transport.generation)return;const switched=!!(next.node&&state?.node&&next.node!==state.node),first=!state||switched;if(switched){initialDownload=true;outgoing.clear();messages=[];loadedRevision=0;reply='';}const previous=state;state=next;setConnected(true);updateRadioState(previous,next);
     if(next.revision!==loadedRevision||next.count!==messages.length){
       downloadStatus(true);loadedRevision=0;      const result=[],merged=new Map(messages.map(m=>[m.id,m]));let stable=true;
       for(let offset=0;offset<next.count;offset+=8){
@@ -119,9 +119,9 @@ async function refresh(){
         if((offset+8)%32===0||offset+8>=next.count){messages=[...merged.values()];render();}
       }
       const unique=[...new Map(result.map(m=>[m.id,m])).values()];
-      if(stable&&unique.length===next.count){messages=unique;loadedRevision=next.revision;draftRooms=draftRooms.filter(r=>!messages.some(m=>m.room===r));localStorage.setItem('meshit.rooms',JSON.stringify(draftRooms));localStorage.setItem('meshit.cache',JSON.stringify({state:next,messages:messages.slice(-200)}));render();downloadStatus(false);}
+      if(stable&&unique.length===next.count){messages=unique;loadedRevision=next.revision;draftRooms=draftRooms.filter(r=>!messages.some(m=>m.room===r));localStorage.setItem('meshit.rooms',JSON.stringify(draftRooms));localStorage.setItem('meshit.cache',JSON.stringify({state:next,messages:messages.slice(-200)}));render();initialDownload=false;downloadStatus(false);}
       else loadedRevision=0;
-    }else downloadStatus(false);
+    }else {initialDownload=false;downloadStatus(false);}
     connectionStatus(`Connected via ${transport.mode==='wifi'?'Wi-Fi':'Bluetooth'}${transport.link?.label?' · '+transport.link.label:''}`);
     $('connection').textContent=`${next.settings.network||'Choose a network'} · ${next.ready?'connected':'radio not ready'}${next.demo?' · SIMULATOR':''}`;
     if(first)settingsUI();if(!next.settings.configured&&!$('onboarding').open&&view==='chat')$('onboarding').showModal();
@@ -161,11 +161,20 @@ $('tx-enabled').onchange=()=>act(async()=>{try{await transport.request({op:'txEn
 $('settings-form').onsubmit=e=>{e.preventDefault();act(async()=>{if(utf8($('nickname').value)>16)throw new Error('Nickname must fit 16 UTF-8 bytes');const data={op:'settings',network:document.querySelector('[name=network]:checked').value,preset:$('preset').value,nickname:$('nickname').value};const wifiChanged=$('ssid').value!==(state.settings.ssid||'')||$('password').value.length;if(wifiChanged){data.ssid=$('ssid').value;data.password=$('password').value;}await transport.request(data);loadedRevision=0;await refresh();notify(wifiChanged?'Restart the radio to join Wi-Fi, then open meshit.local.':'');$('password').value='';},'Saving settings…');};
 function setConnected(connected){
   if(connected&&!radioConnected)notify();
-  radioConnected=connected;if(!connected){loadedRevision=0;viewedKey='';downloadStatus(false);}
+  radioConnected=connected;if(!connected){initialDownload=true;loadedRevision=0;viewedKey='';downloadStatus(false);$('radio-state').dataset.state='standby';$('radio-state').title='Radio standby';$('radio-state').setAttribute('aria-label','Radio standby');}
   const indicator=$('radio-connection'),label=connected?`Radio connected via ${transport.mode==='wifi'?'Wi-Fi':'Bluetooth'}`:'Radio disconnected';
   indicator.dataset.connected=String(connected);indicator.title=label;indicator.setAttribute('aria-label',label);
 }
-function downloadStatus(active){$('download-status').textContent=active?'Downloading messages…':'';}
+function downloadStatus(active){$('download-status').textContent=active&&initialDownload?'Downloading messages…':'';}
+function updateRadioState(previous,next){
+  let activity=['rx','tx'].includes(next.radioState)?next.radioState:'standby';
+  if(next.ready&&activity==='standby'&&previous?.node===next.node){
+    if(Number(next.tx)>Number(previous.tx))activity='tx';else if(Number(next.rx)>Number(previous.rx))activity='rx';
+  }
+  if(!next.ready)activity='standby';
+  const icon=$('radio-state'),label=activity==='tx'?'Radio transmitting':activity==='rx'?'Radio receiving':'Radio standby';
+  icon.dataset.state=activity;icon.title=label;icon.setAttribute('aria-label',label);
+}
 function connectionStatus(message){$('link-status').textContent=message;connectionControls();}
 function connectionControls(){
   const bluetooth=transport.mode==='ble';$('transport').value=transport.mode;

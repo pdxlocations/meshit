@@ -10,11 +10,11 @@ All multibyte application fields are little-endian. Event layout:
 
 | Field | Bytes |
 | --- | --- |
-| Kind: post=1, vote=2, request=3, history post=4 | 1 |
+| Kind: post=1, vote=2, request=3, history post=4, receipt=5 | 1 |
 | Event ID | 6 |
 | Reference: parent, vote target, requested ID, or zero | 6 |
 
-Posts/history append room length (1), nickname length (1), text length (2), then their UTF-8 bytes. Room and nickname each fit 16 bytes; an empty nickname means Anonymous. Text is at most 160 Unicode scalar values and 640 UTF-8 bytes. Invalid UTF-8, overlong encodings, surrogates, NULs, and controls other than line breaks are rejected. Names cannot contain line breaks. Votes append one byte: 1 adds an upvote; 0 removes it. Requests append nothing.
+Posts/history append room length (1), nickname length (1), text length (2), then their UTF-8 bytes. Room and nickname each fit 16 bytes; an empty nickname means Anonymous. Text is at most 160 Unicode scalar values and 640 UTF-8 bytes. Invalid UTF-8, overlong encodings, surrogates, NULs, and controls other than line breaks are rejected. Names cannot contain line breaks. Votes append one byte: 1 adds an upvote; 0 removes it. Requests and receipts append nothing. Receipts reference the acknowledged live post and must have a different sender from that post.
 
 Posts are immutable. A reply references its immediate parent in the same room. Cycles and excessive ancestry are rejected; retained descendant trees are deleted when their parent is evicted. Received replies whose parent has not been heard can be shown as roots, without requesting old history solely because of a reply. Locally displaced parents are tombstoned, preventing their replies from returning while those tombstones remain retained.
 
@@ -45,7 +45,9 @@ Neither adapter forwards received packets, emits node info, requests network ack
 
 ## Checks and retries
 
-Only a successfully authenticated, matching echo of a transmitted originated post with relay evidence sets its rebroadcast check. Every fragment in its reassembly must have relay evidence. Local enqueueing, an arbitrary duplicate, an unrelayed frame, explicit network ACK, upvote, or history response does not create a rebroadcast check. A late matching relay echo still creates a check after retries end.
+A post receives its delivery check after either an authenticated matching echo with relay evidence or an authenticated meshit receipt (kind 5) from another sender referencing that post's ID. The post must be locally originated and already transmitted. Local enqueueing, an unrelayed self-echo, network-level ACK, upvote, and history response do not create a check. A late qualifying echo or receipt still confirms a sent post after retries end.
+
+A meshit receiver schedules a receipt only after storing a directly received live post, including a matching retry of a stored post. It never acknowledges history downloads, votes, or receipts. Receipts wait 250–999 ms, follow normal channel/duty/TX-enable checks, and expire after 60 seconds. There are at most four queued receipts and 32 recent target cooldown entries (10 seconds per target). Hearing another receiver's receipt suppresses a queued duplicate. Receipts are one-shot and not persisted; a later retry of the original post can solicit another. Meshtastic receipts have zero relay hops; MeshCore uses the existing group-data wrapper. Both directly communicating nodes need updated firmware; older nodes ignore the new kind and retain rebroadcast-only confirmation.
 
 The scheduler allows one initial attempt plus three retries, starting at 45 seconds with increasing waits and jitter. Channel-busy checks and refused sends do not consume attempts. Each attempt begins when the first fragment enters the radio; remaining fragments follow asynchronously. Failed or interrupted later fragments are repaired by a later whole-event retry. The PHY enforces the selected preset's airtime spacing; pending RF jobs prevent interleaving. Pending attempt counts and sent/check state are saved in the binary snapshot. Actual radio timing remains subject to hardware validation.
 
@@ -64,6 +66,8 @@ There is no periodic history exchange. First hearing a sender establishes its hi
 | Current vote states | 512 |
 | Deferred votes for missing posts | 32 |
 | Recent recoverable vote events | 32 |
+| Queued direct receipts | 4 |
+| Receipt cooldown targets | 32 |
 | Fragment reassemblies | 4 × 7 fragments |
 | Local RPC input line | 2048 bytes |
 | RPC message page | 8 messages |
@@ -97,3 +101,5 @@ The `txEnabled` operation accepts a Boolean `enabled` and saves it immediately w
 - [MeshCore preamble settings](https://github.com/meshcore-dev/MeshCore/blob/main/src/helpers/radiolib/RadioLibWrappers.h)
 - [Puget Mesh's published narrow preset](https://github.com/pugetmesh/pugetmesh.github.io/blob/main/docs/meshcore/index.md)
 - [Crypto library](https://github.com/rweather/arduinolibs/tree/master/libraries/Crypto)
+
+`state.radioState` reports `standby`, `rx`, or `tx`. Standby means no current activity while listening; RX remains visible for 1.5 seconds after reception, and active TX takes priority. Companions also compare packet counters to expose short bursts between polls. The initial-history download indicator is shown only while connecting/reconnecting or switching nodes, not on routine revision refreshes.

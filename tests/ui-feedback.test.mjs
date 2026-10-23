@@ -14,7 +14,7 @@ class Element {
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('post appears before RPC resolves; errors retain text with retry; acknowledgment replaces retry',async()=>{
   const elements=new Map(),get=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);};
-  let feed=[],revision=1,resolvePost,rejectPost,poll,offline=false,waitState,waitMessages,churn=false,viewedIdsSupported=false;const viewed=[];let visibilityChanged,txEnabled=true,failTxToggle=false;
+  let feed=[],revision=1,resolvePost,rejectPost,poll,offline=false,waitState,waitMessages,churn=false,viewedIdsSupported=false;const viewed=[];let visibilityChanged,txEnabled=true,failTxToggle=false,radioState="standby",rx=0,tx=0,node="test";
   class Radio {
     constructor(){this.mode='wifi';this.devices=[];this.link={};this.generation=1;}
     async request(req){
@@ -23,7 +23,7 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
       if(req.op==='state'&&waitState)await waitState;
       if(req.op==='messages'&&waitMessages)await waitMessages;
       if(req.op==='state'&&offline)throw new Error('Connection lost');
-      if(req.op==='state')return {viewedSupported:true,viewedIdsSupported,node:'test',ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester',txEnabled},board:'Heltec V4.3',wifiSupported:true,presets:[]};
+      if(req.op==='state')return {viewedSupported:true,viewedIdsSupported,node,radioState,rx,tx,ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester',txEnabled},board:'Heltec V4.3',wifiSupported:true,presets:[]};
       if(req.op==='messages'){if(churn)revision++;return {revision,messages:feed.slice(req.offset,req.offset+8)};}
       if(req.op==='resend'){feed.find(m=>m.id===req.target).status='sending';revision++;return {ok:true};}
       if(req.op==='post')return new Promise((resolve,reject)=>{resolvePost=resolve;rejectPost=reject;});
@@ -36,6 +36,13 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   assert.equal(get('wifi-settings').hidden,false,'V4 exposes Wi-Fi configuration');
   assert.equal(get('radio-connection').dataset.connected,'true');
   assert.equal(get('radio-connection')['aria-label'],'Radio connected via Wi-Fi');
+  assert.equal(get('radio-state').dataset.state,'standby');
+  radioState='tx';tx++;poll();await tick();assert.equal(get('radio-state').dataset.state,'tx');assert.equal(get('radio-state')['aria-label'],'Radio transmitting');
+  radioState='rx';rx++;poll();await tick();assert.equal(get('radio-state').dataset.state,'rx');
+  radioState='standby';poll();await tick();assert.equal(get('radio-state').dataset.state,'standby');
+  rx++;poll();await tick();assert.equal(get('radio-state').dataset.state,'rx','counters reveal activity between client polls');
+  poll();await tick();assert.equal(get('radio-state').dataset.state,'standby');
+
   assert.equal(get('tx-enabled').checked,true);
   get('nickname').value='Unsaved name';get('message').value='Unsent draft';get('message').oninput();get('tx-enabled').checked=false;
   await get('tx-enabled').onchange();assert.equal(get('tx-enabled').checked,false);assert.equal(get('send').disabled,true);assert.equal(get('message').value,'Unsent draft');assert.equal(get('nickname').value,'Unsaved name');
@@ -123,7 +130,7 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   poll();await tick();
   assert.match(get('feed').textContent,/Arrived during download/,'valid pages appear despite revision changes');
   assert.equal(viewed.length,viewedBeforeChurn,'partial history is not marked viewed');
-  assert.equal(get('download-status').textContent,'Downloading messages…');
+  assert.equal(get('download-status').textContent,'','background revision churn has no download indicator');
   churn=false;poll();await tick();
   assert.equal(get('download-status').textContent,'','a stable retry completes the download');
   assert.equal(viewed.at(-1).revision,revision);
@@ -147,6 +154,15 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   assert.ok(exactViews.every(req=>req.messages.length<=32&&req.room==='camp'));
   assert.ok(exactViews.some(req=>req.messages.includes('latest-unread')));
   assert.ok(exactViews.every(req=>!req.messages.includes('master')),'other rooms remain unread');
+  churn=false;let finishBackground;
+  waitMessages=new Promise(resolve=>finishBackground=resolve);revision++;poll();await tick();
+  assert.equal(get('download-status').textContent,'','routine history refresh stays quiet while waiting on pages');
+  finishBackground();await tick();waitMessages=null;
+  let finishNewNode;waitMessages=new Promise(resolve=>finishNewNode=resolve);node='another-radio';poll();await tick();
+  assert.equal(get('download-status').textContent,'Downloading messages…','switching to a different node starts initial history progress');
+  finishNewNode();await tick();await tick();waitMessages=null;
+  assert.equal(get('download-status').textContent,'');
+
 
 
 

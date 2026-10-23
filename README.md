@@ -4,7 +4,7 @@
 
 Small, threaded LoRa chat for **Heltec V3/V4 and LILYGO T-Deck / Plus / Pro / Pro Max (ESP32-S3)** and **RAK4631 / T114 (nRF52840)**. meshit originates encrypted application traffic on a selected Meshtastic or MeshCore network. Existing infrastructure supplies the relays; meshit never forwards ordinary received traffic.
 
-Chat has rooms, replies, removable upvotes, New/Top sorting, and an optional nickname (Anonymous by default). Posts and replies accept **160 Unicode characters**. A check means **another radio was heard rebroadcasting the message**, not that everyone received it. Without a check, the radio makes at most three retries after the initial send.
+Chat has rooms, replies, removable upvotes, New/Top sorting, and an optional nickname (Anonymous by default). Posts and replies accept **160 Unicode characters**. A check means **another radio confirmed receipt**, through a matching rebroadcast or a direct meshit receipt; it does not mean everyone received it. Without a check, the radio makes at most three retries after the initial send.
 
 There are no locations, node advertisements, direct messages, explicit radio acknowledgments, or periodic history broadcasts. The single exception to the no-forwarding rule is answering an explicit request for a retained message, with delayed response suppression.
 
