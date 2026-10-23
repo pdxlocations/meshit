@@ -6,7 +6,7 @@
 #include <cmath>
 namespace meshit {
 struct DeckBox {int x=0,y=0,w=0,h=0;bool contains(int px,int py)const{return px>=x&&py>=y&&px<x+w&&py<y+h;}};
-enum class DeckShape {Fill,Round,Outline,Line,Text,Poop,Chat,Gear,Dot,Up,Reply,Check,Retry,Pending,Radio,Down,Battery};
+enum class DeckShape {Fill,Round,Outline,Line,Text,Poop,Chat,Gear,Dot,Up,Reply,Check,Retry,Pending,Radio,Down,Battery,Score};
 enum class DeckFont {Small,Body,Bold};
 enum class DeckTap {Chat,Settings,Rooms,NewRoom,Top,New,Post,Cancel,Select,Reply,Vote,Resend,MenuItem,Focus,Save,Back,Connection,CancelEditor,Downvote};
 struct DeckPaint {DeckShape shape;DeckBox box;uint16_t color;std::string text;DeckFont font=DeckFont::Small;DeckBox clip;};
@@ -80,7 +80,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         draw(DeckShape::Line,{x,y,305-indent,0},p.line,"",DeckFont::Small,clip);
         if(row.depth)draw(DeckShape::Line,{x,y+4,0,h-8},p.line,"",DeckFont::Small,clip);
         const uint16_t voteColor=identity&&core.voted(row.id,identity)?p.button:p.muted;
-        draw(DeckShape::Up,{x+16,y+9,12,12},voteColor,"",DeckFont::Small,clip);const auto score=std::to_string(core.score(row.id));draw(DeckShape::Text,{x+22-measure(score,DeckFont::Small)/2,y+35,0,0},p.muted,score,DeckFont::Small,clip);
+        draw(DeckShape::Up,{x+16,y+7,12,12},voteColor,"",DeckFont::Small,clip);const auto score=std::to_string(core.score(row.id));draw(DeckShape::Score,{x+2,y+22,41,16},p.muted,score,DeckFont::Small,clip);
         draw(DeckShape::Text,{bodyX,y+14,0,0},p.ink,deckFit(m->event.nick.empty()?"Anonymous":m->event.nick,175,DeckFont::Small,measure),DeckFont::Small,clip);
         if(m->mine){draw(DeckShape::Text,{251,y+14,0,0},p.muted,"you",DeckFont::Small,clip);bool pending=false;for(const auto& job:core.pending)if(job.event.id==row.id&&!job.ack&&!job.history)pending=true;
           draw(m->acked?DeckShape::Check:pending?DeckShape::Pending:DeckShape::Retry,{291,y+4,14,14},p.ink,"",DeckFont::Small,clip);
@@ -91,7 +91,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         const int top=std::max(y,feedTop),bottom=std::min(y+h,feedBottom);
         const int split=std::max(top,std::min(bottom,y+29));
         hit(DeckTap::Vote,{x+1,top,40,split-top},row.id);hit(DeckTap::Downvote,{x+1,split,40,bottom-split},row.id);
-        draw(DeckShape::Down,{x+16,y+37,12,12},core.downvoted(row.id,identity)?p.button:p.muted,"",DeckFont::Small,clip);
+        draw(DeckShape::Down,{x+16,y+40,12,12},core.downvoted(row.id,identity)?p.button:p.muted,"",DeckFont::Small,clip);
         const int replyTop=std::max(feedTop,y+h-23);if(replyTop<bottom)hit(DeckTap::Reply,{bodyX,replyTop,95,bottom-replyTop},row.id);
         // The whole visible row is tappable, including the gutter of indented replies.
         hit(DeckTap::Select,{0,top,320,bottom-top},row.id);

@@ -58,6 +58,11 @@ public:
         case S::Outline:surface.drawRoundRect(x,y,w,h,4,c);break;
         case S::Line:surface.drawLine(x,y,x+w,y+h,c);break;
         case S::Text:label(x,y,op.text,op.font,c);break;
+        case S::Score:{
+          // Center the visible glyphs, including the minus sign, rather than their advances.
+          surface.setFont(&font(op.font));int16_t left,top;uint16_t width,height;
+          const auto value=printable(op.text);surface.getTextBounds(value.c_str(),0,0,&left,&top,&width,&height);
+          label(x+(w-int(width))/2-left,y+(h-int(height))/2-top,value,op.font,c);break;}
         case S::Battery:meshit::drawDeckBattery(surface,x,y,w,h,atoi(op.text.c_str()),c);break;
         case S::Radio:{
           if(op.text=="tx"){surface.drawLine(x+10,y+17,x+10,y+3,c);surface.drawLine(x+5,y+8,x+10,y+3,c);surface.drawLine(x+10,y+3,x+15,y+8,c);}
