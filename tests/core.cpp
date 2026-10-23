@@ -72,6 +72,9 @@ int main(){
     pointer.contact(100,180);pointer.contact(102,140);pointer.contact(180,120);e=pointer.release();assert(!e.swipeX&&!e.tap); // Vertical drags never switch tabs.
     DeckChat navigation;navigation.key(DeckLeft,Core(),{},1);assert(navigation.page==DeckChat::Chat);navigation.key(DeckRight,Core(),{},1);assert(navigation.page==DeckChat::Chat);
     navigation.swipe(-1);assert(navigation.page==DeckChat::Settings);navigation.swipe(1);assert(navigation.page==DeckChat::Chat);navigation.swipe(1);assert(navigation.page==DeckChat::Rooms);navigation.swipe(-1);assert(navigation.page==DeckChat::Chat);
+    pointer.contact(70,150);pointer.contact(140,150);auto canceled=pointer.cancel();assert(canceled.released&&!canceled.tap&&!canceled.swipeX);assert(!pointer.cancel().released);
+    pointer.contact(100,180);auto recovered=pointer.contact(101,130);assert(recovered.dragY==-50);pointer.release(); // A missing release cannot leave the next gesture locked horizontally.
+    pointer.contact(100,180);assert(pointer.contact(110,170).dragY==0);assert(pointer.contact(112,140).dragY==-40);pointer.release(); // Diagonal touch jitter waits for a clear axis.
     auto c=client(400);auto root=post(401,1),child=post(402,1,root.id);c.receive(root,0,false);c.receive(child,0,false);
     DeckChat d;d.sync(c);const std::vector<DeckPreset> catalog={{"mt-us-longfast","meshtastic","US LongFast"}};
     auto measure=[](const std::string& text,DeckFont f){return int(text.size())*(f==DeckFont::Small?5:8);};
@@ -116,6 +119,12 @@ int main(){
     auto c=client(450);for(int n=1;n<=12;++n)c.receive(post(451,n),n,false);
     DeckChat d;d.sync(c);const Id selected=d.selected;
     auto measure=[](const std::string& text,DeckFont f){return int(text.size())*(f==DeckFont::Small?5:8);};
+    DeckScene touchScene;touchScene.viewport={0,130,320,110};DeckPointerEvent touchMove;touchMove.originY=75;touchMove.x=150;touchMove.dragY=40;
+    assert(deckTouchScrollDelta(d,touchScene,touchMove)==-40); // Chat scrolling also works when a swipe begins above the short feed viewport.
+    DeckScroll reverseScroll;reverseScroll.move(100,100);reverseScroll.drag(deckTouchScrollDelta(d,touchScene,touchMove),116);assert(reverseScroll.position()==140);
+    touchMove.dragY=-40;reverseScroll.drag(deckTouchScrollDelta(d,touchScene,touchMove),132);assert(reverseScroll.position()==100);
+    touchMove.originY=10;assert(!deckTouchScrollDelta(d,touchScene,touchMove));
+    d.page=DeckChat::Settings;touchMove.originY=150;assert(deckTouchScrollDelta(d,touchScene,touchMove)==-40);d.page=DeckChat::Chat;
     auto frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure,120,"",0,false);
     assert(frame.scroll==120&&d.selected==selected); // Touch scrolling must not snap to the selected message.
     for(const auto& hit:frame.hits)assert(hit.box.h>=0&&hit.box.y>=0&&hit.box.y+hit.box.h<=240);

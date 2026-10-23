@@ -149,15 +149,20 @@ inline DeckAction activateDeckHit(const DeckHit& hit,DeckChat& chat,const Core& 
   }return action;
 }
 struct DeckPointerEvent {bool tap=false;int x=0,y=0,swipe=0,dragY=0;bool released=false,pressed=false;int originY=0,swipeX=0;};
+inline int deckTouchScrollDelta(const DeckChat& chat,const DeckScene& scene,const DeckPointerEvent& event){
+  if(chat.page==DeckChat::Chat)return event.originY>=30?-event.dragY:0;
+  return scene.viewport.contains(event.x,event.originY)?event.dragY:0;
+}
 class DeckGesture {
   bool active=false,dragged=false;int axis=0;int startX=0,startY=0,lastX=0,lastY=0,travel=0;
 public:
   DeckPointerEvent contact(int x,int y){const bool fresh=!active;if(fresh){active=true;dragged=false;axis=0;startX=x;startY=y;travel=0;}const int previousY=lastY;lastX=x;lastY=y;travel=std::max(travel,std::max(std::abs(x-startX),std::abs(y-startY)));
     int delta=0;const bool alreadyDragged=dragged;
-    if(!axis&&travel>8){axis=std::abs(y-startY)>=std::abs(x-startX)?2:1;dragged=true;}
+    if(!axis&&travel>8){const int dx=std::abs(x-startX),dy=std::abs(y-startY);if(dy>=dx+6)axis=2;else if(dx>=dy+6)axis=1;if(axis)dragged=true;}
     if(axis==2)delta=alreadyDragged?y-previousY:y-startY;
     return {false,x,y,0,delta,false,fresh,startY};
   }
+  DeckPointerEvent cancel(){if(!active)return {};active=false;axis=0;dragged=false;DeckPointerEvent event;event.released=true;return event;}
   DeckPointerEvent release(){if(!active)return {};active=false;const int delta=lastY-startY;return {!dragged&&travel<18,lastX,lastY,std::abs(delta)>18?(delta>0?-1:1):0,0,true,false,startY,axis==1&&std::abs(lastX-startX)>=40?(lastX>startX?1:-1):0};}
 };
 // Scroll content with the finger; preserve pixel distance instead of advancing selection.
