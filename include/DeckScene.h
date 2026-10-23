@@ -68,7 +68,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     for(const auto& row:rows){const auto* m=core.find(row.id);const int indent=std::min(row.depth,4u)*14;auto body=deckWrap(m->event.text,264-indent,DeckFont::Body,measure);
       if(body.size()>3){body.resize(3);body.back()=deckFit(body.back()+"...",264-indent,DeckFont::Body,measure);}
       // Reserve a separate footer so Reply does not cover the last line of message text.
-      const int height=52+int(body.size())*18;if(row.id==chat.selected){selectedTop=total;selectedHeight=height;}heights.push_back(height);bodies.push_back(std::move(body));total+=height;
+      const int height=38+int(body.size())*18;if(row.id==chat.selected){selectedTop=total;selectedHeight=height;}heights.push_back(height);bodies.push_back(std::move(body));total+=height;
     }
     s.maxScroll=std::max(0,total-viewport);s.viewport={0,feedTop,320,viewport};
     s.scroll=std::max(0,std::min(previousScroll,s.maxScroll));
@@ -80,7 +80,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         draw(DeckShape::Line,{x,y,305-indent,0},p.line,"",DeckFont::Small,clip);
         if(row.depth)draw(DeckShape::Line,{x,y+4,0,h-8},p.line,"",DeckFont::Small,clip);
         const uint16_t voteColor=identity&&core.voted(row.id,identity)?p.button:p.muted;
-        draw(DeckShape::Up,{x+7,y+9,12,12},voteColor,"",DeckFont::Small,clip);draw(DeckShape::Text,{x+9,y+34,0,0},voteColor,std::to_string(core.score(row.id)),DeckFont::Small,clip);
+        draw(DeckShape::Up,{x+7,y+9,12,12},voteColor,"",DeckFont::Small,clip);const auto score=std::to_string(core.score(row.id));draw(DeckShape::Text,{x+13-measure(score,DeckFont::Small)/2,y+33,0,0},p.muted,score,DeckFont::Small,clip);
         draw(DeckShape::Text,{bodyX,y+14,0,0},p.ink,deckFit(m->event.nick.empty()?"Anonymous":m->event.nick,175,DeckFont::Small,measure),DeckFont::Small,clip);
         if(m->mine){draw(DeckShape::Text,{251,y+14,0,0},p.muted,"you",DeckFont::Small,clip);bool pending=false;for(const auto& job:core.pending)if(job.event.id==row.id&&!job.ack&&!job.history)pending=true;
           draw(m->acked?DeckShape::Check:pending?DeckShape::Pending:DeckShape::Retry,{291,y+4,14,14},p.ink,"",DeckFont::Small,clip);
@@ -89,9 +89,9 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         for(size_t j=0;j<bodies[i].size();++j)draw(DeckShape::Text,{bodyX,y+33+int(j)*18,0,0},p.ink,bodies[i][j],DeckFont::Body,clip);
         draw(DeckShape::Reply,{bodyX,y+h-14,11,10},p.muted,"",DeckFont::Small,clip);draw(DeckShape::Text,{bodyX+15,y+h-5,0,0},p.muted,"Reply",DeckFont::Small,clip);
         const int top=std::max(y,feedTop),bottom=std::min(y+h,feedBottom);
-        const int split=std::max(top,std::min(bottom,y+h-26));
+        const int split=std::max(top,std::min(bottom,y+29));
         hit(DeckTap::Vote,{x+1,top,28,split-top},row.id);hit(DeckTap::Downvote,{x+1,split,28,bottom-split},row.id);
-        draw(DeckShape::Down,{x+7,y+h-21,12,12},core.downvoted(row.id,identity)?p.button:p.muted,"",DeckFont::Small,clip);
+        draw(DeckShape::Down,{x+7,y+37,12,12},core.downvoted(row.id,identity)?p.button:p.muted,"",DeckFont::Small,clip);
         const int replyTop=std::max(feedTop,y+h-23);if(replyTop<bottom)hit(DeckTap::Reply,{bodyX,replyTop,95,bottom-replyTop},row.id);
         // The whole visible row is tappable, including the gutter of indented replies.
         hit(DeckTap::Select,{0,top,320,bottom-top},row.id);
