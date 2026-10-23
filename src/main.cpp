@@ -200,7 +200,6 @@ String dispatch(const String& input){
       for(JsonObjectConst v:presets.as<JsonArrayConst>())if(v["id"]==selected&&v["network"]==net)p=v;
       std::string nick=req["nickname"]|settings["nickname"]|"";
       if(p.isNull()||!textValid(nick,MAX_NICK,MAX_NICK,true))res["error"]="Choose a matching network preset; nickname must fit 16 UTF-8 bytes";
-      else if(txBusy||!txPackets.empty()||!core.pending.empty())res["error"]="Wait for queued transmissions before changing settings";
       else {
         JsonDocument next;next.set(settings);next["network"]=net;next["preset"]=selected;next["nickname"]=nick;next.remove("channel");next["configured"]=true;
         if(req["ssid"].is<const char*>())next["ssid"]=req["ssid"];
