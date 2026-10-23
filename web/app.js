@@ -104,7 +104,7 @@ function count(){resizeComposer();const n=Array.from($('message').value).length;
   const parent=messages.find(m=>m.id===reply);if(reply&&!parent)reply='';$('reply-context').hidden=!reply;$('cancel-reply').hidden=!reply;$('message').placeholder=reply?'Post a reply':'Write something interesting...';$('message').setAttribute('aria-label',$('message').placeholder);$('reply-context').textContent=parent?`${parent.nickname||'Anonymous'}: ${parent.text.slice(0,70)}`:'';$('send').textContent=busy?'Sending…':reply?'Reply':'Post';}
 async function act(action,label='Working…'){if(busy)return;busy=true;count();connectionControls();notify(label);try{await action();if($('notice').textContent===label)notify();}catch(e){downloadStatus(false);notify(e.message);}finally{busy=false;render();connectionControls();}}
 async function refresh(){
-  if(polling)return;polling=true;const epoch=transport.generation;if(!radioConnected)downloadStatus(true);try{
+  if(polling)return;polling=true;const epoch=transport.generation;try{
     const next=await transport.request({op:'state'});if(epoch!==transport.generation)return;const switched=!!(next.node&&state?.node&&next.node!==state.node),first=!state||switched;if(switched){initialDownload=true;outgoing.clear();messages=[];loadedRevision=0;reply='';}const previous=state;state=next;setConnected(true);updateRadioState(previous,next);
     if(next.revision!==loadedRevision||next.count!==messages.length){
       downloadStatus(true);loadedRevision=0;      const result=[],merged=new Map(messages.map(m=>[m.id,m]));let stable=true;
@@ -165,7 +165,7 @@ function setConnected(connected){
   const indicator=$('radio-connection'),label=connected?`Radio connected via ${transport.mode==='wifi'?'Wi-Fi':'Bluetooth'}`:'Radio disconnected';
   indicator.dataset.connected=String(connected);indicator.title=label;indicator.setAttribute('aria-label',label);
 }
-function downloadStatus(active){$('download-status').textContent=active&&initialDownload?'Downloading messages…':'';}
+function downloadStatus(active){$('download-status').textContent=active&&radioConnected&&initialDownload?'Downloading messages…':'';}
 function updateRadioState(previous,next){
   let activity=['rx','tx'].includes(next.radioState)?next.radioState:'standby';
   if(next.ready&&activity==='standby'&&previous?.node===next.node){
@@ -204,7 +204,7 @@ $('scan').onclick=()=>act(async()=>{
   connectionStatus(devices.length?'Select a radio and tap Connect.':'No meshit radios found. Check Bluetooth and radio power.');
 });
 $('connect').onclick=()=>act(async()=>{
-  changingRadio();downloadStatus(true);connectionStatus('Connecting… ESP32 may request its 6-digit pairing PIN.');
+  changingRadio();connectionStatus('Connecting… ESP32 may request its 6-digit pairing PIN.');
   await transport.connect($('devices').value);await refresh();
 });
 $('disconnect').onclick=()=>act(async()=>{

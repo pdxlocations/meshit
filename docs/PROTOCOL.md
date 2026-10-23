@@ -102,7 +102,7 @@ The `txEnabled` operation accepts a Boolean `enabled` and saves it immediately w
 - [Puget Mesh's published narrow preset](https://github.com/pugetmesh/pugetmesh.github.io/blob/main/docs/meshcore/index.md)
 - [Crypto library](https://github.com/rweather/arduinolibs/tree/master/libraries/Crypto)
 
-`state.radioState` reports `standby`, `rx`, or `tx`. Standby means no current activity while listening; RX remains visible for 1.5 seconds after reception, and active TX takes priority. Companions also compare packet counters to expose short bursts between polls. The initial-history download indicator is shown only while connecting/reconnecting or switching nodes, not on routine revision refreshes.
+`state.radioState` reports `standby`, `rx`, or `tx`. Standby means no current activity while listening; RX remains visible for 1.5 seconds after reception, and active TX takes priority. Companions also compare packet counters to expose short bursts between polls. The initial-history download indicator is shown only after a radio responds successfully and its initial message pages are being fetched, including after reconnecting or switching nodes. Scanning, pairing, waiting for the first radio response, and routine revision refreshes do not show it.
 
 `state.signedVotesSupported` advertises downvote support. Messages include `voted` and `downvoted` for the connected node plus the signed aggregate `votes` score. Shared browser, Android, and iOS clients disable downvotes against older firmware. Downvotes use the same event-ID gap recovery and retained-state responses as upvotes.
 
