@@ -69,7 +69,8 @@ int main(){
     Event outgoing;outgoing.room=action.room;outgoing.ref=action.target;outgoing.text=action.text;assert(radio.submit(outgoing,100));
     deck.accepted(action,radio.pending.back().event.id);assert(deck.draft.empty()&&!deck.reply&&radio.find(deck.selected)->mine);
     key(DeckMenu);deck.cursor=2;action=key('\r');assert(action.op=="vote"&&action.up&&action.target==deck.selected);
-    radio.receive(vote(300,2,action.target),200,false);key(DeckMenu);deck.cursor=2;action=key('\r');assert(!action.up);
+    radio.receive(vote(300,2,action.target),200,false);assert(deck.menuItems(radio,300)[2]=="Remove upvote");
+    key(DeckMenu);deck.cursor=2;action=key('\r');assert(!action.up);
     key(DeckMenu);deck.cursor=3;action=key('\r');assert(action.op=="resend"&&action.target==deck.selected);
     key(DeckMenu);deck.cursor=5;key('\r');for(char c:std::string("camp"))key(c);key('\r');assert(deck.room=="camp"&&!deck.reply);
     key(DeckMenu);deck.cursor=8;key('\r');key(DeckDown);key(DeckDown);key('\r');assert(deck.page==DeckChat::Regions);key(DeckDown);key('\r');assert(deck.page==DeckChat::Presets);key(DeckDown);action=key('\r');assert(action.op=="settings"&&action.preset=="mc-eu-narrow"&&action.network=="meshcore");
@@ -129,6 +130,9 @@ int main(){
     d.reply=root.id;
     d.draft="Touch reply";auto action=activateDeckHit(find(DeckTap::Post),d,c,catalog,400);assert(action.op=="post"&&action.target==root.id&&action.text=="Touch reply");
     action=activateDeckHit(find(DeckTap::Vote,root.id),d,c,catalog,400);assert(action.op=="vote"&&action.up);
+    c.receive(vote(400,2,root.id),1,false);d.selected=root.id;
+    scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure,0,"",0,true,{},400);
+    assert(std::any_of(scene.paint.begin(),scene.paint.end(),[&](const DeckPaint& op){return op.shape==DeckShape::Up&&op.color==deckPalette(d.dark).button;}));
     activateDeckHit(find(DeckTap::Settings),d,c,catalog,400);assert(d.page==DeckChat::Settings);
     activateDeckHit({DeckTap::MenuItem,{},0,4},d,c,catalog,400);assert(d.page==DeckChat::Appearance);activateDeckHit({DeckTap::MenuItem,{},0,3},d,c,catalog,400);assert(d.dark);
     scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);assert(scene.paint.front().color==deckPalette(true).paper);

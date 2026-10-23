@@ -26,7 +26,7 @@ inline std::vector<std::string> deckWrap(const std::string& text,int width,DeckF
 }
 // A display-independent scene also supplies the exact touch targets used to draw it.
 inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector<DeckPreset>& presets,
- bool connected,const std::string& name,const std::string& password,const DeckMeasure& measure,int previousScroll=0,const std::string& battery="",size_t unread=0,bool followSelection=true,const std::function<size_t(const std::string&)>& roomUnread={}){
+ bool connected,const std::string& name,const std::string& password,const DeckMeasure& measure,int previousScroll=0,const std::string& battery="",size_t unread=0,bool followSelection=true,const std::function<size_t(const std::string&)>& roomUnread={},uint32_t identity=0){
   DeckScene s;const auto p=deckPalette(chat.dark);const DeckBox full{0,0,320,240};
   auto draw=[&](DeckShape shape,DeckBox b,uint16_t color,const std::string& text="",DeckFont f=DeckFont::Small,DeckBox clip=DeckBox{}){s.paint.push_back({shape,b,color,text,f,clip.w?clip:full});};
   auto text=[&](int x,int y,const std::string& value,DeckFont f=DeckFont::Small,uint16_t color=0){draw(DeckShape::Text,{x,y,0,0},color?color:p.ink,value,f);};
@@ -65,7 +65,8 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         if(row.id==chat.selected)draw(DeckShape::Fill,{x,y,305-indent,h},p.selected,"",DeckFont::Small,clip);
         draw(DeckShape::Line,{x,y,305-indent,0},p.line,"",DeckFont::Small,clip);
         if(row.depth)draw(DeckShape::Line,{x,y+4,0,h-8},p.line,"",DeckFont::Small,clip);
-        draw(DeckShape::Up,{x+7,y+9,12,12},p.muted,"",DeckFont::Small,clip);draw(DeckShape::Text,{x+9,y+34,0,0},p.muted,std::to_string(core.score(row.id)),DeckFont::Small,clip);
+        const uint16_t voteColor=identity&&core.voted(row.id,identity)?p.button:p.muted;
+        draw(DeckShape::Up,{x+7,y+9,12,12},voteColor,"",DeckFont::Small,clip);draw(DeckShape::Text,{x+9,y+34,0,0},voteColor,std::to_string(core.score(row.id)),DeckFont::Small,clip);
         draw(DeckShape::Text,{bodyX,y+14,0,0},p.ink,deckFit(m->event.nick.empty()?"Anonymous":m->event.nick,175,DeckFont::Small,measure),DeckFont::Small,clip);
         if(m->mine){draw(DeckShape::Text,{251,y+14,0,0},p.muted,"you",DeckFont::Small,clip);bool pending=false;for(const auto& job:core.pending)if(job.event.id==row.id&&!job.ack&&!job.history)pending=true;
           draw(m->acked?DeckShape::Check:pending?DeckShape::Pending:DeckShape::Retry,{291,y+4,14,14},p.ink,"",DeckFont::Small,clip);
@@ -85,7 +86,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     else if(chat.page==DeckChat::Appearance){title="Appearance";items={"System","Light","Dark"};items[chat.appearance]+=" (selected)";}
     else if(chat.page==DeckChat::Network){title="Network";items={"Meshtastic","MeshCore"};}
     else if(chat.page==DeckChat::Regions){title="Region";items=chat.regions(presets);}
-    else if(chat.page==DeckChat::Menu){title="Message";items=chat.menu;}
+    else if(chat.page==DeckChat::Menu){title="Message";items=chat.menuItems(core,identity);}
     else if(chat.page==DeckChat::Rooms){title="Rooms";items=chat.rooms(core);draw(DeckShape::Round,{244,35,68,23},p.selected);text(253,51,"+ New room");hit(DeckTap::NewRoom,{238,31,82,30});}
     else if(chat.page==DeckChat::Presets){title="Radio preset";for(const auto& preset:chat.filtered(presets))items.push_back(preset.label);}
     else if(chat.page==DeckChat::Credentials){const size_t outgoing=outgoingCount(core);title="Radio connection";items={name,"Password: "+password,"http://192.168.4.1","Bluetooth PIN: "+(password.size()>2?password.substr(2):""),"http://meshit.local","New: "+std::to_string(unread)+"  Out: "+std::to_string(outgoing)};}

@@ -38,6 +38,9 @@ public:
     return out;
   }
   void sync(const Core& core){const auto list=rows(core);if(std::none_of(list.begin(),list.end(),[&](const DeckRow& r){return r.id==selected;}))selected=list.empty()?0:list.front().id;if(reply&&!core.find(reply))reply=0;}
+  std::vector<std::string> menuItems(const Core& core,uint32_t identity)const{
+    auto items=menu;if(selected)items[2]=core.voted(selected,identity)?"Remove upvote":"Upvote";return items;
+  }
   DeckAction key(int key,const Core& core,const std::vector<DeckPreset>& presets,uint32_t identity){
     sync(core);error.clear();DeckAction action;
     if(key==DeckLeft||key==DeckRight)return action;

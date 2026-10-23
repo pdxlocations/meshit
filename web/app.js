@@ -74,7 +74,12 @@ function render(){
   const rooms=new Set([...visible.map(m=>m.room),...draftRooms]);if(!rooms.size)rooms.add('general');if(!rooms.has(room)){room=[...rooms][0];reply='';}
   $('rooms').replaceChildren();for(const name of [...rooms].sort()){const b=element('button','room'+(name===room?' selected':''));b.append(element('span',null,'# '+name),element('span',null,String(visible.filter(m=>m.room===name).length)));b.onclick=()=>chooseRoom(name);$('rooms').append(b);}
   $('room-title').textContent='# '+room;$('feed').replaceChildren();
-  const list=visible.filter(m=>m.room===room),byId=new Map(list.map(m=>[m.id,m]));
+  const list=visible.filter(m=>m.room===room),byId=new Map(list.map(m=>[m.id,m])),childrenByParent=new Map(),roots=[];
+  for(const m of list){
+    if(!m.parent||!byId.has(m.parent)){roots.push(m);continue;}
+    const children=childrenByParent.get(m.parent);
+    if(children)children.push(m);else childrenByParent.set(m.parent,[m]);
+  }
   const sorted=items=>items.sort((a,b)=>sort==='top'?(b.votes-a.votes||b.order-a.order):b.order-a.order);
   function post(m,depth=0){
     const row=element('article','post'),vote=element('div','vote'),up=element('button',null,'↑');up.setAttribute('aria-label',m.voted?'Remove upvote':'Upvote');up.setAttribute('aria-pressed',String(m.voted));up.disabled=busy||!!m.local;up.onclick=()=>act(async()=>{await transport.request({op:'vote',target:m.id,up:!m.voted});loadedRevision=0;await refresh();},m.voted?'Removing upvote…':'Sending upvote…');vote.append(up,element('span',null,String(m.votes)));
@@ -88,9 +93,9 @@ function render(){
     const actions=element('div','post-actions'),button=element('button',null,'↳ Reply');button.disabled=!!m.local;button.onclick=()=>{reply=m.id;count();$('message').focus();$('compose').scrollIntoView({behavior:'smooth',block:'center'});};actions.append(button);if(m.mine&&!m.acknowledged)actions.append(element('span',null,m.status));
     content.append(meta,element('p','body',m.text),actions);
     row.append(vote,content);
-    const children=sorted(list.filter(child=>child.parent===m.id));if(children.length&&depth<32){const box=element('div','children');for(const child of children)box.append(post(child,depth+1));row.append(box);}return row;
+    const children=childrenByParent.get(m.id);if(children?.length&&depth<32){const box=element('div','children');for(const child of sorted(children))box.append(post(child,depth+1));row.append(box);}return row;
   }
-  const roots=sorted(list.filter(m=>!m.parent||!byId.has(m.parent)));for(const m of roots)$('feed').append(post(m));
+  for(const m of sorted(roots))$('feed').append(post(m));
   if(!roots.length){const empty=element('div','empty');empty.append(element('h2',null,'No messages'));$('feed').append(empty);}
   count();markViewed();
 }
@@ -102,16 +107,16 @@ async function refresh(){
   if(polling)return;polling=true;const epoch=transport.generation;if(!radioConnected)downloadStatus(true);try{
     const next=await transport.request({op:'state'});if(epoch!==transport.generation)return;const switched=!!(next.node&&state?.node&&next.node!==state.node),first=!state||switched;if(switched){outgoing.clear();messages=[];loadedRevision=0;reply='';}state=next;setConnected(true);
     if(next.revision!==loadedRevision||next.count!==messages.length){
-      downloadStatus(true);loadedRevision=0;const result=[];let stable=true;
+      downloadStatus(true);loadedRevision=0;      const result=[],merged=new Map(messages.map(m=>[m.id,m]));let stable=true;
       for(let offset=0;offset<next.count;offset+=8){
         const p=await transport.request({op:'messages',offset});if(epoch!==transport.generation)return;
         if(p.revision!==next.revision)stable=false;
         if(!Array.isArray(p.messages))throw new Error('Invalid message response');
         result.push(...p.messages);
         // Keep useful pages even while incoming radio traffic changes the revision.
-        // Only a complete, consistent pass may replace history or mark it viewed.
-        const merged=new Map(messages.map(m=>[m.id,m]));for(const m of p.messages)merged.set(m.id,m);
-        messages=[...merged.values()];render();
+        // Publish partial history in batches to avoid rebuilding the full feed per page.
+        for(const m of p.messages)merged.set(m.id,m);
+        if((offset+8)%32===0||offset+8>=next.count){messages=[...merged.values()];render();}
       }
       const unique=[...new Map(result.map(m=>[m.id,m])).values()];
       if(stable&&unique.length===next.count){messages=unique;loadedRevision=next.revision;draftRooms=draftRooms.filter(r=>!messages.some(m=>m.room===r));localStorage.setItem('meshit.rooms',JSON.stringify(draftRooms));localStorage.setItem('meshit.cache',JSON.stringify({state:next,messages:messages.slice(-200)}));render();downloadStatus(false);}

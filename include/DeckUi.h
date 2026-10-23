@@ -13,10 +13,20 @@
 #endif
 class DeckUi {
   meshit::DeckChat chat;DeckKeyboard keyboard;bool keyboardReady=false,initialized=false;uint32_t next=0;
+  uint32_t syncedRevision=0;bool hasSynced=false;
   std::vector<meshit::DeckPreset> catalog;
 #if defined(MESHIT_TDECK_PLUS)
   DeckTouch touch;meshit::DeckTapLatch tapLatch;meshit::DeckScene scene;meshit::DeckScroll scroll;
-
+  struct RenderState {
+    uint32_t revision=0;uint16_t battery=0;size_t unread=0,cursor=0;
+    int page=0,appearance=0,scroll=0;meshit::Id selected=0,reply=0;
+    bool ready=false,bluetooth=false,keyboardReady=false,top=false,dark=false,focused=false,systemDark=false;
+    std::string room,draft,error,network,region,wifiSsid,wifiPassword,savedNickname,name,password;
+    bool operator==(const RenderState& other)const{
+      return revision==other.revision&&battery==other.battery&&unread==other.unread&&cursor==other.cursor&&page==other.page&&appearance==other.appearance&&scroll==other.scroll&&selected==other.selected&&reply==other.reply&&ready==other.ready&&bluetooth==other.bluetooth&&keyboardReady==other.keyboardReady&&top==other.top&&dark==other.dark&&focused==other.focused&&systemDark==other.systemDark&&room==other.room&&draft==other.draft&&error==other.error&&network==other.network&&region==other.region&&wifiSsid==other.wifiSsid&&wifiPassword==other.wifiPassword&&savedNickname==other.savedNickname&&name==other.name&&password==other.password;
+    }
+  } renderedState;
+  bool hasRendered=false;
 #endif
   std::vector<meshit::DeckPreset> choices(JsonDocument& presets){
     std::vector<meshit::DeckPreset> result;
@@ -25,9 +35,11 @@ class DeckUi {
   }
 public:
   void begin(bool configured,bool dark=false,int appearance=-1){
+    hasSynced=false;
     chat.systemDark=false;chat.appearance=appearance>=0&&appearance<=2?appearance:dark?2:0;chat.dark=chat.appearance==2;
 #if defined(MESHIT_TDECK_PLUS)
     touch.begin();
+    hasRendered=false;
 #endif
     keyboardReady=keyboard.begin();chat.page=configured?meshit::DeckChat::Chat:meshit::DeckChat::Presets;initialized=true;}
   void tick(meshit::Core& core,JsonDocument& settings,JsonDocument& presets,uint32_t identity,uint32_t& revision,
@@ -67,13 +79,24 @@ public:
         }
       }
     }
-    chat.sync(core);
+    if(!hasSynced||syncedRevision!=revision){chat.sync(core);syncedRevision=revision;hasSynced=true;}
 #if defined(MESHIT_TDECK_PLUS)
     if(!keyboardReady)chat.error="Keyboard unavailable";
     unread.prune(core);
-    {scene=meshit::makeDeckScene(chat,core,catalog,ready,name.c_str(),password.c_str(),DeckGraphics::measure,scroll.tick(millis(),scene.maxScroll),battery?std::to_string(battery/1000)+"."+std::to_string((battery%1000)/100)+"V":"",unread.count(),scroll.followSelection,[&](const std::string& room){return unread.count(room,core);});
+    const int requestedScroll=scroll.tick(millis(),scene.maxScroll);
+    RenderState current;current.revision=revision;current.battery=battery;current.unread=unread.count();
+    current.cursor=chat.cursor;current.page=chat.page;current.appearance=chat.appearance;current.scroll=requestedScroll;
+    current.selected=chat.selected;current.reply=chat.reply;current.ready=ready;current.bluetooth=bluetooth;
+    current.keyboardReady=keyboardReady;current.top=chat.top;current.dark=chat.dark;current.focused=chat.focused;
+    current.systemDark=chat.systemDark;current.room=chat.room;current.draft=chat.draft;current.error=chat.error;
+    current.network=chat.network;current.region=chat.region;current.wifiSsid=chat.wifiSsid;
+    current.wifiPassword=chat.wifiPassword;current.savedNickname=chat.savedNickname;
+    current.name=name.c_str();current.password=password.c_str();
+    if(hasRendered&&current==renderedState)return;
+    {scene=meshit::makeDeckScene(chat,core,catalog,ready,name.c_str(),password.c_str(),DeckGraphics::measure,requestedScroll,battery?std::to_string(battery/1000)+"."+std::to_string((battery%1000)/100)+"V":"",unread.count(),scroll.followSelection,[&](const std::string& room){return unread.count(room,core);},identity);
     scroll.setPosition(scene.scroll);const uint32_t renderedRevision=revision;
-    const bool painted=deckPanel().drawScene(scene);if(painted&&chat.page==meshit::DeckChat::Chat&&renderedRevision==revision){std::vector<meshit::Id> visible;for(const auto& hit:scene.hits)if(hit.action==meshit::DeckTap::Select&&hit.box.h>=40)visible.push_back(hit.target);unread.viewedIds(chat.room,visible,core);}
+    const bool painted=deckPanel().drawScene(scene);if(painted){renderedState=std::move(current);hasRendered=true;}
+    if(painted&&chat.page==meshit::DeckChat::Chat&&renderedRevision==revision){std::vector<meshit::Id> visible;for(const auto& hit:scene.hits)if(hit.action==meshit::DeckTap::Select&&hit.box.h>=40)visible.push_back(hit.target);unread.viewedIds(chat.room,visible,core);}
     else if(painted&&chat.page==meshit::DeckChat::Read&&renderedRevision==revision)unread.viewedIds(chat.room,{chat.selected},core);
     return;}
 #endif
@@ -94,7 +117,7 @@ public:
       lines.push_back("Up/down: scroll  Enter: back");
     }else if(page==meshit::DeckChat::Menu||page==meshit::DeckChat::Rooms||page==meshit::DeckChat::Presets||page==meshit::DeckChat::Settings||page==meshit::DeckChat::Appearance||page==meshit::DeckChat::Network||page==meshit::DeckChat::Regions||page==meshit::DeckChat::Wifi){
       lines={page==meshit::DeckChat::Menu?"meshit / menu":page==meshit::DeckChat::Rooms?"meshit / rooms":page==meshit::DeckChat::Settings?"meshit / settings":page==meshit::DeckChat::Appearance?"meshit / appearance":page==meshit::DeckChat::Network?"meshit / network":page==meshit::DeckChat::Regions?"meshit / region":page==meshit::DeckChat::Wifi?"meshit / local Wi-Fi":"meshit / radio preset"};
-      std::vector<std::string> items;if(page==meshit::DeckChat::Menu)items=chat.menu;else if(page==meshit::DeckChat::Rooms){items=chat.rooms(core);for(auto& room:items){const auto fresh=unread.count(room,core);room+=" ("+std::to_string(meshit::roomMessageCount(core,room))+")"+(fresh?" / "+std::to_string(fresh)+" new":"");}}else if(page==meshit::DeckChat::Settings)items=chat.settingsItems();else if(page==meshit::DeckChat::Appearance)items={"System","Light","Dark"};else if(page==meshit::DeckChat::Network)items={"Meshtastic","MeshCore"};else if(page==meshit::DeckChat::Regions)items=chat.regions(catalog);else if(page==meshit::DeckChat::Wifi)items={"Network: "+chat.wifiSsid,"Password: keep saved","Save settings"};else for(const auto& p:chat.filtered(catalog))items.push_back(p.label);
+      std::vector<std::string> items;if(page==meshit::DeckChat::Menu)items=chat.menuItems(core,identity);else if(page==meshit::DeckChat::Rooms){items=chat.rooms(core);for(auto& room:items){const auto fresh=unread.count(room,core);room+=" ("+std::to_string(meshit::roomMessageCount(core,room))+")"+(fresh?" / "+std::to_string(fresh)+" new":"");}}else if(page==meshit::DeckChat::Settings)items=chat.settingsItems();else if(page==meshit::DeckChat::Appearance)items={"System","Light","Dark"};else if(page==meshit::DeckChat::Network)items={"Meshtastic","MeshCore"};else if(page==meshit::DeckChat::Regions)items=chat.regions(catalog);else if(page==meshit::DeckChat::Wifi)items={"Network: "+chat.wifiSsid,"Password: keep saved","Save settings"};else for(const auto& p:chat.filtered(catalog))items.push_back(p.label);
       if(chat.hasBackRow())items.insert(items.begin(),"Back");
       const size_t window=maxLines-3,start=chat.cursor>=window?chat.cursor-window+1:0;
       for(size_t i=start;i<items.size()&&lines.size()<maxLines-2;++i)lines.push_back((chat.cursor==i?"> ":"  ")+items[i]);
