@@ -69,7 +69,7 @@ public:
         else {
           JsonDocument stored;stored["version"]=1;auto values=stored["coefficients"].to<JsonArray>();for(float value:pendingCalibration.coefficients)values.add(value);
           String serialized;serializeJson(stored,serialized);
-          if(writeFile("/touch-calibration.json",serialized)){touch.calibration=pendingCalibration;chat.page=meshit::DeckChat::Settings;chat.cursor=6;chat.error="Touch calibration saved";}
+          if(writeFile("/touch-calibration.json",serialized)){touch.calibration=pendingCalibration;chat.page=meshit::DeckChat::Settings;chat.cursor=5;chat.error="Touch calibration saved";}
           else chat.error="Could not save. Tap to retry.";
         }
       }

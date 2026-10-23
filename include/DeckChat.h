@@ -30,7 +30,7 @@ public:
   bool hasBackRow()const{return page==Settings||page==Rooms||page==Presets||page==Appearance||page==Network||page==Regions||page==Wifi;}
   std::vector<DeckPreset> filtered(const std::vector<DeckPreset>& presets)const{std::vector<DeckPreset> out;for(const auto& p:presets)if((network.empty()||p.network==network)&&(region.empty()||p.region==region))out.push_back(p);return out;}
   std::vector<std::string> regions(const std::vector<DeckPreset>& presets)const{std::vector<std::string> out;for(const auto& p:presets)if(p.network==network&&std::find(out.begin(),out.end(),p.region)==out.end())out.push_back(p.region);return out;}
-  std::vector<std::string> settingsItems()const{auto items=std::vector<std::string>{"Radio connection","Network","Nickname","Appearance","Local Wi-Fi"};if(touchAvailable)items.push_back("Calibrate touch");items.push_back(transmitEnabled?"Transmit: On":"Transmit: Off");return items;}
+  std::vector<std::string> settingsItems()const{auto items=std::vector<std::string>{"Radio connection","Network","Nickname","Local Wi-Fi"};if(touchAvailable)items.push_back("Calibrate touch");items.push_back(transmitEnabled?"Transmit: On":"Transmit: Off");items.push_back("Appearance");return items;}
   void swipe(int direction){if(!direction)return;if(isEditor())leaveEditor();error.clear();if(direction<0){if(page==Rooms)page=Chat;else page=Settings;}else{if(page==Chat)page=Rooms;else if(page!=Rooms)page=Chat;}cursor=0;}
   const std::vector<std::string> menu={"Back","Reply","Toggle upvote","Resend","Read full message"};
   const std::vector<std::string> navigationItems={"Back","Rooms","New room","New post","New / Top","Settings"};
@@ -56,7 +56,7 @@ public:
   DeckAction key(int key,const Core& core,const std::vector<DeckPreset>& presets,uint32_t identity){
     sync(core);error.clear();DeckAction action;
     if(key==DeckLeft||key==DeckRight)return action;
-    if(key==DeckSettings){if(isEditor())leaveEditor();page=Settings;cursor=touchAvailable?6:0;return action;}
+    if(key==DeckSettings){if(isEditor())leaveEditor();page=Settings;cursor=touchAvailable?5:0;return action;}
     if(key==DeckMenu||key==12){if(isEditor())leaveEditor();page=page==Navigation?Chat:Navigation;cursor=0;return action;}
     if(key==DeckBack||key==27){if(page!=Chat)back();else cancelReply();return action;}
     if(page==Calibrate){if(key=='\r'||key=='\n'){page=Settings;cursor=0;error.clear();}return action;}
@@ -69,8 +69,8 @@ public:
     }
     if(key=='\r'||key=='\n'){
       if(hasBackRow()&&cursor==0){back();return action;}const size_t option=hasBackRow()?cursor-1:cursor;
-      if(page==Settings){if(option==(touchAvailable?6u:5u)){action.op="txEnabled";action.enabled=!transmitEnabled;return action;}switch(option){case 0:page=Credentials;break;case 1:page=Network;break;case 2:edit(Nickname,savedNickname,Settings);break;case 3:page=Appearance;cursor=0;return action;case 4:wifiSsid=savedSsid;wifiPassword.clear();page=Wifi;break;case 5:if(touchAvailable)page=Calibrate;break;}cursor=0;return action;}
-      if(page==Appearance){appearance=int(option);dark=appearance==0?systemDark:appearance==2;action.op="deckAppearance";action.text=std::to_string(appearance);page=Settings;cursor=4;return action;}
+      if(page==Settings){if(option==(touchAvailable?6u:5u)){page=Appearance;cursor=0;return action;}if(option==(touchAvailable?5u:4u)){action.op="txEnabled";action.enabled=!transmitEnabled;return action;}switch(option){case 0:page=Credentials;break;case 1:page=Network;break;case 2:edit(Nickname,savedNickname,Settings);break;case 3:wifiSsid=savedSsid;wifiPassword.clear();page=Wifi;break;case 4:if(touchAvailable)page=Calibrate;break;}cursor=0;return action;}
+      if(page==Appearance){appearance=int(option);dark=appearance==0?systemDark:appearance==2;action.op="deckAppearance";action.text=std::to_string(appearance);page=Settings;cursor=settingsItems().size();return action;}
       if(page==Network){network=option==0?"meshtastic":"meshcore";region.clear();page=Regions;cursor=0;return action;}
       if(page==Regions){auto list=regions(presets);if(option<list.size()){region=list[option];page=Presets;cursor=0;}return action;}
       if(page==Wifi){if(option==0)edit(Ssid,wifiSsid,Wifi);else if(option==1)edit(WifiPassword,wifiPassword,Wifi);else{action.op="wifi";action.ssid=wifiSsid;action.password=wifiPassword;}return action;}

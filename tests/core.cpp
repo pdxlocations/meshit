@@ -94,10 +94,10 @@ int main(){
   }
   {
     for(bool touch:{false,true}){
-      DeckChat txChat;txChat.touchAvailable=touch;txChat.page=DeckChat::Settings;txChat.cursor=touch?7:6;
+      DeckChat txChat;txChat.touchAvailable=touch;txChat.page=DeckChat::Settings;txChat.cursor=touch?6:5;
       auto action=txChat.key('\r',Core(),{},1);assert(action.op=="txEnabled"&&!action.enabled);
       JsonDocument request;deckRequest(request,action);assert(request["op"]=="txEnabled"&&request["enabled"]==false);
-      txChat.transmitEnabled=false;assert(txChat.settingsItems().back()=="Transmit: Off");
+      txChat.transmitEnabled=false;assert(txChat.settingsItems()[touch?5:4]=="Transmit: Off");
       action=txChat.key('\r',Core(),{},1);assert(action.op=="txEnabled"&&action.enabled);
       txChat.page=DeckChat::Chat;txChat.draft="Keep unsent";action=txChat.key('\r',Core(),{},1);assert(action.op.empty()&&txChat.draft=="Keep unsent"&&!txChat.error.empty());
     }
@@ -108,7 +108,7 @@ int main(){
     assert(!button.update(true,UINT32_MAX-500,'\r',DeckSettings));assert(button.update(true,699,'\r',DeckSettings)==DeckSettings);assert(!button.update(false,700,'\r',DeckSettings));
     auto recoveryCore=client(490);auto recoveryMessage=post(491,1);recoveryCore.receive(recoveryMessage,0,false);
     DeckChat recovery;recovery.touchAvailable=true;recovery.draft="Do not send";recovery.reply=recoveryMessage.id;
-    auto recoveryAction=recovery.key(DeckSettings,recoveryCore,{},490);assert(recoveryAction.op.empty()&&recovery.page==DeckChat::Settings&&recovery.cursor==6&&recovery.draft=="Do not send");
+    auto recoveryAction=recovery.key(DeckSettings,recoveryCore,{},490);assert(recoveryAction.op.empty()&&recovery.page==DeckChat::Settings&&recovery.cursor==5&&recovery.draft=="Do not send");
     recovery.key('\r',recoveryCore,{},490);assert(recovery.page==DeckChat::Calibrate&&recovery.reply==recoveryMessage.id);
     recovery.key('\r',recoveryCore,{},490);assert(recovery.page==DeckChat::Settings&&recovery.draft=="Do not send");
     recovery.key(DeckMenu,recoveryCore,{},490);assert(recovery.page==DeckChat::Navigation);recovery.cursor=1;recovery.key('\r',recoveryCore,{},490);assert(recovery.page==DeckChat::Rooms);
@@ -132,8 +132,8 @@ int main(){
     }
     DeckCalibration invalid;invalid.coefficients.fill(0);assert(!invalid.valid());invalid.coefficients[0]=NAN;assert(!invalid.valid());
     auto calibrationCore=client(480);auto calibrationMessage=post(481,1);calibrationCore.receive(calibrationMessage,0,false);
-    DeckChat calibrationChat;assert(calibrationChat.settingsItems().size()==6);calibrationChat.touchAvailable=true;assert(calibrationChat.settingsItems()[5]=="Calibrate touch");
-    calibrationChat.page=DeckChat::Settings;calibrationChat.cursor=6;calibrationChat.draft="Keep draft";calibrationChat.reply=calibrationMessage.id;
+    DeckChat calibrationChat;assert(calibrationChat.settingsItems().size()==6);calibrationChat.touchAvailable=true;assert(calibrationChat.settingsItems()[4]=="Calibrate touch");
+    calibrationChat.page=DeckChat::Settings;calibrationChat.cursor=5;calibrationChat.draft="Keep draft";calibrationChat.reply=calibrationMessage.id;
     calibrationChat.key('\r',calibrationCore,{},1);assert(calibrationChat.page==DeckChat::Calibrate&&calibrationChat.cursor==0);
     auto calibrationMeasure=[](const std::string& text,DeckFont){return int(text.size())*5;};
     for(size_t step=0;step<4;++step){calibrationChat.cursor=step;auto screen=makeDeckScene(calibrationChat,Core(),{},true,"","",calibrationMeasure);assert(screen.hits.empty());
@@ -241,7 +241,7 @@ int main(){
     scene=makeDeckScene(d,c,catalog,true,"meshit-00af","12345678",measure,0,"",0,true,{},400);
     assert(std::any_of(scene.paint.begin(),scene.paint.end(),[&](const DeckPaint& op){return op.shape==DeckShape::Up&&op.color==deckPalette(d.dark).button;}));
     activateDeckHit(find(DeckTap::Settings),d,c,catalog,400);assert(d.page==DeckChat::Settings);
-    activateDeckHit({DeckTap::MenuItem,{},0,4},d,c,catalog,400);assert(d.page==DeckChat::Appearance);activateDeckHit({DeckTap::MenuItem,{},0,3},d,c,catalog,400);assert(d.dark);
+    activateDeckHit({DeckTap::MenuItem,{},0,6},d,c,catalog,400);assert(d.page==DeckChat::Appearance);activateDeckHit({DeckTap::MenuItem,{},0,3},d,c,catalog,400);assert(d.dark);
     scene=makeDeckScene(d,c,catalog,true,"meshit-00af","12345678",measure);assert(scene.paint.front().color==deckPalette(true).paper);
     const std::vector<DeckPreset> regional={{"mt-us","meshtastic","US LongFast","US","915 MHz"},{"mt-eu","meshtastic","EU LongFast","EU_868","869 MHz"},{"mc-us","meshcore","US Narrow","US","915 MHz"}};
     d.page=DeckChat::Settings;d.cursor=2;d.key('\r',c,regional,400);assert(d.page==DeckChat::Network);
@@ -333,7 +333,7 @@ int main(){
     auto action=tap(DeckTap::Save);assert(action.op=="nickname"&&action.text=="New nickname");d.accepted(action);
     assert(d.page==DeckChat::Settings&&d.draft=="Draft kept while editing settings"&&d.reply==selected);
     d.back();assert(d.page==DeckChat::Chat);d.page=DeckChat::Settings;
-    d.cursor=5;d.savedSsid="Old wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi);
+    d.cursor=4;d.savedSsid="Old wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi);
     d.cursor=1;d.key('\r',c,{},450);assert(d.page==DeckChat::Ssid);d.draft="New wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi&&d.wifiSsid=="New wifi");
     d.cursor=2;d.key('\r',c,{},450);d.draft="secret123";frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure);
     assert(std::none_of(frame.paint.begin(),frame.paint.end(),[](const DeckPaint& op){return op.text.find("secret123")!=std::string::npos;}));
