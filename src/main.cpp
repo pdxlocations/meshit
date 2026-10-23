@@ -68,7 +68,7 @@ Id allocateId(){
 }
 Network network(){return String(settings["network"]|"")=="meshcore"?Network::MeshCore:Network::Meshtastic;}
 JsonObjectConst preset(){for(JsonObjectConst p:presets.as<JsonArrayConst>())if(p["id"]==settings["preset"])return p;return {};}
-void eventJson(JsonObject o,const Message& m){const auto& e=m.event;o["id"]=hex(e.id);o["parent"]=e.ref?hex(e.ref):"";o["room"]=e.room;o["nickname"]=e.nick;o["text"]=e.text;o["order"]=m.order;o["mine"]=m.mine;o["acknowledged"]=m.acked;o["votes"]=core.score(e.id);o["voted"]=core.voted(e.id,identity);bool pending=false;for(const auto& p:core.pending)if(p.event.id==e.id&&!p.ack)pending=true;o["status"]=m.acked?"peer confirmed":pending?"sending":m.mine?"no rebroadcast heard":"received";}
+void eventJson(JsonObject o,const Message& m){const auto& e=m.event;o["id"]=hex(e.id);o["parent"]=e.ref?hex(e.ref):"";o["room"]=e.room;o["nickname"]=e.nick;o["text"]=e.text;o["order"]=m.order;o["mine"]=m.mine;o["acknowledged"]=m.acked;o["votes"]=core.score(e.id);o["voted"]=core.voted(e.id,identity);o["downvoted"]=core.downvoted(e.id,identity);bool pending=false;for(const auto& p:core.pending)if(p.event.id==e.id&&!p.ack)pending=true;o["status"]=m.acked?"peer confirmed":pending?"sending":m.mine?"no rebroadcast heard":"received";}
 void persist(){
   if(fsReady&&saveHistory(core)){dirty=false;dirtyAt=0;}
 }
@@ -148,7 +148,7 @@ String dispatch(const String& input){
     res["id"]=req["id"];String op=req["op"]|"";
     if(op=="state"){
       unreadMessages.prune(core);res["viewedSupported"]=true;res["viewedIdsSupported"]=true;res["unread"]=unreadMessages.count();res["outgoing"]=meshit::outgoingCount(core);res["version"]=FIRMWARE_VERSION;res["node"]=String(identity,HEX);
-      res["revision"]=revision;res["count"]=core.messages.size();res["settings"]=settings;res["settings"].remove("password");res["settings"].remove("setupPassword");res["settings"].remove("channel");res["settings"]["txEnabled"]=transmitEnabled();res["settings"]["wifiConfigured"]=String(settings["ssid"]|"").length()>0;
+      res["revision"]=revision;res["signedVotesSupported"]=true;res["count"]=core.messages.size();res["settings"]=settings;res["settings"].remove("password");res["settings"].remove("setupPassword");res["settings"].remove("channel");res["settings"]["txEnabled"]=transmitEnabled();res["settings"]["wifiConfigured"]=String(settings["ssid"]|"").length()>0;
       res["presets"]=presets;res["maxTxPowerDbm"]=maxTxPower(boardPowerProfile);
       if(ready){const auto power=selectTxPower(boardPowerProfile,preset()["power"]|0);res["txPowerDbm"]=power.output;res["radioDriveDbm"]=power.drive;}
       res["ready"]=ready;res["radioError"]=radioError;res["storageReady"]=fsReady;res["identityReady"]=identityReady;res["rx"]=rxCount;res["tx"]=txCount;res["radioState"]=radioActivityName(radioActivity.state(ready,txBusy,millis()));
@@ -183,8 +183,8 @@ String dispatch(const String& input){
       if(!transmitEnabled())res["error"]="Transmit is disabled";
       else if(!ready)res["error"]="Choose a network and preset; radio must be ready";
       else {Event e;e.kind=op=="post"?Kind::Post:Kind::Vote;e.ref=fromHex(req[op=="post"?"parent":"target"]|"");
-        e.room=req["room"].as<std::string>();e.nick=std::string(settings["nickname"]|"");e.text=req["text"].as<std::string>();e.up=req["up"]|true;
-        if(op=="vote"&&!core.find(e.ref))res["error"]="Message is no longer stored";
+        e.room=req["room"].as<std::string>();e.nick=std::string(settings["nickname"]|"");e.text=req["text"].as<std::string>();e.up=req["up"]|true;if(!req["value"].isNull()){e.up=req["value"].as<int>()==1;e.down=req["value"].as<int>()==-1;}
+        if(op=="vote"&&!req["value"].isNull()&&(!req["value"].is<int>()||req["value"].as<int>()<-1||req["value"].as<int>()>1))res["error"]="Vote must be -1, 0 or 1";else if(op=="vote"&&!core.find(e.ref))res["error"]="Message is no longer stored";
         else if(!core.submit(e,millis()))res["error"]="Cannot queue: invalid text, displaced thread, full queue, or storage unavailable";
         else {res["ok"]=true;res["messageId"]=hex(core.pending.back().event.id);changed();persist();}
       }

@@ -163,7 +163,7 @@ public:
       for(size_t i=start;i<list.size()&&lines.size()<bodyLimit;++i){const auto* m=core.find(list[i].id);if(!m)continue;
         if(i==start&&m->event.ref){const auto* parent=core.find(m->event.ref);lines.push_back(parent?"Reply to: "+parent->event.text:"Parent requested...");}
         bool pending=false;for(const auto& p:core.pending)if(p.event.id==m->event.id&&!p.ack&&!p.history)pending=true;
-        lines.push_back(std::string(i==start?"> ":"  ")+(m->event.nick.empty()?"Anonymous":m->event.nick)+" +"+std::to_string(core.score(m->event.id))+(m->mine?(m->acked?" [ok]":pending?" [...]":" [retry]"):""));
+        lines.push_back(std::string(i==start?"> ":"  ")+(m->event.nick.empty()?"Anonymous":m->event.nick)+" "+std::to_string(core.score(m->event.id))+(m->mine?(m->acked?" [ok]":pending?" [...]":" [retry]"):""));
         std::vector<std::string> body;deckPanel().wrap(body,m->event.text,list[i].depth);
         if(lines.size()<bodyLimit)visible.push_back(m->event.id);
         for(const auto& line:body)if(lines.size()<bodyLimit)lines.push_back(line);

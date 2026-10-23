@@ -5,9 +5,9 @@
 #include <cmath>
 namespace meshit {
 struct DeckBox {int x=0,y=0,w=0,h=0;bool contains(int px,int py)const{return px>=x&&py>=y&&px<x+w&&py<y+h;}};
-enum class DeckShape {Fill,Round,Outline,Line,Text,Poop,Chat,Gear,Dot,Up,Reply,Check,Retry,Pending,Radio};
+enum class DeckShape {Fill,Round,Outline,Line,Text,Poop,Chat,Gear,Dot,Up,Reply,Check,Retry,Pending,Radio,Down};
 enum class DeckFont {Small,Body,Bold};
-enum class DeckTap {Chat,Settings,Rooms,NewRoom,Top,New,Post,Cancel,Select,Reply,Vote,Resend,MenuItem,Focus,Save,Back,Connection,CancelEditor};
+enum class DeckTap {Chat,Settings,Rooms,NewRoom,Top,New,Post,Cancel,Select,Reply,Vote,Resend,MenuItem,Focus,Save,Back,Connection,CancelEditor,Downvote};
 struct DeckPaint {DeckShape shape;DeckBox box;uint16_t color;std::string text;DeckFont font=DeckFont::Small;DeckBox clip;};
 struct DeckHit {DeckTap action;DeckBox box;Id target=0;size_t index=0;};
 struct DeckScene {int width=320,height=240,scroll=0,maxScroll=0;DeckBox viewport;std::vector<DeckPaint> paint;std::vector<DeckHit> hits;};
@@ -89,7 +89,9 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         for(size_t j=0;j<bodies[i].size();++j)draw(DeckShape::Text,{bodyX,y+33+int(j)*18,0,0},p.ink,bodies[i][j],DeckFont::Body,clip);
         draw(DeckShape::Reply,{bodyX,y+h-14,11,10},p.muted,"",DeckFont::Small,clip);draw(DeckShape::Text,{bodyX+15,y+h-5,0,0},p.muted,"Reply",DeckFont::Small,clip);
         const int top=std::max(y,feedTop),bottom=std::min(y+h,feedBottom);
-        hit(DeckTap::Vote,{x+1,top,28,bottom-top},row.id);
+        const int split=std::max(top,std::min(bottom,y+h-26));
+        hit(DeckTap::Vote,{x+1,top,28,split-top},row.id);hit(DeckTap::Downvote,{x+1,split,28,bottom-split},row.id);
+        draw(DeckShape::Down,{x+7,y+h-21,12,12},core.downvoted(row.id,identity)?p.button:p.muted,"",DeckFont::Small,clip);
         const int replyTop=std::max(feedTop,y+h-23);if(replyTop<bottom)hit(DeckTap::Reply,{bodyX,replyTop,95,bottom-replyTop},row.id);
         // The whole visible row is tappable, including the gutter of indented replies.
         hit(DeckTap::Select,{0,top,320,bottom-top},row.id);
@@ -136,10 +138,11 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         if(chat.page!=DeckChat::Credentials&&chat.page!=DeckChat::Read)hit(DeckTap::MenuItem,{7,std::max(63,y),306,std::min(bottom,y+27)-std::max(63,y)},0,i);
       }
       if(chat.page==DeckChat::Read&&chat.selected){
-        text(13,226,"Back");hit(DeckTap::Back,{0,207,80,33});
-        text(92,226,"Reply");hit(DeckTap::Reply,{80,207,80,33},chat.selected);
-        text(172,226,"Upvote");hit(DeckTap::Vote,{160,207,80,33},chat.selected);
-        const auto* m=core.find(chat.selected);if(m&&m->mine&&!m->acked){text(252,226,"Resend");hit(DeckTap::Resend,{240,207,80,33},chat.selected);}
+        text(7,226,"Back");hit(DeckTap::Back,{0,207,64,33});
+        text(70,226,"Reply");hit(DeckTap::Reply,{64,207,64,33},chat.selected);
+        text(134,226,"Up");hit(DeckTap::Vote,{128,207,64,33},chat.selected);
+        text(198,226,"Down");hit(DeckTap::Downvote,{192,207,64,33},chat.selected);
+        const auto* m=core.find(chat.selected);if(m&&m->mine&&!m->acked){text(260,226,"Resend");hit(DeckTap::Resend,{256,207,64,33},chat.selected);}
       }
     }
     if(chat.page==DeckChat::Presets){const auto list=chat.filtered(presets);if(chat.cursor>0&&chat.cursor<=list.size())text(8,215,deckFit(list[chat.cursor-1].detail,304,DeckFont::Small,measure),DeckFont::Small,p.muted);text(8,234,"Changing preset clears history",DeckFont::Small,p.muted);}
@@ -150,9 +153,9 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
 inline const DeckHit* deckHitAt(const DeckScene& scene,int x,int y){for(const auto& hit:scene.hits)if(hit.action!=DeckTap::Focus&&hit.action!=DeckTap::Select&&hit.box.contains(x,y))return &hit;for(const auto& hit:scene.hits)if(hit.box.contains(x,y))return &hit;return nullptr;}
 inline DeckAction activateDeckHit(const DeckHit& hit,DeckChat& chat,const Core& core,const std::vector<DeckPreset>& catalog,uint32_t identity){
   using T=DeckTap;chat.error.clear();DeckAction action;
-  if((hit.action==T::Select||hit.action==T::Reply||hit.action==T::Vote||hit.action==T::Resend)&&!core.find(hit.target)){chat.error="Message no longer stored";return action;}
+  if((hit.action==T::Select||hit.action==T::Reply||hit.action==T::Vote||hit.action==T::Downvote||hit.action==T::Resend)&&!core.find(hit.target)){chat.error="Message no longer stored";return action;}
   if(chat.isEditor()&&(hit.action==T::Chat||hit.action==T::Settings||hit.action==T::Rooms||hit.action==T::Connection||hit.action==T::NewRoom))chat.leaveEditor();
-  if(!chat.transmitEnabled&&(hit.action==T::Vote||hit.action==T::Resend)){chat.error="Transmit is disabled";return action;}
+  if(!chat.transmitEnabled&&(hit.action==T::Vote||hit.action==T::Downvote||hit.action==T::Resend)){chat.error="Transmit is disabled";return action;}
   switch(hit.action){
     case T::Chat:chat.page=DeckChat::Chat;break;
     case T::Settings:chat.page=DeckChat::Settings;chat.cursor=0;break;
@@ -164,6 +167,7 @@ inline DeckAction activateDeckHit(const DeckHit& hit,DeckChat& chat,const Core& 
     case T::Select:chat.selected=hit.target;chat.page=DeckChat::Menu;chat.cursor=0;break;
     case T::Reply:chat.selected=chat.reply=hit.target;chat.page=DeckChat::Chat;break;
     case T::Vote:action.op="vote";action.target=hit.target;action.up=!core.voted(hit.target,identity);break;
+    case T::Downvote:action.op="vote";action.target=hit.target;action.up=false;action.down=!core.downvoted(hit.target,identity);break;
     case T::Resend:action.op="resend";action.target=hit.target;break;
     case T::Focus:chat.focused=true;break;
     case T::Save:action=chat.key('\r',core,catalog,identity);break;

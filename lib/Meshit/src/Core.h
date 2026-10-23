@@ -2,7 +2,7 @@
 #include "Types.h"
 namespace meshit {
 struct Message {Event event;uint32_t order=0;bool mine=false,acked=false,sent=false;};
-struct Vote {Id event=0,target=0;uint32_t voter=0;bool up=false;};
+struct Vote {Id event=0,target=0;uint32_t voter=0;bool up=false,down=false;};
 struct Pending {Event event;uint8_t attempts=0;uint32_t due=0;bool ack=false,history=false;};
 struct Peer {uint32_t id=0;uint16_t high=0;};
 struct Missing {Id id=0;uint32_t due=0;uint8_t attempts=0;};
@@ -59,8 +59,8 @@ class Core {
   void applyVote(const Event& e){
     auto& list=find(e.ref)?votes:deferredVotes;
     auto p=std::find_if(list.begin(),list.end(),[&](const Vote& v){return v.target==e.ref&&v.voter==sender(e.id);});
-    if(p!=list.end()){if(e.id>p->event){p->event=e.id;p->up=e.up;}}
-    else {list.push_back({e.id,e.ref,sender(e.id),e.up});bounded(list,&list==&votes?512:32);}
+    if(p!=list.end()){if(e.id>p->event){p->event=e.id;p->up=e.up;p->down=e.down;}}
+    else {list.push_back({e.id,e.ref,sender(e.id),e.up,e.down});bounded(list,&list==&votes?512:32);}
   }
   void removeTree(Id id){
     std::vector<Id> removed{id};
@@ -82,10 +82,11 @@ public:
   std::function<uint32_t()> jitter=[](){return 0;};
   Message* find(Id id){for(auto& m:messages)if(m.event.id==id)return &m;return nullptr;}
   const Message* find(Id id)const{for(const auto& m:messages)if(m.event.id==id)return &m;return nullptr;}
-  int score(Id id)const{int n=0;for(const auto& v:votes)if(v.target==id&&v.up)++n;return n;}
+  int score(Id id)const{int n=0;for(const auto& v:votes)if(v.target==id)n+=v.up?1:v.down?-1:0;return n;}
   const std::vector<Id>& tombstones()const{return dead;}
   void restoreDead(Id id){if(id&&!contains(dead,id)){dead.push_back(id);bounded(dead,512);}}
   bool voted(Id id,uint32_t who)const{for(const auto& v:votes)if(v.target==id&&v.voter==who)return v.up;return false;}
+  bool downvoted(Id id,uint32_t who)const{for(const auto& v:votes)if(v.target==id&&v.voter==who)return v.down;return false;}
   void restore(Message m){if(valid(m.event)&&!find(m.event.id)){clock=std::max(clock,m.order);messages.push_back(std::move(m));trim();}}
   bool submit(Event e,uint32_t now){
     if(pending.size()>=12||!allocate)return false;
@@ -133,13 +134,13 @@ public:
       trim();wantDependentThreads(e.id,now);if(!local&&!relayed&&e.kind==Kind::Post)acknowledgeDirect(e,now);
     }else if(e.kind==Kind::Vote){
       if(contains(dead,e.ref))return;
-      applyVote(e);if(e.up)wantThread(e.ref,now);
+      applyVote(e);if(e.up||e.down)wantThread(e.ref,now);
     }else if(e.kind==Kind::Request){
       if(pending.size()>=12||contains(dead,e.ref))return;
       Event answer;bool found=false;
       if(auto m=find(e.ref)){answer=m->event;answer.kind=Kind::History;found=true;}
       else for(const auto& r:recent)if(r.id==e.ref&&r.kind==Kind::Vote){answer=r;found=true;break;}
-      if(!found)for(const auto& v:votes)if(v.event==e.ref){answer.kind=Kind::Vote;answer.id=v.event;answer.ref=v.target;answer.up=v.up;found=true;break;}
+      if(!found)for(const auto& v:votes)if(v.event==e.ref){answer.kind=Kind::Vote;answer.id=v.event;answer.ref=v.target;answer.up=v.up;answer.down=v.down;found=true;break;}
       if(found){for(const auto& p:pending)if(p.history&&p.event.id==answer.id)return;pending.push_back({answer,0,now+1000+jitter()%5000,false,true});}
     }
   }

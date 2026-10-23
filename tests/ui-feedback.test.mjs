@@ -23,8 +23,9 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
       if(req.op==='state'&&waitState)await waitState;
       if(req.op==='messages'&&waitMessages)await waitMessages;
       if(req.op==='state'&&offline)throw new Error('Connection lost');
-      if(req.op==='state')return {viewedSupported:true,viewedIdsSupported,node,radioState,rx,tx,ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester',txEnabled},board:'Heltec V4.3',wifiSupported:true,presets:[]};
+      if(req.op==='state')return {signedVotesSupported:true,viewedSupported:true,viewedIdsSupported,node,radioState,rx,tx,ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester',txEnabled},board:'Heltec V4.3',wifiSupported:true,presets:[]};
       if(req.op==='messages'){if(churn)revision++;return {revision,messages:feed.slice(req.offset,req.offset+8)};}
+      if(req.op==='vote'){const m=feed.find(m=>m.id===req.target);m.voted=req.value===undefined?req.up:req.value===1;m.downvoted=req.value===-1;m.votes=m.voted?1:m.downvoted?-1:0;revision++;return {ok:true};}
       if(req.op==='resend'){feed.find(m=>m.id===req.target).status='sending';revision++;return {ok:true};}
       if(req.op==='post')return new Promise((resolve,reject)=>{resolvePost=resolve;rejectPost=reject;});
     }
@@ -124,6 +125,9 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   assert.equal(get('download-status').textContent,'','clear progress after messages load');
   assert.equal(get('radio-connection').dataset.connected,'true');
   assert.equal(get('notice').textContent,'','reconnecting clears stale notices');
+  const buttons=()=>{const all=[];const walk=e=>{if(e.onclick)all.push(e);e.children.forEach(walk);};walk(get('feed'));return all;};
+  const down=buttons().find(b=>b['aria-label']==='Downvote');assert.ok(down&&!down.disabled);await down.onclick();assert.ok(buttons().some(b=>b['aria-label']==='Remove downvote'&&b['aria-pressed']==='true'));
+  await buttons().find(b=>b['aria-label']==='Remove downvote').onclick();assert.ok(buttons().some(b=>b['aria-label']==='Downvote'));
   // Incoming traffic must not starve downloads when revisions change between pages.
   const viewedBeforeChurn=viewed.length;
   feed.push({id:'during-download',parent:'',room:'general',text:'Arrived during download',mine:false,votes:0,order:20});revision++;churn=true;

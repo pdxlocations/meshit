@@ -83,14 +83,14 @@ int main(){
     key('\r');deck.cursor=2;action=key('\r');assert(action.op=="vote"&&action.up&&action.target==deck.selected);
     radio.receive(vote(300,2,action.target),200,false);assert(deck.menuItems(radio,300)[2]=="Remove upvote");
     key('\r');deck.cursor=2;action=key('\r');assert(!action.up);
-    key('\r');deck.cursor=3;action=key('\r');assert(action.op=="resend"&&action.target==deck.selected);
+    key('\r');deck.cursor=4;action=key('\r');assert(action.op=="resend"&&action.target==deck.selected);
     key(DeckMenu);deck.cursor=2;key('\r');for(char c:std::string("camp"))key(c);key('\r');assert(deck.room=="camp"&&!deck.reply);
     key(DeckSettings);deck.cursor=2;key('\r');key(DeckDown);key(DeckDown);key('\r');assert(deck.page==DeckChat::Regions);key(DeckDown);key('\r');assert(deck.page==DeckChat::Presets);key(DeckDown);action=key('\r');assert(action.op=="settings"&&action.preset=="mc-eu-narrow"&&action.network=="meshcore");
     deck.accepted(action);assert(deck.page==DeckChat::Chat);
     for(unsigned i=0;i<170;++i)key('x');assert(deck.draft.size()==160);key(8);assert(deck.draft.size()==159);
     deck.draft="Hi 🙂";key(8);assert(deck.draft=="Hi ");
     key(DeckSettings);deck.cursor=1;key('\r');assert(deck.page==DeckChat::Credentials);key('\r');assert(deck.page==DeckChat::Chat);
-    deck.room="general";deck.sync(radio);deck.draft.clear();key('\r');deck.cursor=4;key('\r');assert(deck.page==DeckChat::Read);key(DeckDown);assert(deck.cursor==1);key('\r');assert(deck.page==DeckChat::Chat);
+    deck.room="general";deck.sync(radio);deck.draft.clear();key('\r');deck.cursor=5;key('\r');assert(deck.page==DeckChat::Read);key(DeckDown);assert(deck.cursor==1);key('\r');assert(deck.page==DeckChat::Chat);
   }
   {
     for(bool touch:{false,true}){
@@ -112,7 +112,7 @@ int main(){
     recovery.key('\r',recoveryCore,{},490);assert(recovery.page==DeckChat::Calibrate&&recovery.reply==recoveryMessage.id);
     recovery.key('\r',recoveryCore,{},490);assert(recovery.page==DeckChat::Settings&&recovery.draft=="Do not send");
     recovery.key(DeckMenu,recoveryCore,{},490);assert(recovery.page==DeckChat::Navigation);recovery.cursor=1;recovery.key('\r',recoveryCore,{},490);assert(recovery.page==DeckChat::Rooms);
-    assert((recovery.menu==std::vector<std::string>{"Back","Reply","Toggle upvote","Resend","Read full message"}));
+    assert((recovery.menu==std::vector<std::string>{"Back","Reply","Toggle upvote","Toggle downvote","Resend","Read full message"}));
     // Calibration handles offsets, scale, swapped axes and skew, with an independent verification tap.
     for(int transform=0;transform<4;++transform){
       auto sensor=[&](std::pair<int,int> target){const int x=target.first,y=target.second;return transform==0?std::make_pair(x+19,y-13):transform==1?std::make_pair(2*y+12,2*x-20):transform==2?std::make_pair(x+y+7,y-9):std::make_pair(319-x,239-y);};
@@ -428,6 +428,20 @@ int main(){
   quiet.receive(post(20,52),61000,false);std::vector<Event> emitted;
   quiet.tick(62000,[&](const Event& out,bool history){assert(!history);emitted.push_back(out);return true;});assert(emitted.size()==1&&emitted[0].kind==Kind::Request&&emitted[0].ref==id(20,51));
   auto source=client(20);source.receive(post(20,51),0,false);source.receive(emitted[0],62000,false);source.tick(70000,[&](const Event& out,bool history){assert(history&&out.kind==Kind::History);quiet.receive(out,70000,false);return true;});assert(quiet.find(id(20,51)));
+  {auto a=client(800),b=client(801);auto msg=post(802,1);a.receive(msg,0,false);b.receive(msg,0,false);
+    auto down=vote(803,1,msg.id,false);down.down=true;Event decoded;assert(decode(encode(down),decoded)&&decoded.down&&!decoded.up);
+    auto invalid=encode(down);invalid[13]=3;assert(!decode(invalid,decoded));
+    auto missing=client(805);missing.receive(down,0,false);bool requested=false;missing.tick(1000,[&](const Event& e,bool){requested=e.kind==Kind::Request&&e.ref==msg.id;return true;});assert(requested);auto history=msg;history.kind=Kind::History;missing.receive(history,2000,false);assert(missing.score(msg.id)==-1);
+    a.receive(down,1,false);b.receive(down,1,false);assert(a.score(msg.id)==-1&&b.downvoted(msg.id,803));
+    auto up=vote(803,2,msg.id);a.receive(up,2,false);assert(a.score(msg.id)==1&&!a.downvoted(msg.id,803));
+    a.receive(down,3,false);assert(a.score(msg.id)==1);auto clear=vote(803,3,msg.id,false);a.receive(clear,4,false);assert(a.score(msg.id)==0);
+    Memory saved;assert(writeSnapshot(saved,b));Core restored;assert(readSnapshot(saved,restored,5)&&restored.score(msg.id)==-1&&restored.downvoted(msg.id,803));
+    Event request;request.kind=Kind::Request;request.id=id(806,1);request.ref=down.id;restored.receive(request,10,false);bool answered=false;restored.tick(10000,[&](const Event& e,bool history){assert(history&&e.kind==Kind::Vote&&e.down&&!e.up);answered=true;a.receive(e,10000,false);return true;});assert(answered);
+    auto invalidVote=down;invalidVote.up=true;assert(!valid(invalidVote)&&encode(invalidVote).empty());
+    Memory legacy;assert(writeSnapshot(legacy,a));legacy.bytes[3]='1';Core upgraded;assert(readSnapshot(legacy,upgraded,5)&&upgraded.score(msg.id)==0);
+    DeckChat deck;deck.room="general";deck.sync(b);auto frame=makeDeckScene(deck,b,{},true,"radio","password",[](const std::string& s,DeckFont){return int(s.size()*6);});
+    bool found=false;for(const auto& hit:frame.hits)if(hit.action==DeckTap::Downvote&&hit.box.h>0){auto action=activateDeckHit(hit,deck,b,{},804);assert(action.op=="vote"&&action.down&&!action.up);found=true;}assert(found);
+  }
   auto old=client(30);old.receive(vote(22,1,id(90,1)),0,false);old.tick(1000,[&](const Event& out,bool){assert(out.kind==Kind::Request&&out.ref==id(90,1));return true;});auto recovered=post(90,1);recovered.kind=Kind::History;old.receive(recovered,2000,false);assert(old.score(id(90,1))==1);old.receive(vote(22,2,id(90,1),false),3000,false);assert(old.score(id(90,1))==0);old.receive(vote(22,1,id(90,1)),4000,false);assert(old.score(id(90,1))==0);
   // A live reply immediately requests its missing parent, without an upvote.
   auto thread=client(31);auto threadRoot=post(90,1),threadReply=post(91,1,threadRoot.id);

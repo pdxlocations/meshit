@@ -76,6 +76,7 @@ public:
           for(size_t i=0;i<24;++i){const auto& a=points[i];const auto& b=points[(i+1)%24];surface.drawLine(x+int(a[0]*w/24),y+int(a[1]*h/24),x+int(b[0]*w/24),y+int(b[1]*h/24),c);}
           surface.drawCircle(x+w/2,y+h/2,std::max(1,w/8),c);break;}
 
+        case S::Down:surface.drawLine(x+w/2,y,x+w/2,y+h-2,c);surface.drawLine(x+1,y+h-6,x+w/2,y+h-1,c);surface.drawLine(x+w/2,y+h-1,x+w-1,y+h-6,c);break;
         case S::Up:surface.drawLine(x+w/2,y+2,x+w/2,y+h,c);surface.drawLine(x+1,y+6,x+w/2,y+1,c);surface.drawLine(x+w/2,y+1,x+w-1,y+6,c);break;
         case S::Reply:surface.drawLine(x,y,x,y+h-3,c);surface.drawLine(x,y+h-3,x+w,y+h-3,c);surface.drawLine(x+w-3,y+h-6,x+w,y+h-3,c);surface.drawLine(x+w,y+h-3,x+w-3,y+h,c);break;
         case S::Check:surface.drawLine(x+1,y+7,x+5,y+11,c);surface.drawLine(x+5,y+11,x+12,y+2,c);surface.drawLine(x+1,y+8,x+5,y+12,c);surface.drawLine(x+5,y+12,x+13,y+2,c);break;

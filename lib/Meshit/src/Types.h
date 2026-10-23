@@ -39,19 +39,20 @@ inline bool textValid(const std::string& s,size_t maxBytes,size_t maxChars,bool 
   }return true;
 }
 enum class Kind:uint8_t{Post=1,Vote=2,Request=3,History=4,Ack=5};
-struct Event {Kind kind=Kind::Post;Id id=0,ref=0;std::string room,nick,text;bool up=true;};
+struct Event {Kind kind=Kind::Post;Id id=0,ref=0;std::string room,nick,text;bool up=true,down=false;};
 inline bool valid(const Event& e){
   if(!sender(e.id)||!sequence(e.id))return false;
   if(e.kind==Kind::Post||e.kind==Kind::History)
     return e.ref!=e.id&&(!e.ref||(sender(e.ref)&&sequence(e.ref)))&&textValid(e.room,MAX_ROOM,MAX_ROOM)&&e.room.find('\n')==std::string::npos&&textValid(e.nick,MAX_NICK,MAX_NICK,true)&&e.nick.find('\n')==std::string::npos&&textValid(e.text,MAX_TEXT,MAX_CHARS);
   if(e.kind==Kind::Ack)return sender(e.ref)&&sequence(e.ref)&&sender(e.id)!=sender(e.ref);
+  if(e.kind==Kind::Vote&&e.up&&e.down)return false;
   if(e.kind==Kind::Vote||e.kind==Kind::Request)return sender(e.ref)&&sequence(e.ref);
   return false;
 }
 inline Bytes encode(const Event& e){
   if(!valid(e))return {};
   Bytes b{uint8_t(e.kind)};put(b,e.id,6);put(b,e.ref,6);
-  if(e.kind==Kind::Vote)b.push_back(e.up?1:0);
+  if(e.kind==Kind::Vote)b.push_back(e.down?2:e.up?1:0);
   if(e.kind==Kind::Post||e.kind==Kind::History){
     b.push_back(uint8_t(e.room.size()));b.push_back(uint8_t(e.nick.size()));put(b,e.text.size(),2);
     b.insert(b.end(),e.room.begin(),e.room.end());b.insert(b.end(),e.nick.begin(),e.nick.end());b.insert(b.end(),e.text.begin(),e.text.end());
@@ -65,7 +66,7 @@ inline bool decode(const Bytes& b,Event& e){
     size_t r=b[13],n=b[14],t=get(b.data()+15,2);
     if(17+r+n+t!=b.size())return false;
     e.room.assign((const char*)b.data()+17,r);e.nick.assign((const char*)b.data()+17+r,n);e.text.assign((const char*)b.data()+17+r+n,t);
-  }else if(e.kind==Kind::Vote){if(b.size()!=14||b[13]>1)return false;e.up=b[13];}
+  }else if(e.kind==Kind::Vote){if(b.size()!=14||b[13]>2)return false;e.up=b[13]==1;e.down=b[13]==2;}
   else if(e.kind==Kind::Request||e.kind==Kind::Ack){if(b.size()!=13)return false;}
   else return false;
   return valid(e);

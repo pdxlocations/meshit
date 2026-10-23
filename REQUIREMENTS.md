@@ -13,10 +13,10 @@ Status: initial implementation complete; firmware, host tests, Android debug, an
 - Hearing our own packet rebroadcast or an authenticated meshit peer receipt produces a check beside our message. A direct meshit peer sends a compact receipt after receiving a live post. Retry three times without confirmation.
 - Shared Android/iOS companion framework; ESP serves the companion on its local network at `meshit.local`, with BLE and initial Wi-Fi setup support.
 - UI consists of chat and Settings. Rooms have a New room action and appear when room messages arrive. All rooms share the selected network channel; room names accompany messages.
-- Text posts and threaded replies, upvotes that can be removed on either, no downvotes, New/Top sorting. Final text limit: 160 Unicode characters (replaces the earlier 200-byte proposal).
+- Text posts and threaded replies, upvotes and downvotes that can be removed on either, New/Top sorting. Final text limit: 160 Unicode characters (replaces the earlier 200-byte proposal).
 - Optional nickname in Settings, default Anonymous. Impersonation resistance is not required.
 - Six-byte hexadecimal message identifiers requested, with gap detection and requests for missing messages.
-- A missing message may be requested upon hearing an upvote or when needed to reconstruct a received reply’s ancestor chain.
+- A missing message may be requested upon hearing an upvote or downvote or when needed to reconstruct a received reply’s ancestor chain.
 - A 200-message cap across rooms (user called these channels); unvoted messages and inactive rooms fall off the list.
 - Apply minimal application-layer encryption with a built-in key, without user key configuration, so broker payloads are not human readable. Shared built-in keys do not provide secrecy from other meshit users or anyone inspecting the implementation.
 
@@ -24,7 +24,7 @@ Status: initial implementation complete; firmware, host tests, Android debug, an
 
 - Numbering stays automatic: sender identity plus sequence, six bytes total, displayed as 12 hexadecimal digits. No user setup or global allocator.
 - Any client with the retained content may answer a request; delayed duplicate-response suppression limits airtime.
-- First hearing skips history; subsequent live gaps trigger bounded requests. Missing posts are fetched for newly heard positive upvotes and reply ancestor chains.
+- First hearing skips history; subsequent live gaps trigger bounded requests. Missing posts are fetched for newly heard upvotes or downvotes and reply ancestor chains.
 - The 200-message cap includes replies. Evict lowest-voted first, oldest first on ties. Upvoted messages stay until displaced. Evicting a parent deletes all descendants, regardless of reply votes. Rooms with no retained messages disappear.
 - The implementation preserves the 160-character limit, including multibyte Unicode, using up to seven bounded fragments when metadata and encryption do not fit a carrier packet.
 - Meshtastic private application port 256 and MeshCore flood group datagrams carry meshit. Upstream protocol sources and independent cryptographic vectors validate framing; physical interoperability is still to be verified. MQTT gateway filters may affect passage.

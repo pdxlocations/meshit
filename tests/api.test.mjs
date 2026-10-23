@@ -17,6 +17,9 @@ test('companion RPC setup, rooms, posts, replies, votes and implicit checks use 
   page=await rpc({op:'messages',offset:0});const reply=page.messages[1];assert.equal(reply.parent,parent.id);
   assert.equal((await rpc({op:'vote',target:reply.id,up:true})).ok,true);page=await rpc({op:'messages',offset:0});assert.equal(page.messages[1].votes,1);
   assert.equal((await rpc({op:'vote',target:reply.id,up:false})).ok,true);page=await rpc({op:'messages',offset:0});assert.equal(page.messages[1].votes,0);
+  assert.equal((await rpc({op:'state'})).signedVotesSupported,true);
+  for(const [value,score] of [[-1,-1],[1,1],[0,0]]){assert.equal((await rpc({op:'vote',target:reply.id,value})).ok,true);const m=(await rpc({op:'messages'})).messages[1];assert.equal(m.votes,score);assert.equal(m.downvoted,value===-1);assert.equal(m.voted,value===1);}
+  for(const value of [-2,2,'-1',false])assert.ok((await rpc({op:'vote',target:reply.id,value})).error);
   assert.ok((await rpc({op:'post',room:'campfire',text:'x'.repeat(161)})).error);
   await delay(800);await rpc({op:'state'});await delay(1200);page=await rpc({op:'messages',offset:0});assert.equal(page.messages[0].acknowledged,true);
 });

@@ -13,7 +13,7 @@ public:
   }
 };
 struct DeckPreset {std::string id,network,label,region,detail;};
-struct DeckAction {std::string op,text,room,network,preset,ssid,password;Id target=0;bool up=true,enabled=true;};
+struct DeckAction {std::string op,text,room,network,preset,ssid,password;Id target=0;bool up=true,down=false,enabled=true;};
 struct DeckRow {Id id;unsigned depth;};
 // Hardware-independent chat interaction; actions go through the same RPC as companions.
 class DeckChat {
@@ -32,7 +32,7 @@ public:
   std::vector<std::string> regions(const std::vector<DeckPreset>& presets)const{std::vector<std::string> out;for(const auto& p:presets)if(p.network==network&&std::find(out.begin(),out.end(),p.region)==out.end())out.push_back(p.region);return out;}
   std::vector<std::string> settingsItems()const{auto items=std::vector<std::string>{"Radio connection","Network","Nickname","Local Wi-Fi"};if(touchAvailable)items.push_back("Calibrate touch");items.push_back(transmitEnabled?"Transmit: On":"Transmit: Off");items.push_back("Appearance");return items;}
   void swipe(int direction){if(!direction)return;if(isEditor())leaveEditor();error.clear();if(direction<0){if(page==Rooms)page=Chat;else page=Settings;}else{if(page==Chat)page=Rooms;else if(page!=Rooms)page=Chat;}cursor=0;}
-  const std::vector<std::string> menu={"Back","Reply","Toggle upvote","Resend","Read full message"};
+  const std::vector<std::string> menu={"Back","Reply","Toggle upvote","Toggle downvote","Resend","Read full message"};
   const std::vector<std::string> navigationItems={"Back","Rooms","New room","New post","New / Top","Settings"};
   std::vector<std::string> rooms(const Core& core)const{
     std::vector<std::string> list{room};for(const auto& m:core.messages)if(std::find(list.begin(),list.end(),m.event.room)==list.end())list.push_back(m.event.room);
@@ -51,7 +51,7 @@ public:
   }
   void sync(const Core& core){const auto list=rows(core);if(std::none_of(list.begin(),list.end(),[&](const DeckRow& r){return r.id==selected;}))selected=list.empty()?0:list.front().id;if(reply&&!core.find(reply))reply=0;}
   std::vector<std::string> menuItems(const Core& core,uint32_t identity)const{
-    auto items=menu;if(selected)items[2]=core.voted(selected,identity)?"Remove upvote":"Upvote";return items;
+    auto items=menu;if(selected)items[2]=core.voted(selected,identity)?"Remove upvote":"Upvote";if(selected)items[3]=core.downvoted(selected,identity)?"Remove downvote":"Downvote";return items;
   }
   DeckAction key(int key,const Core& core,const std::vector<DeckPreset>& presets,uint32_t identity){
     sync(core);error.clear();DeckAction action;
@@ -79,8 +79,9 @@ public:
           case 0:page=Chat;break;
           case 1:if(selected){reply=selected;page=Chat;}break;
           case 2:if(!transmitEnabled){error="Transmit is disabled";return action;}if(selected){action.op="vote";action.target=selected;action.up=!core.voted(selected,identity);page=Chat;}break;
-          case 3:if(!transmitEnabled){error="Transmit is disabled";return action;}if(selected){action.op="resend";action.target=selected;page=Chat;}break;
-          case 4:if(selected)page=Read;break;
+          case 3:if(!transmitEnabled){error="Transmit is disabled";return action;}if(selected){action.op="vote";action.target=selected;action.up=false;action.down=!core.downvoted(selected,identity);page=Chat;}break;
+          case 4:if(!transmitEnabled){error="Transmit is disabled";return action;}if(selected){action.op="resend";action.target=selected;page=Chat;}break;
+          case 5:if(selected)page=Read;break;
         }cursor=0;return action;
       }
       if(page==Navigation){

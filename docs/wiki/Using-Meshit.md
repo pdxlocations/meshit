@@ -8,7 +8,7 @@ Use **New room** to create a room name of up to 16 UTF-8 bytes. A new empty room
 
 ## Upvotes and sorting
 
-Select the up arrow to upvote, and select it again to remove your vote. **New** sorts by recent local order; **Top** sorts by votes, with recent order breaking ties. Votes are bounded local state, not a globally synchronized ledger.
+Select the up arrow to add one to the score or the down arrow to subtract one. Select the active arrow again to clear your vote. Switching direction replaces your previous vote. Update all participating radios for downvote support. **New** sorts by recent local order; **Top** sorts by votes, with recent order breaking ties. Votes are bounded local state, not a globally synchronized ledger.
 
 ## The delivery check
 
