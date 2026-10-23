@@ -19,5 +19,9 @@ public:
     ids.erase(std::remove_if(ids.begin(),ids.end(),[&](meshit::Id id){return core.find(id)->event.room==room;}),ids.end());
     return true;
   }
+  void viewedIds(const std::string& room,const std::vector<meshit::Id>& viewed,const meshit::Core& core){
+    prune(core);ids.erase(std::remove_if(ids.begin(),ids.end(),[&](meshit::Id id){const auto* m=core.find(id);return m&&m->event.room==room&&std::find(viewed.begin(),viewed.end(),id)!=viewed.end();}),ids.end());
+  }
+  size_t count(const std::string& room,const meshit::Core& core)const{size_t n=0;for(auto id:ids){const auto* m=core.find(id);if(m&&m->event.room==room)++n;}return n;}
   size_t count()const{return ids.size();}
 };

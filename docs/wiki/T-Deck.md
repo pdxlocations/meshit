@@ -52,7 +52,7 @@ Pro keyboards support held Shift for uppercase and held Sym for the printed numb
 
 Open **Wi-Fi / Bluetooth** to read the `mesit-` MAC-based device name, saved numeric AP password, browser address, Bluetooth PIN, battery voltage, outgoing queue count, and new-message count. Phone/browser connection and Wi-Fi/Bluetooth handoff work as on other ESP32 radios. Bluetooth pairing temporarily displays the PIN on the device.
 
-The chat header shows battery voltage, radio readiness, outgoing messages, and new messages. Viewing a room clears its new-message count. E-paper refreshes are throttled, with periodic full refreshes; radio receive handling continues during the panel’s busy wait.
+The chat header shows battery voltage, radio readiness, outgoing messages, and new messages. The Plus header shows **New N** for unread messages across rooms; tap it to open Rooms. Each room lists its retained message count and, when nonzero, its new-message count. Standalone chat clears unread status for messages shown on screen, leaving messages outside the visible part of the list and in other rooms unread. Reading a full message also clears its unread status. Outgoing counts queued user posts and votes awaiting completion; acknowledgments and exhausted retries remove them from that count. E-paper refreshes are throttled, with periodic full refreshes; radio receive handling continues during the panel’s busy wait.
 
 Touch is enabled on T-Deck Plus when its GT911 controller is detected. Other models currently retain keyboard/trackball input. GPS, SD storage, audio, cellular data, motion sensors, and haptics are not used by meshit. Chat uses the keyboard/trackball and the LoRa radio. The host companion remains available if the keyboard cannot initialize.
 

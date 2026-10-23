@@ -38,12 +38,22 @@ function updateDeliveryNotice(){
 function element(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
 let viewedKey='';
 function markViewed(){
-  if(view!=='chat'||document.hidden||!state?.ready||!state.viewedSupported||!loadedRevision||loadedRevision!==state.revision||!transport.link||$('onboarding').open)return;
-  const key=`${transport.generation}:${state.node}:${loadedRevision}:${room}`;
+  if(polling||view!=='chat'||document.hidden||!state?.ready||!state.viewedSupported||!transport.link||$('onboarding').open)return;
+  if(!state.viewedIdsSupported&&(!loadedRevision||loadedRevision!==state.revision))return;
+  const shown=messages.filter(m=>m.room===room).map(m=>m.id),epoch=transport.generation,viewedRoom=room;
+  const key=`${epoch}:${state.node}:${state.viewedIdsSupported?shown.join(','):loadedRevision}:${room}`;
   if(viewedKey===key)return;
   viewedKey=key;
-  transport.request({op:'viewed',room,revision:loadedRevision}).then(result=>{if(!result.ok&&viewedKey===key)viewedKey='';}).catch(()=>{if(viewedKey===key)viewedKey='';});
+  (async()=>{
+    if(!state.viewedIdsSupported)return transport.request({op:'viewed',room:viewedRoom,revision:loadedRevision});
+    for(let offset=0;offset<shown.length;offset+=32){
+      if(epoch!==transport.generation||view!=='chat'||document.hidden||room!==viewedRoom)return {ok:false};
+      const result=await transport.request({op:'viewed',room:viewedRoom,messages:shown.slice(offset,offset+32)});if(!result.ok)return result;
+    }
+    return {ok:true};
+  })().then(result=>{if(!result.ok&&viewedKey===key)viewedKey='';}).catch(()=>{if(viewedKey===key)viewedKey='';});
 }
+
 function show(which){if(which==='chat')notify();view=which;$('chat-view').hidden=which!=='chat';$('settings-view').hidden=which!=='settings';$('chat-tab').setAttribute('aria-current',which==='chat'?'page':'false');$('settings-tab').setAttribute('aria-current',which==='settings'?'page':'false');resizeComposer();markViewed();}
 function chooseRoom(name){notify();localStorage.setItem(`meshit.draft.${room}`,JSON.stringify({text:$('message').value,parent:reply}));room=name;localStorage.setItem('meshit.room',room);reply='';$('message').value='';try{const d=JSON.parse(localStorage.getItem(`meshit.draft.${room}`)||'{}');$('message').value=d.text||'';reply=d.parent||'';}catch{}render();count();}
 function regions(prefix,network){const select=$(prefix+'region');select.replaceChildren();for(const region of new Set(state.presets.filter(p=>p.network===network).map(p=>p.region))){const o=element('option',null,region==='US'?'US / Canada':region.replace('_',' '));o.value=region;select.append(o);}presets(prefix,network);}
@@ -112,7 +122,7 @@ async function refresh(){
     if(first)settingsUI();if(!next.settings.configured&&!$('onboarding').open&&view==='chat')$('onboarding').showModal();
     markViewed();
     if(!next.storageReady||!next.identityReady)notify('Radio storage is unavailable. Sending is disabled until it is repaired.');
-  }catch(e){if(epoch!==transport.generation||e.code==='CONNECTION_CHANGED')return;setConnected(false);connectionStatus(e.message);if(state)state.ready=false;$('connection').textContent='Radio disconnected · showing saved messages';if(state){state.ready=false;count();}else{show('settings');notify('Connect to a meshit radio to begin. '+e.message);}}finally{polling=false;}
+  }catch(e){if(epoch!==transport.generation||e.code==='CONNECTION_CHANGED')return;setConnected(false);connectionStatus(e.message);if(state)state.ready=false;$('connection').textContent='Radio disconnected · showing saved messages';if(state){state.ready=false;count();}else{show('settings');notify('Connect to a meshit radio to begin. '+e.message);}}finally{polling=false;markViewed();}
 }
 $('chat-tab').onclick=()=>show('chat');$('settings-tab').onclick=()=>{if(state)settingsUI();show('settings');};
 $('message').oninput=()=>{count();localStorage.setItem(`meshit.draft.${room}`,JSON.stringify({text:$('message').value,parent:reply}));};

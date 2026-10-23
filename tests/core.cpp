@@ -27,12 +27,31 @@ int main(){
     auto c=client(1);UnreadMessages unread;
     auto a=post(2,1),b=post(2,2);b.room="camp";
     c.receive(a,0,false);c.receive(b,0,false);unread.add(a.id,c);unread.add(b.id,c);unread.add(a.id,c);
+    assert(unread.count("general",c)==1&&unread.count("camp",c)==1);
     assert(unread.count()==2); // Retransmissions do not double-count.
     assert(!unread.viewed("general",1,2,c)&&unread.count()==2); // Stale snapshot.
     assert(unread.viewed("general",2,2,c)&&unread.count()==1);
     assert(unread.viewed("general",2,2,c)&&unread.count()==1);
     assert(unread.viewed("camp",2,2,c)&&unread.count()==0);
     unread.add(a.id,c);c.messages.clear();unread.prune(c);assert(unread.count()==0);
+  }
+
+  {
+    auto c=client(1);UnreadMessages unread;auto a=post(2,1),b=post(2,2),other=post(2,3);other.room="camp";
+    c.receive(a,0,false);c.receive(b,0,false);c.receive(other,0,false);for(auto id:{a.id,b.id,other.id})unread.add(id,c);
+    unread.viewedIds("general",{a.id,other.id},c);assert(unread.count()==2&&unread.count("general",c)==1&&unread.count("camp",c)==1);
+    unread.viewedIds("general",{a.id},c);assert(unread.count()==2); // Repeated views never clear later arrivals.
+    DeckChat d;d.page=DeckChat::Rooms;auto measure=[](const std::string& text,DeckFont){return int(text.size())*5;};
+    auto scene=makeDeckScene(d,c,{},true,"mesit-0001","12345678",measure,0,"4.1V",unread.count(),true,[&](const std::string& room){return unread.count(room,c);});
+    assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& p){return p.text=="New 2";}));
+    assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& p){return p.text=="2 / 1 new";}));
+    assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& p){return p.text=="1 / 1 new";}));
+    const auto* badge=deckHitAt(scene,125,15);assert(badge&&badge->action==DeckTap::Rooms);
+    Event outgoing;outgoing.room="general";outgoing.text="Outgoing";assert(c.submit(outgoing,0));assert(outgoingCount(c)==1);
+    const auto sent=c.pending.back().event;c.tick(10000,[](const Event&,bool){return true;});assert(outgoingCount(c)==1);
+    c.receive(sent,10001,true);assert(outgoingCount(c)==0); // Acknowledgment updates immediately, before pending cleanup.
+    c.pending.push_back({other,0,0,false,true});assert(outgoingCount(c)==0); // Recovery traffic is not outgoing user activity.
+    c.pending.clear();assert(c.submit(outgoing,10002));c.pending.back().attempts=4;c.pending.back().due=0;c.tick(20000,[](const Event&,bool){return true;});assert(outgoingCount(c)==0);
   }
 
   {

@@ -1,5 +1,6 @@
 #pragma once
 #include "DeckChat.h"
+#include "RadioStats.h"
 #include <cmath>
 namespace meshit {
 struct DeckBox {int x=0,y=0,w=0,h=0;bool contains(int px,int py)const{return px>=x&&py>=y&&px<x+w&&py<y+h;}};
@@ -25,13 +26,13 @@ inline std::vector<std::string> deckWrap(const std::string& text,int width,DeckF
 }
 // A display-independent scene also supplies the exact touch targets used to draw it.
 inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector<DeckPreset>& presets,
- bool connected,const std::string& name,const std::string& password,const DeckMeasure& measure,int previousScroll=0,const std::string& battery="",size_t unread=0,bool followSelection=true){
+ bool connected,const std::string& name,const std::string& password,const DeckMeasure& measure,int previousScroll=0,const std::string& battery="",size_t unread=0,bool followSelection=true,const std::function<size_t(const std::string&)>& roomUnread={}){
   DeckScene s;const auto p=deckPalette(chat.dark);const DeckBox full{0,0,320,240};
   auto draw=[&](DeckShape shape,DeckBox b,uint16_t color,const std::string& text="",DeckFont f=DeckFont::Small,DeckBox clip=DeckBox{}){s.paint.push_back({shape,b,color,text,f,clip.w?clip:full});};
   auto text=[&](int x,int y,const std::string& value,DeckFont f=DeckFont::Small,uint16_t color=0){draw(DeckShape::Text,{x,y,0,0},color?color:p.ink,value,f);};
   auto hit=[&](DeckTap a,DeckBox b,Id id=0,size_t index=0){s.hits.push_back({a,b,id,index});};
   draw(DeckShape::Fill,full,p.paper);draw(DeckShape::Fill,{0,0,320,29},p.header);
-  draw(DeckShape::Poop,{7,5,20,20},p.ink);hit(DeckTap::Chat,{0,0,205,30});text(33,19,"meshit",DeckFont::Bold);if(!battery.empty())text(165,18,battery,DeckFont::Small,p.muted);
+  draw(DeckShape::Poop,{7,5,20,20},p.ink);hit(DeckTap::Chat,{0,0,102,30});text(108,18,"New "+std::to_string(unread),DeckFont::Small,unread?p.ink:p.muted);hit(DeckTap::Rooms,{103,0,60,30});hit(DeckTap::Chat,{163,0,42,30});text(33,19,"meshit",DeckFont::Bold);if(!battery.empty())text(165,18,battery,DeckFont::Small,p.muted);
   draw(DeckShape::Dot,{215,11,8,8},connected?0x2d2b:p.muted,connected?"on":"off");hit(DeckTap::Connection,{205,0,28,30});
   const bool settings=chat.page==DeckChat::Settings||chat.page==DeckChat::Presets||chat.page==DeckChat::Nickname||chat.page==DeckChat::Credentials||chat.page==DeckChat::Wifi||chat.page==DeckChat::Ssid||chat.page==DeckChat::WifiPassword||chat.page==DeckChat::Appearance||chat.page==DeckChat::Network||chat.page==DeckChat::Regions;
   draw(DeckShape::Round,{237,2,34,25},settings?p.header:p.selected);draw(DeckShape::Chat,{245,7,17,15},p.ink);hit(DeckTap::Chat,{233,0,42,30});
@@ -87,7 +88,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     else if(chat.page==DeckChat::Menu){title="Message";items=chat.menu;}
     else if(chat.page==DeckChat::Rooms){title="Rooms";items=chat.rooms(core);draw(DeckShape::Round,{244,35,68,23},p.selected);text(253,51,"+ New room");hit(DeckTap::NewRoom,{238,31,82,30});}
     else if(chat.page==DeckChat::Presets){title="Radio preset";for(const auto& preset:chat.filtered(presets))items.push_back(preset.label);}
-    else if(chat.page==DeckChat::Credentials){size_t outgoing=0;for(const auto& job:core.pending)if(!job.ack&&!job.history&&(job.event.kind==Kind::Post||job.event.kind==Kind::Vote))++outgoing;title="Radio connection";items={name,"Password: "+password,"http://192.168.4.1","Bluetooth PIN: "+(password.size()>2?password.substr(2):""),"http://meshit.local","New: "+std::to_string(unread)+"  Out: "+std::to_string(outgoing)};}
+    else if(chat.page==DeckChat::Credentials){const size_t outgoing=outgoingCount(core);title="Radio connection";items={name,"Password: "+password,"http://192.168.4.1","Bluetooth PIN: "+(password.size()>2?password.substr(2):""),"http://meshit.local","New: "+std::to_string(unread)+"  Out: "+std::to_string(outgoing)};}
     else if(chat.page==DeckChat::Wifi){title="Local Wi-Fi";items={"Network: "+chat.wifiSsid,"Password: "+(chat.wifiPassword.empty()?std::string("keep saved"):std::string(chat.wifiPassword.size(),'*')),"Save settings"};}
     else if(chat.isEditor()){title=chat.page==DeckChat::NewRoom?"New room":chat.page==DeckChat::Nickname?"Nickname":chat.page==DeckChat::Ssid?"Network name":"Wi-Fi password";}
 
@@ -111,7 +112,8 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
       if(chat.page==DeckChat::Read){s.scroll=std::max(0,std::min(previousScroll,s.maxScroll));}
       for(size_t i=0;i<items.size();++i){const int y=63+int(i)*28-s.scroll;if(y+26<=63||y>=bottom)continue;
         draw(DeckShape::Round,{7,y,306,26},i==chat.cursor?p.selected:p.card,"",DeckFont::Small,s.viewport);
-        draw(DeckShape::Text,{15,y+18,0,0},p.ink,deckFit(items[i],290,DeckFont::Small,measure),DeckFont::Small,s.viewport);
+        draw(DeckShape::Text,{15,y+18,0,0},p.ink,deckFit(items[i],chat.page==DeckChat::Rooms?192:290,DeckFont::Small,measure),DeckFont::Small,s.viewport);
+        if(chat.page==DeckChat::Rooms){const size_t fresh=roomUnread?roomUnread(items[i]):0;const std::string count=std::to_string(roomMessageCount(core,items[i]))+(fresh?" / "+std::to_string(fresh)+" new":"");draw(DeckShape::Text,{310-measure(count,DeckFont::Small),y+18,0,0},fresh?p.ink:p.muted,count,DeckFont::Small,s.viewport);}
         if(chat.page!=DeckChat::Credentials&&chat.page!=DeckChat::Read)hit(DeckTap::MenuItem,{7,std::max(63,y),306,std::min(bottom,y+27)-std::max(63,y)},0,i);
       }
       if(chat.page==DeckChat::Read&&chat.selected){

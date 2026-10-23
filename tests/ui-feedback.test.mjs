@@ -14,7 +14,7 @@ class Element {
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('post appears before RPC resolves; errors retain text with retry; acknowledgment replaces retry',async()=>{
   const elements=new Map(),get=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);};
-  let feed=[],revision=1,resolvePost,rejectPost,poll,offline=false,waitState,waitMessages,churn=false;const viewed=[];let visibilityChanged;
+  let feed=[],revision=1,resolvePost,rejectPost,poll,offline=false,waitState,waitMessages,churn=false,viewedIdsSupported=false;const viewed=[];let visibilityChanged;
   class Radio {
     constructor(){this.mode='wifi';this.devices=[];this.link={};this.generation=1;}
     async request(req){
@@ -22,7 +22,7 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
       if(req.op==='state'&&waitState)await waitState;
       if(req.op==='messages'&&waitMessages)await waitMessages;
       if(req.op==='state'&&offline)throw new Error('Connection lost');
-      if(req.op==='state')return {viewedSupported:true,node:'test',ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester'},board:'Heltec V4.3',wifiSupported:true,presets:[]};
+      if(req.op==='state')return {viewedSupported:true,viewedIdsSupported,node:'test',ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester'},board:'Heltec V4.3',wifiSupported:true,presets:[]};
       if(req.op==='messages'){if(churn)revision++;return {revision,messages:feed.slice(req.offset,req.offset+8)};}
       if(req.op==='resend'){feed.find(m=>m.id===req.target).status='sending';revision++;return {ok:true};}
       if(req.op==='post')return new Promise((resolve,reject)=>{resolvePost=resolve;rejectPost=reject;});
@@ -131,6 +131,15 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   assert.equal(get('notice').textContent,'','room switch clears progress');
   resolvePost({ok:true,messageId:'late'});await tick();
   assert.equal(get('notice').textContent,'','late success does not add a completion banner');
+  for(let n=0;n<35;n++)feed.push({id:'camp-'+n,parent:'',room:'camp',text:'Camp post '+n,mine:false,votes:0,order:30+n});
+  viewedIdsSupported=true;churn=true;feed.push({id:'latest-unread',parent:'',room:'camp',text:'Newest camp post',mine:false,votes:0,order:25});revision++;
+  const viewedStart=viewed.length;poll();await tick();await tick();
+  const exactViews=viewed.slice(viewedStart).filter(req=>Array.isArray(req.messages));
+  assert.ok(exactViews.length>=2,'capable radios receive viewed IDs even during changing revisions');
+  assert.ok(exactViews.every(req=>req.messages.length<=32&&req.room==='camp'));
+  assert.ok(exactViews.some(req=>req.messages.includes('latest-unread')));
+  assert.ok(exactViews.every(req=>!req.messages.includes('master')),'other rooms remain unread');
+
 
 
 });
