@@ -22,8 +22,10 @@ constexpr int DECK_SDA=18,DECK_SCL=8,DECK_SD_CS=39,DECK_DISPLAY_CS=12;
 constexpr float RADIO_TCXO=1.8f;
 #if defined(MESHIT_TDECK_PLUS)
 #define MESHIT_BOARD_NAME "LILYGO T-Deck Plus"
+constexpr uint8_t DECK_DISPLAY_ROTATION=3;
 #else
 #define MESHIT_BOARD_NAME "LILYGO T-Deck"
+constexpr uint8_t DECK_DISPLAY_ROTATION=1;
 #endif
 #else
 constexpr int RADIO_CS=8,RADIO_IRQ=14,RADIO_RESET=12,RADIO_BUSY=13;

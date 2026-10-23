@@ -257,7 +257,7 @@ void setup(){
 #endif
   initRadio();
 #if defined(MESHIT_TDECK)
-  deckUi.begin(settings["configured"]|false);
+  deckUi.begin(settings["configured"]|false,settings["deckDark"]|false);
   // E-paper busy waits release SPI; keep receiving radio packets during refresh.
   deckPanel().serviceWhileBusy([](const void*){pollRadio();delay(1);});
 #endif

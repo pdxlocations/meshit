@@ -44,7 +44,11 @@ public:
     }return 0;
 #else
     const int pins[]={3,15,1,2};
-    for(unsigned i=0;i<4;++i){const bool value=digitalRead(pins[i]);const bool moved=value!=ball[i];ball[i]=value;if(moved&&uint32_t(millis()-lastBall)>90){lastBall=millis();if(i<2)return i==0?meshit::DeckUp:meshit::DeckDown;}}
+    for(unsigned i=0;i<4;++i){const bool value=digitalRead(pins[i]);const bool moved=value!=ball[i];ball[i]=value;if(moved&&uint32_t(millis()-lastBall)>90){lastBall=millis();if(i<2)return i==0?meshit::DeckUp:meshit::DeckDown;
+#if defined(MESHIT_TDECK_PLUS)
+      return i==2?meshit::DeckLeft:meshit::DeckRight;
+#endif
+    }}
     Wire.requestFrom(uint8_t(0x55),uint8_t(1));if(Wire.available())return Wire.read();return 0;
 #endif
   }

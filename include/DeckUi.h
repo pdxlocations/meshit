@@ -5,24 +5,42 @@
 #include "DeckKeyboard.h"
 #include "DeckPanel.h"
 #include "UnreadMessages.h"
+#include "DeckTouch.h"
+#if defined(MESHIT_TDECK_PLUS)
+#include "Storage.h"
+#endif
 class DeckUi {
   meshit::DeckChat chat;DeckKeyboard keyboard;bool keyboardReady=false,initialized=false;uint32_t next=0;
   std::vector<meshit::DeckPreset> catalog;
+#if defined(MESHIT_TDECK_PLUS)
+  DeckTouch touch;meshit::DeckScene scene;int scroll=0;
+
+#endif
   std::vector<meshit::DeckPreset> choices(JsonDocument& presets){
     std::vector<meshit::DeckPreset> result;
     for(JsonObjectConst p:presets.as<JsonArrayConst>())result.push_back({p["id"]|"",p["network"]|"",std::string(p["network"]|"")+" / "+(p["region"]|"")+" / "+(p["name"]|"")});
     return result;
   }
 public:
-  void begin(bool configured){keyboardReady=keyboard.begin();chat.page=configured?meshit::DeckChat::Chat:meshit::DeckChat::Presets;initialized=true;}
+  void begin(bool configured,bool dark=false){
+    chat.dark=dark;
+#if defined(MESHIT_TDECK_PLUS)
+    touch.begin();
+#endif
+    keyboardReady=keyboard.begin();chat.page=configured?meshit::DeckChat::Chat:meshit::DeckChat::Presets;initialized=true;}
   void tick(meshit::Core& core,JsonDocument& settings,JsonDocument& presets,uint32_t identity,uint32_t& revision,
             UnreadMessages& unread,bool ready,bool bluetooth,uint16_t battery,const String& name,const String& password,
             const std::function<String(const String&)>& rpc){
     if(!initialized||int32_t(millis()-next)<0)return;next=millis()+20;
     if(catalog.empty())catalog=choices(presets);
-    int key=keyboard.read();
-    if(key){
-      const auto action=chat.key(key,core,catalog,identity);
+    int key=keyboard.read();meshit::DeckAction action;
+#if defined(MESHIT_TDECK_PLUS)
+    const auto event=touch.poll();
+    if(event.swipe)key=event.swipe>0?meshit::DeckDown:meshit::DeckUp;
+    if(event.tap){if(const auto* hit=meshit::deckHitAt(scene,event.x,event.y))action=meshit::activateDeckHit(*hit,chat,core,catalog,identity);}
+#endif
+    if(key)action=chat.key(key,core,catalog,identity);
+    {
       if(!action.op.empty()){
         JsonDocument req,res;req["op"]=action.op=="nickname"?"settings":action.op;
         if(action.op=="post"){req["room"]=action.room;req["text"]=action.text;req["parent"]=action.target?meshit::hex(action.target):"";}
@@ -36,6 +54,18 @@ public:
       }
     }
     chat.sync(core);
+#if defined(MESHIT_TDECK_PLUS)
+    if(chat.dark!=(settings["deckDark"]|false)){
+      settings["deckDark"]=chat.dark;String saved;serializeJson(settings,saved);
+      if(!writeFile("/settings.json",saved))chat.error="Could not save appearance";
+    }
+    if(!keyboardReady)chat.error="Keyboard unavailable";
+    unread.prune(core);
+    {scene=meshit::makeDeckScene(chat,core,catalog,ready,name.c_str(),password.c_str(),DeckGraphics::measure,scroll,battery?std::to_string(battery/1000)+"."+std::to_string((battery%1000)/100)+"V":"",unread.count());
+    scroll=scene.scroll;const uint32_t renderedRevision=revision;
+    if(deckPanel().drawScene(scene)&&chat.page==meshit::DeckChat::Chat)unread.viewed(chat.room,renderedRevision,revision,core);
+    return;}
+#endif
     std::vector<std::string> lines;const auto page=chat.page;
     const size_t maxLines=deckPanel().lineCount();
     std::string batteryText=battery?std::to_string(battery/1000)+"."+std::to_string((battery%1000)/100)+"V":"--V";

@@ -3,7 +3,9 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <Adafruit_GFX.h>
+#if !defined(MESHIT_TDECK_PLUS)
 #include <Fonts/FreeSans9pt7b.h>
+#endif
 #include <vector>
 #include <string>
 #include "../firmware/esp32/Pins.h"
@@ -11,6 +13,7 @@
 #include <GxEPD2_BW.h>
 #else
 #include <Adafruit_ST7789.h>
+#include "DeckGraphics.h"
 #endif
 
 class DeckPanel {
@@ -19,6 +22,9 @@ class DeckPanel {
   uint32_t frames=0;
 #else
   Adafruit_ST7789 screen{&SPI,DECK_DISPLAY_CS,11,-1};
+#endif
+#if defined(MESHIT_TDECK_PLUS)
+  DeckGraphics graphics;
 #endif
   bool ready=false;uint32_t last=0;std::string previous;
 public:
@@ -37,11 +43,19 @@ public:
     screen.sendCommand(0xc0,c0,1);screen.sendCommand(0xc2,c2,1);screen.sendCommand(0xc3,c3,1);screen.sendCommand(0xc4,c4,1);
     screen.sendCommand(0xc6,c6,1);screen.sendCommand(0xd0,d0,2);screen.sendCommand(0xd6,d6,1);screen.sendCommand(0xe0,e0,14);screen.sendCommand(0xe1,e1,14);
 #endif
-    screen.setRotation(1);screen.invertDisplay(true);
+    screen.setRotation(DECK_DISPLAY_ROTATION);screen.invertDisplay(true);
     pinMode(42,OUTPUT);digitalWrite(42,LOW);delay(4);digitalWrite(42,HIGH);
 #endif
     screen.setFont(&FreeSans9pt7b);screen.setTextWrap(false);ready=true;return true;
   }
+#if defined(MESHIT_TDECK_PLUS)
+  bool drawScene(const meshit::DeckScene& scene){
+    std::string signature;
+    for(const auto& op:scene.paint){signature+=std::to_string(int(op.shape))+":"+std::to_string(op.box.x)+","+std::to_string(op.box.y)+","+std::to_string(op.box.w)+","+std::to_string(op.box.h)+","+std::to_string(op.color)+":"+op.text+";";}
+    if(signature==previous)return true;
+    graphics.draw(scene,screen);previous=signature;return true;
+  }
+#endif
   void serviceWhileBusy(void (*callback)(const void*)){ 
 #if defined(MESHIT_TDECK_PRO)
     screen.epd2.setBusyCallback(callback);

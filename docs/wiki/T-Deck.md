@@ -22,17 +22,25 @@ Use the [web installer](https://meshit.pdxlocs.com) and choose your exact model 
 
 On first boot, choose the radio preset on the device. The list includes each preset’s network and region. **Enter** selects it. Changing the network or preset clears radio history, just as in the companion; queued transmissions must finish first.
 
+## T-Deck Plus touch controls
+
+The Plus initializes its GT911 touchscreen when detected and uses the same orientation for touch and display. Tap the chat/gear icons to switch between messages and Settings. Tap the room title to choose a room, **New / Top** to sort, **Reply** beneath a message to reply, the up arrow to toggle a vote, and **Post** to send your typed message. Tap the resend icon to retry an unacknowledged outgoing post. A second tap on the selected message opens its full text.
+
+Swipe vertically to move through messages or longer menus. Rooms includes a **New room** button. Settings offers radio connection details, radio presets, nickname, and appearance; the appearance choice is saved on the device. Use the physical keyboard to enter text. The composer starts at one line and expands as you type, and changes to **Post a reply** while replying.
+
+The Plus display now uses landscape rotation 3 to correct the reported upside-down image; touch coordinates rotate with it. Original T-Deck and Pro display rotations remain unchanged. Touch absence or failed detection leaves keyboard and trackball controls available. Physical touch alignment and panel orientation still need verification on the tested Plus. Other models retain their existing standalone interface and keyboard controls.
+
 ## Keyboard controls
 
 | Action | Original / Plus | Pro / Pro Max |
 | --- | --- | --- |
-| Move through messages and menus | Roll trackball up/down | Hold **Alt + E / X** |
+| Move through messages and menus | Roll trackball up/down; Plus also accepts vertical swipes | Hold **Alt + E / X** |
 | Open or close menu | Trackball center, microphone key, or Enter with an empty composer | **$** key, **Alt + T**, BOOT, or Enter with an empty composer |
 | Select menu item | Enter | Enter |
 | Return / cancel reply | Menu → New post | **Alt + Q**, or Menu → New post |
 | Write a post | Type, then Enter | Type, then Enter |
 
-The menu offers **Reply**, **Toggle upvote**, **Resend**, **Rooms**, **New room**, **New post**, **New / Top**, **Radio preset**, **Nickname**, **Wi-Fi / Bluetooth**, and **Read full message**. Actions apply to the selected message, shown with `>`. Posts default to Top sorting; replies remain below their parents.
+On Plus, rolling left opens Rooms and rolling right opens Settings; tapping the header controls provides the same navigation. The menu offers **Reply**, **Toggle upvote**, **Resend**, **Rooms**, **New room**, **New post**, **New / Top**, **Radio preset**, **Nickname**, **Wi-Fi / Bluetooth**, and **Read full message**. Actions apply to the selected message, shown with `>`. Posts default to Top sorting; replies remain below their parents.
 
 Choose **Reply**, type, and press Enter to post to that message. Failed queue attempts retain your draft. **Resend** queues the original outgoing message without creating another post; it is available only when the radio permits a resend. `[ok]` means a matching rebroadcast was heard, `[...]` means queued, and `[retry]` means no acknowledgment is currently pending.
 
@@ -46,7 +54,7 @@ Open **Wi-Fi / Bluetooth** to read the `mesit-` MAC-based device name, saved num
 
 The chat header shows battery voltage, radio readiness, outgoing messages, and new messages. Viewing a room clears its new-message count. E-paper refreshes are throttled, with periodic full refreshes; radio receive handling continues during the panel’s busy wait.
 
-Touch input, GPS, SD storage, audio, cellular data, motion sensors, and haptics are not used by meshit. Chat uses the keyboard/trackball and the LoRa radio. The host companion remains available if the keyboard cannot initialize.
+Touch is enabled on T-Deck Plus when its GT911 controller is detected. Other models currently retain keyboard/trackball input. GPS, SD storage, audio, cellular data, motion sensors, and haptics are not used by meshit. Chat uses the keyboard/trackball and the LoRa radio. The host companion remains available if the keyboard cannot initialize.
 
 ## Hardware references
 

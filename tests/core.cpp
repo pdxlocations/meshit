@@ -7,6 +7,7 @@
 #include "../include/BatteryGauge.h"
 #include "../include/UnreadMessages.h"
 #include "../include/DeckChat.h"
+#include "../include/DeckScene.h"
 #include <cassert>
 #include <iostream>
 using namespace meshit;
@@ -56,6 +57,32 @@ int main(){
     deck.draft="Hi 🙂";key(8);assert(deck.draft=="Hi ");
     key(DeckMenu);deck.cursor=9;key('\r');assert(deck.page==DeckChat::Credentials);key('\r');assert(deck.page==DeckChat::Chat);
     deck.room="general";deck.sync(radio);key(DeckMenu);deck.cursor=10;key('\r');assert(deck.page==DeckChat::Read);key(DeckDown);assert(deck.cursor==1);key('\r');assert(deck.page==DeckChat::Chat);
+  }
+  {
+    assert((deckTouchPoint(0,0,true)==std::make_pair(319,0)));
+    assert((deckTouchPoint(239,319,true)==std::make_pair(0,239)));
+    assert((deckTouchPoint(0,319,false)==std::make_pair(319,239)));
+    DeckGesture pointer;pointer.contact(100,150);pointer.contact(102,151);auto e=pointer.release();assert(e.tap&&e.x==102);
+    assert(!pointer.release().tap); // Held fingers and repeated release frames never post twice.
+    pointer.contact(100,180);pointer.contact(100,110);e=pointer.release();assert(!e.tap&&e.swipe==1);
+    pointer.contact(100,100);pointer.contact(150,100);pointer.contact(100,100);assert(!pointer.release().tap); // Dragging away and back is not a tap.
+    auto c=client(400);auto root=post(401,1),child=post(402,1,root.id);c.receive(root,0,false);c.receive(child,0,false);
+    DeckChat d;d.sync(c);const std::vector<DeckPreset> catalog={{"mt-us-longfast","meshtastic","US LongFast"}};
+    auto measure=[](const std::string& text,DeckFont f){return int(text.size())*(f==DeckFont::Small?5:8);};
+    auto scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);
+    assert(scene.width==320&&scene.height==240);
+    auto find=[&](DeckTap action,Id id=0){for(const auto& hit:scene.hits)if(hit.action==action&&(!id||hit.target==id))return hit;assert(false);return DeckHit{};};
+    auto replyHit=find(DeckTap::Reply,root.id);assert(replyHit.box.y>=100&&replyHit.box.y+replyHit.box.h<=240);
+    const auto* picked=deckHitAt(scene,replyHit.box.x+2,replyHit.box.y+2);assert(picked&&picked->action==DeckTap::Reply);
+    activateDeckHit(*picked,d,c,catalog,400);assert(d.reply==root.id);
+    scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);
+    assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& op){return op.text=="Post a reply";}));
+    d.draft="Touch reply";auto action=activateDeckHit(find(DeckTap::Post),d,c,catalog,400);assert(action.op=="post"&&action.target==root.id&&action.text=="Touch reply");
+    action=activateDeckHit(find(DeckTap::Vote,root.id),d,c,catalog,400);assert(action.op=="vote"&&action.up);
+    activateDeckHit(find(DeckTap::Settings),d,c,catalog,400);assert(d.page==DeckChat::Settings);
+    activateDeckHit({DeckTap::MenuItem,{},0,3},d,c,catalog,400);assert(d.dark);
+    scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);assert(scene.paint.front().color==deckPalette(true).paper);
+    c.messages.clear();action=activateDeckHit(replyHit,d,c,catalog,400);assert(action.op.empty()&&!d.error.empty()); // Stale frames cannot target evicted posts.
   }
   assert(!plausibleBatteryVoltage(0));assert(!plausibleBatteryVoltage(5000));
   assert(batteryBars(3400)==0&&batteryBars(3600)==1&&batteryBars(3800)==2&&batteryBars(4000)==3&&batteryBars(4200)==4);

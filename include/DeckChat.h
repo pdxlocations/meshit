@@ -2,15 +2,15 @@
 #include <Core.h>
 
 namespace meshit {
-enum DeckKey {DeckUp=256,DeckDown,DeckMenu,DeckBack};
+enum DeckKey {DeckUp=256,DeckDown,DeckMenu,DeckBack,DeckLeft,DeckRight};
 struct DeckPreset {std::string id,network,label;};
 struct DeckAction {std::string op,text,room,network,preset;Id target=0;bool up=true;};
 struct DeckRow {Id id;unsigned depth;};
 // Hardware-independent chat interaction; actions go through the same RPC as companions.
 class DeckChat {
 public:
-  enum Page {Chat,Menu,Rooms,NewRoom,Presets,Nickname,Credentials,Read};
-  Page page=Chat;std::string room="general",draft,error;Id selected=0,reply=0;bool top=true;size_t cursor=0;
+  enum Page {Chat,Menu,Rooms,NewRoom,Presets,Nickname,Credentials,Read,Settings};
+  Page page=Chat;std::string room="general",draft,error;Id selected=0,reply=0;bool top=true,dark=false;size_t cursor=0;
   const std::vector<std::string> menu={"Reply","Toggle upvote","Resend","Rooms","New room","New post","New / Top","Radio preset","Nickname","Wi-Fi / Bluetooth","Read full message"};
   std::vector<std::string> rooms(const Core& core)const{
     std::vector<std::string> list{room};for(const auto& m:core.messages)if(std::find(list.begin(),list.end(),m.event.room)==list.end())list.push_back(m.event.room);
@@ -30,16 +30,18 @@ public:
   void sync(const Core& core){const auto list=rows(core);if(std::none_of(list.begin(),list.end(),[&](const DeckRow& r){return r.id==selected;}))selected=list.empty()?0:list.front().id;if(reply&&!core.find(reply))reply=0;}
   DeckAction key(int key,const Core& core,const std::vector<DeckPreset>& presets,uint32_t identity){
     sync(core);error.clear();DeckAction action;
+    if(key==DeckLeft||key==DeckRight){page=page==Chat?(key==DeckLeft?Rooms:Settings):Chat;cursor=0;return action;}
     if(key==DeckMenu||key==12){if(page==NewRoom||page==Nickname)draft.clear();page=page==Menu?Chat:Menu;cursor=0;return action;}
     if(key==DeckBack||key==27){if(page==NewRoom||page==Nickname)draft.clear();page=Chat;reply=0;return action;}
     if(key==DeckUp||key==DeckDown){
       if(page==Read){if(key==DeckDown&&cursor<MAX_TEXT)++cursor;else if(key==DeckUp&&cursor)--cursor;return action;}
-      const bool down=key==DeckDown;size_t count=page==Menu?menu.size():page==Rooms?rooms(core).size():page==Presets?presets.size():0;
+      const bool down=key==DeckDown;size_t count=page==Menu?menu.size():page==Rooms?rooms(core).size():page==Presets?presets.size():page==Settings?4:0;
       if(count){cursor=down?(cursor+1)%count:(cursor+count-1)%count;return action;}
       if(page==Chat){auto list=rows(core);for(size_t i=0;i<list.size();++i)if(list[i].id==selected){if(down&&i+1<list.size())selected=list[i+1].id;else if(!down&&i)selected=list[i-1].id;break;}}
       return action;
     }
     if(key=='\r'||key=='\n'){
+      if(page==Settings){switch(cursor){case 0:page=Credentials;break;case 1:page=Presets;break;case 2:page=Nickname;draft.clear();break;case 3:dark=!dark;break;}cursor=0;return action;}
       if(page==Menu){
         switch(cursor){
           case 0:if(selected){reply=selected;page=Chat;}break;
