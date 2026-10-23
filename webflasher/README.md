@@ -39,7 +39,7 @@ The bootloader version is a different number. An unknown or mismatched SoftDevic
 
 Both file formats are checked for size, SHA-256, valid records, application start, vector table, overlapping data, and meshit’s reserved memory boundary at **`0x80000`**. Application images do not replace the SoftDevice or bootloader. The board/SoftDevice requirements come from the selected release’s own catalog, so hosting files cannot silently substitute another release’s layout. Changing the release, board, format, or SoftDevice clears any prepared download.
 
-Use `meshit-android-debug.apk` from the same GitHub release, or build the iOS companion. RAK4631 and T114 have no Wi-Fi interface.
+Use `meshit-android-v<version>-<commit>-debug.apk` from the same GitHub release, or build the iOS companion. RAK4631 and T114 have no Wi-Fi interface.
 
 ## Releases and caching
 
@@ -98,4 +98,4 @@ Physical USB installation and post-update data retention still need hardware ver
 
 References: [ESP Web Tools](https://esphome.github.io/esp-web-tools/), [GitHub releases API](https://docs.github.com/en/rest/releases/releases#list-releases).
 
-T-Deck devices support [standalone keyboard chat](../docs/wiki/T-Deck.md) and the same Wi-Fi/Bluetooth companion. Their on-device connection menu displays the AP credentials and pairing PIN. New targets have syntax/host-test coverage; firmware builds and physical validation remain pending.
+T-Deck devices support [standalone keyboard chat](../docs/wiki/T-Deck.md) and the same Wi-Fi/Bluetooth companion. Their on-device Settings → Radio connection page displays the AP credentials and pairing PIN. Wi-Fi and Bluetooth default to Off and have separate saved Settings switches. All five profiles build successfully and pass host tests; physical validation remains.

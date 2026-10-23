@@ -13,10 +13,15 @@
 | Bluetooth unavailable in browser | Use a Web Bluetooth-capable browser or the native companion; iPhone uses the native app. A simulator cannot validate phone BLE. |
 | Radio disconnected | In Settings select Wi-Fi (ESP32) and join meshit-… in device Wi-Fi settings, or select Bluetooth, Find radios, choose a radio, and Connect. Saved messages remain visible offline. |
 | ESP32 Bluetooth not found / will not pair | Disconnect clients from the setup Wi-Fi first. ESP32 Bluetooth is hidden while Wi-Fi clients are attached. Its pairing PIN is the last 6 digits of the setup Wi-Fi password (345678 for the no-display fallback). Remove an old OS bond if firmware credentials changed. |
+| T-Deck Wi-Fi or Bluetooth missing | Both default to Off, including when an older installation has no saved switches. Enable the desired connection in on-device Settings. Find credentials under Radio connection. |
+| T-Deck screen went dark | After one minute of inactivity the display sleeps. Press a button to wake it; the first press is consumed. New messages and votes also wake it. E-paper retains its image while asleep. |
+| Downvote unavailable | Update both the companion and connected radio firmware. Downvotes are disabled against older firmware, during an action, for an unsent local placeholder, or when transmit is off. |
+| Resend missing | Resend is offered only for our own unacknowledged messages that are no longer queued. Received and acknowledged messages cannot be resent. |
+| Android update says the package conflicts | An update must use the same signing certificate as the installed app. GitHub debug builds and local builds can have different keys. Use an APK signed with the original key; if unavailable, uninstalling allows a fresh install but clears local app data. The versioned filename does not change the signature. |
 | Connected but no messages | Confirm network, region, and preset match nearby meshit users and relay infrastructure. Ordinary network chat is not displayed. |
 | No delivery check | No qualifying relay echo or direct meshit receipt was heard. For repeater-free confirmation, update both peers and enable TX on the receiver. This is not a read receipt; physical RF verification remains necessary. |
 | Messages disappeared | Check for a network/preset change, fresh install, or the 200-message retention limit. Parent eviction also removes descendants. |
-| Sending disabled | Complete setup, restore the radio connection, and check storage/identity warnings. Keep text within 160 characters. |
+| Sending disabled | Complete setup, restore the radio connection, enable Transmit in Settings, and check storage/identity warnings. Keep text within 160 characters. |
 | Heltec reports “Radio storage is unavailable” | Older firmware used the wrong storage partition name. Update the existing installation with firmware containing the partition-name fix, then restart. Use an app-only update; a fresh install erases saved settings and messages. If the warning persists, report it before erasing the radio. |
 | Hosted page returns PHP source | Enable PHP 8.1+ with cURL, JSON, and ZipArchive. Static GitHub Pages cannot run the bridge. |
 

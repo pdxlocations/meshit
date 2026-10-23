@@ -31,10 +31,11 @@ Stop if the SoftDevice is unknown or unsupported. These are application-only ima
 
 Next: [Connect and configure](Connection-and-Settings.md). See [flasher details](../../webflasher/README.md) for validation and packaging behavior.
 
-[Wiki home](Home.md)
 
 ## LILYGO T-Deck family
 
 Choose the exact T-Deck model from the ESP32 installer: T-Deck, Plus, Pro v1.0, Pro v1.1, or Pro Max. Audio and cellular options share their revision’s firmware profile. A published release containing the new targets is required before the flasher lists them. Use an application-only update to preserve existing meshit settings; replacing another firmware generally requires a fresh installation.
 
-The device screen and keyboard can configure the radio and run chat without a phone. Its **Wi-Fi / Bluetooth** menu shows the AP name, password, URL, and pairing PIN for companion access. See [T-Deck controls and hardware revisions](T-Deck.md).
+The device screen and keyboard can configure the radio and run chat without a phone. Bluetooth and Wi-Fi default to Off. Enable the desired connection in on-device **Settings**, then open **Radio connection** for the AP name, password, URL, and pairing PIN. See [T-Deck controls and hardware revisions](T-Deck.md).
+
+[Wiki home](Home.md)

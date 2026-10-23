@@ -1,6 +1,8 @@
 # Verification record
 
-Verified on October 21, 2026. No radio was flashed and no RF or physical-phone test was performed.
+Updated October 23, 2026. All 11 firmware targets build, the sanitizer core suite and 28 companion tests pass, and Android debug assembly/lint/unit-test tasks pass. Current light, dark, and full-page Settings screenshots were captured from the web client against the local C++ simulator and inspected without a pointer or browser chrome. No radio was flashed and no RF or physical-phone test was performed.
+
+Earlier implementation notes below record what was verified at each stage. Statements about builds not yet run in those notes are superseded by the current full-build results.
 
 ## Passed
 
@@ -64,7 +66,7 @@ The companion now has one Wi-Fi (ESP32) mode and a Bluetooth (ESP32 / nRF52) flo
 
 ESP32 requires authenticated, encrypted pairing with the last six digits of its setup password. Wi-Fi clients take priority over Bluetooth discovery, and authenticated Bluetooth pauses Wi-Fi until disconnect, following Form8. All three firmware targets compile. Native scan behavior, OS pairing prompts, and Wi-Fi/Bluetooth handoff still need testing with physical radios and phones.
 
-Meshtastic channel-name entry is removed. Firmware selects its internal transport value from the preset and ignores/removes saved overrides. The README contains light-mode screenshots only; the wiki contains usage and setup guidance without screenshots or styling commentary.
+Meshtastic channel-name entry is removed. Firmware selects its internal transport value from the preset and ignores/removes saved overrides. The README and wiki now share current light, dark, and Settings screenshots, including downvotes, the compact composer, TX enable, and Appearance last.
 
 ## Additional board profiles and branding
 
@@ -72,7 +74,7 @@ The target catalog and build command include Heltec V3, V4.2 OLED (GC1109), V4.3
 
 The webflasher uses a logo-only header and a slate dark palette. Brand text, setup AP/Bluetooth names, USB product name, native app labels, docs, and release titles use lowercase meshit. Protocol key-derivation literals retain their original bytes for compatibility with existing radios.
 
-## T-Deck port verification
+## T-Deck port verification (initial stage)
 
 The five T-Deck profiles have passed `-fsyntax-only` checks of `src/main.cpp` with the installed ESP32-S3 Arduino, RadioLib, NimBLE, display, and keyboard headers. These checks create no target object files or firmware binaries. The dependency versions resolve for the TFT and e-paper profiles. Host C++ tests cover threaded ordering, keyboard replies, retained drafts on failed queue attempts, upvote toggles, resend actions, new rooms, preset selection, input length, Unicode-safe backspace, and full-message viewing. Flasher tests verify that all five profiles remain distinct choices with the correct installation offsets. Catalog checks cover all eight ESP32 and three nRF targets.
 

@@ -60,7 +60,10 @@ Run `npm test` for core, simulator, and Node tests; `npm run test:webflasher` fo
 
 Full [flasher hosting and release instructions](../../webflasher/README.md) include PHP requirements, archive contents, and caching.
 
-[Wiki home](Home.md)
+
+## Refresh screenshots
+
+The README and usage/settings guides share the images in [`docs/screenshots`](../screenshots/README.md). Capture the actual current web client against the local C++ simulator, including upvotes and downvotes, the compact composer, the connection indicator, Transmit enabled, and Appearance last. Use Chrome DevTools’ full-page screenshot command to exclude the pointer and browser chrome. Inspect light, dark, and Settings captures before committing. These are simulator page captures, not evidence of physical-radio or phone interoperability.
 
 ## Maintain this wiki
 
@@ -77,3 +80,5 @@ git -C /tmp/meshit-wiki push
 Create the first Home page in GitHub's Wiki UI before cloning a new wiki. The export converts page links to wiki routes and source/image links to the main repository. It does not commit or push automatically.
 
 T-Deck release targets are `t-deck`, `t-deck-plus`, `t-deck-pro` (v1.0), `t-deck-pro-v1-1`, and `t-deck-pro-max`. Run a selected target with `pio run -e TARGET`. Release builds include all five; push/PR CI still runs checks without building firmware or Android.
+
+[Wiki home](Home.md)

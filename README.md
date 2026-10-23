@@ -6,7 +6,7 @@ Small, threaded LoRa chat for **Heltec V3/V4 and LILYGO T-Deck / Plus / Pro / Pr
 
 Chat has rooms, replies, removable upvotes and downvotes, New/Top sorting, and an optional nickname (Anonymous by default). Posts and replies accept **160 Unicode characters**. A check means **another radio confirmed receipt**, through a matching rebroadcast or a direct meshit receipt; it does not mean everyone received it. Without a check, the radio makes at most three retries after the initial send.
 
-There are no locations, node advertisements, direct messages, explicit radio acknowledgments, or periodic history broadcasts. The single exception to the no-forwarding rule is answering an explicit request for a retained message, with delayed response suppression.
+There are no locations, node advertisements, direct messages, or periodic history broadcasts. Direct meshit receipts acknowledge live posts; network-level ACK requests remain disabled. The single exception to the no-forwarding rule is answering an explicit request for a retained message, with delayed response suppression.
 
 ## Screenshots
 
@@ -14,18 +14,28 @@ Use the chat-bubble icon for conversations and the gear icon for Settings.
 
 **Light mode**
 
-![meshit chat with rooms, upvotes, and threaded replies](docs/screenshots/chat.png)
+![meshit chat with rooms, upvotes, downvotes, and threaded replies](docs/screenshots/chat.png)
 
-**Settings**
+<details>
+<summary>Dark mode</summary>
 
-![meshit radio connection and network settings](docs/screenshots/settings.png)
+![meshit dark chat with upvotes and downvotes](docs/screenshots/chat-dark.png)
 
-Captured from the local simulator with sample messages. Rebroadcast checks are simulated; screenshots do not establish hardware interoperability.
+</details>
+
+<details>
+<summary>Settings</summary>
+
+![meshit connection, transmit toggle, network, and appearance settings](docs/screenshots/settings.png)
+
+</details>
+
+Captured from the current web client using fictional sample messages on the local C++ simulator. Delivery checks are simulated; these are companion screenshots, not physical-radio or Android-device tests.
 
 ## Get started
 
 1. Open **[meshit.pdxlocs.com](https://meshit.pdxlocs.com)** and [install the firmware for your board](docs/wiki/Installation.md). Heltec V3/V4 and T-Deck models use browser USB installation; RAK4631 and T114 use downloads matching their installed S140 SoftDevice.
-2. [Connect the companion](docs/wiki/Connection-and-Settings.md) over local Wi-Fi on ESP or Bluetooth on all supported boards.
+2. [Connect the companion](docs/wiki/Connection-and-Settings.md) over local Wi-Fi on ESP or Bluetooth on all supported boards. On T-Deck, first enable the desired connection in its on-device Settings; both default to Off.
 3. Choose a matching network and preset, then [join a room and post](docs/wiki/Using-Meshit.md).
 
 See the [wiki](https://github.com/pdxlocations/meshit/wiki) for [hardware and presets](docs/wiki/Hardware-and-Presets.md), [mobile companions](docs/wiki/Mobile-Companions.md), [troubleshooting](docs/wiki/Troubleshooting.md), and [development and releases](docs/wiki/Development-and-Releases.md).
@@ -42,7 +52,14 @@ npm run dev
 
 Open **http://127.0.0.1:8787**. The preview uses the actual C++ chat core and **simulates** rebroadcasts. It does not transmit radio traffic. Preview history lasts for the server process; browser drafts and the last received feed are saved locally.
 
-T-Deck models also run [standalone chat on their screen and keyboard](docs/wiki/T-Deck.md), alongside the phone/browser companion. Match the Pro hardware revision when installing. These new profiles have syntax and host-test coverage; firmware builds and physical-device checks are pending.
+## T-Deck standalone
+
+T-Deck models run [chat on their screen and keyboard](docs/wiki/T-Deck.md), alongside the phone/browser companion. Match the Pro hardware revision when installing. All five profiles build successfully and pass host tests; physical-device checks remain.
+
+- Bluetooth and Wi-Fi default to Off, with separate saved Settings toggles.
+- Complete messages wrap and scroll in the list. Resend appears only on our own unacknowledged, unqueued messages.
+- Native-size bold labels improve small-text legibility; a battery icon replaces header voltage.
+- The display sleeps after one minute and wakes on input or new messages/votes. The wake-up press is consumed; ACKs and duplicates stay quiet.
 
 ## Build firmware
 
@@ -78,14 +95,15 @@ This uses the packaged firmware above and creates `dist/meshit-release.zip`, its
 
 ## Connect
 
-- **ESP:** read the `meshit-…` setup Wi-Fi name and eight-digit password on the radio’s OLED. The password is a four-digit PIN repeated twice (for example, `48214821`). On first setup without a working display, join the `meshit-…` Wi-Fi network with **`12345678`**. Open **http://192.168.4.1**; no serial monitor is needed. Choose the network, region, and preset. In Settings, supply your home Wi-Fi details, then restart the radio and visit **http://meshit.local**. The setup hotspot closes after one minute on the LAN; the display then shows `meshit.local` and the LAN IP.
+- **Heltec ESP32:** read the `meshit-…` setup Wi-Fi name and eight-digit password on the radio’s OLED. The password is a four-digit PIN repeated twice (for example, `48214821`). On first setup without a working display, join the `meshit-…` Wi-Fi network with **`12345678`**. Open **http://192.168.4.1**; no serial monitor is needed. Choose the network, region, and preset. In Settings, supply your home Wi-Fi details, then restart the radio and visit **http://meshit.local**. The setup hotspot closes after one minute on the LAN; the display then shows `meshit.local` and the LAN IP.
+- **T-Deck:** configure LoRa on the device. Enable **Settings → Wi-Fi: Off** or **Bluetooth: Off** for companion access, then read **Settings → Radio connection** for credentials. These switches persist across restart.
 - **Wi-Fi (ESP32):** join `meshit-…` in device Wi-Fi settings. The native companion uses `192.168.4.1`; browsers use the radio’s own page.
-- **Bluetooth (ESP32 / nRF52):** in Settings choose **Find radios**, select a radio, then **Connect**. ESP32 pairing uses the last six digits of its setup Wi-Fi password (`345678` without a display). Disconnect Wi-Fi clients first; Bluetooth pauses ESP32 Wi-Fi until you choose **Disconnect**. iPhone uses the native companion.
+- **Bluetooth (ESP32 / nRF52):** in Settings choose **Find radios**, select a radio, then **Connect**. ESP32 pairing uses the last six digits of its setup Wi-Fi password (`345678` without a display). Disconnect Wi-Fi clients first; Bluetooth pauses ESP32 Wi-Fi until you choose **Disconnect**. T-Deck restores Wi-Fi only if its Wi-Fi switch is enabled. iPhone uses the native companion.
 - **Mobile:** the UI is bundled locally, so it can open without an internet connection. Connect by Bluetooth or by local Wi-Fi on ESP. Local drafts and a bounded cached feed remain available while disconnected.
 
 AP and Bluetooth names use `meshit-` plus the last four hexadecimal digits of the factory MAC (for example, `meshit-00af`). Saved numeric setup passwords, Bluetooth PINs, and home Wi-Fi credentials are retained by application-only firmware updates. Factory/full-erase installation removes saved credentials.
 
-The initial preset catalog covers US/Canada and EU 868 MHz, with Meshtastic LongFast, MeshCore narrow, and the user-supplied **MeshOregon: 918.5 MHz, BW125, SF8, CR4/5**. Meshtastic transport uses the standard public key and the preset’s built-in channel hash automatically; no channel name is entered during setup. All meshit rooms share one transport channel. Switching network or preset starts a fresh radio history.
+The initial preset catalog covers US/Canada and EU 868 MHz, with Meshtastic LongFast, MeshCore narrow, and the user-supplied **MeshOregon: 918.5 MHz, BW125, SF8, CR4/5**. Meshtastic transport uses the standard public key and the preset’s built-in channel hash automatically; no channel name is entered during setup. All meshit rooms share one transport channel. Switching network or preset applies immediately, starts a fresh radio history, and discards old-network queued transmissions.
 
 ## Android and iOS framework
 
@@ -96,11 +114,11 @@ npm run mobile:ios
 
 The scripts generate native projects, configure Bluetooth/local-network access, and reuse `web/`. Android requires Android 12+, Java 21, and an Android SDK. iOS requires iOS 16+ and Xcode. The iOS setup uses Swift Package Manager and adapts the installed Bluetooth plugin's registration; CocoaPods is unnecessary. After web changes, use `npm run mobile:sync` to regenerate assets and the iOS Bluetooth adapter.
 
-Open `android/` in Android Studio or `ios/App/App.xcodeproj` in Xcode. Native projects and build products are generated and ignored by Git. Signing, distribution, and real-phone BLE testing are separate release steps. Bluetooth cannot be verified in an iOS simulator.
+Open `android/` in Android Studio or `ios/App/App.xcodeproj` in Xcode. Native projects and build products are generated and ignored by Git. Signing, distribution, and real-phone BLE testing are separate release steps. Bluetooth cannot be verified in an iOS simulator. Android updates must use the same signing certificate as the installed app; see [APK installation and signing](docs/wiki/Mobile-Companions.md#installing-updates) if Android reports a package conflict.
 
 ## History and encryption
 
-The radio keeps **200 posts and replies total across rooms**, evicting lowest-voted first and then oldest. Evicting a parent removes its entire descendant thread, even if replies have votes. Upvoted messages remain until displaced. A room disappears when its last retained message disappears; empty room drafts remain local until their first post.
+The radio keeps **200 posts and replies total across rooms**, evicting lowest-voted first and then oldest. Evicting a parent removes its entire descendant thread, even if replies have votes. The net upvote/downvote score controls ranking and retention; votes do not pin a message forever. A room disappears when its last retained message disappears; empty room drafts remain local until their first post.
 
 Numbering is automatic: a six-byte ID combines a sender identity and its counter. Hearing a new sender establishes a baseline without downloading old history. Subsequent gaps trigger bounded requests. Replies request missing parents and follow their ancestor chain back to the original post. A newly heard upvote or downvote also requests its missing target and ancestors. No central numbering server or clock synchronization is needed.
 

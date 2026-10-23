@@ -1,6 +1,6 @@
 # History, encryption, and protocol
 
-The radio keeps **200 posts and replies total across rooms**, evicting lowest-voted first and then oldest. Evicting a parent removes its entire descendant thread, even if replies have votes. Upvoted messages remain until displaced. A room disappears when its last retained message disappears; empty room drafts remain local until their first post.
+The radio keeps **200 posts and replies total across rooms**, evicting lowest-voted first and then oldest. Evicting a parent removes its entire descendant thread, even if replies have votes. Net upvotes minus downvotes determine scores; votes do not pin a message forever. A room disappears when its last retained message disappears; empty room drafts remain local until their first post.
 
 Numbering is automatic: a six-byte ID combines a sender identity and its counter. Hearing a new sender establishes a baseline without downloading old history. Subsequent gaps trigger bounded requests. Replies request missing parents and follow their ancestor chain back to the original post. A newly heard upvote or downvote also requests its missing target and ancestors. No central numbering server or clock synchronization is needed.
 
@@ -19,7 +19,7 @@ The shared application key is public. Nicknames are not verified identities, and
 meshit originates application traffic and relies on existing relays. It does not bridge Meshtastic and MeshCore or turn ordinary Meshtastic/MeshCore chat into meshit rooms. All participants must use meshit and matching transport settings. Hardware forwarding, RF timing, power-loss behavior, and real-phone BLE still require physical validation; see the [verification record](../VALIDATION.md).
 
 
-Meshtastic packets originate with `hop_limit=7` and `hop_start=7`. Relays decrement the remaining limit while retaining the starting value. The broadcast header does not request an ACK, and the explicitly present Data bitfield requests neither a response nor MQTT uplink. meshit's checkmark still requires an authenticated meshit message heard via a relay.
+Meshtastic packets originate with `hop_limit=7` and `hop_start=7`. Relays decrement the remaining limit while retaining the starting value. The broadcast header does not request an ACK, and the explicitly present Data bitfield requests neither a response nor MQTT uplink. meshit's checkmark requires either an authenticated matching rebroadcast or a direct meshit receipt from another radio for a locally sent post.
 
 Receiving a reply or a vote on one triggers recovery of its missing parent chain through the original post. If the reply itself is missing, the radio requests it first, then follows its parent references. Duplicate requests are suppressed; tombstoned content stays removed, and bounded requests stop when unavailable.
 
