@@ -52,7 +52,7 @@ int main(){
     radio.receive(vote(300,2,action.target),200,false);key(DeckMenu);deck.cursor=1;action=key('\r');assert(!action.up);
     key(DeckMenu);deck.cursor=2;action=key('\r');assert(action.op=="resend"&&action.target==deck.selected);
     key(DeckMenu);deck.cursor=4;key('\r');for(char c:std::string("camp"))key(c);key('\r');assert(deck.room=="camp"&&!deck.reply);
-    key(DeckMenu);deck.cursor=7;key('\r');key(DeckDown);action=key('\r');assert(action.op=="settings"&&action.preset=="mc-eu-narrow"&&action.network=="meshcore");
+    key(DeckMenu);deck.cursor=7;key('\r');key(DeckDown);key('\r');assert(deck.page==DeckChat::Regions);key('\r');assert(deck.page==DeckChat::Presets);action=key('\r');assert(action.op=="settings"&&action.preset=="mc-eu-narrow"&&action.network=="meshcore");
     deck.accepted(action);assert(deck.page==DeckChat::Chat);
     for(unsigned i=0;i<170;++i)key('x');assert(deck.draft.size()==160);key(8);assert(deck.draft.size()==159);
     deck.draft="Hi 🙂";key(8);assert(deck.draft=="Hi ");
@@ -81,8 +81,17 @@ int main(){
     d.draft="Touch reply";auto action=activateDeckHit(find(DeckTap::Post),d,c,catalog,400);assert(action.op=="post"&&action.target==root.id&&action.text=="Touch reply");
     action=activateDeckHit(find(DeckTap::Vote,root.id),d,c,catalog,400);assert(action.op=="vote"&&action.up);
     activateDeckHit(find(DeckTap::Settings),d,c,catalog,400);assert(d.page==DeckChat::Settings);
-    activateDeckHit({DeckTap::MenuItem,{},0,3},d,c,catalog,400);assert(d.dark);
+    activateDeckHit({DeckTap::MenuItem,{},0,3},d,c,catalog,400);assert(d.page==DeckChat::Appearance);activateDeckHit({DeckTap::MenuItem,{},0,2},d,c,catalog,400);assert(d.dark);
     scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);assert(scene.paint.front().color==deckPalette(true).paper);
+    const std::vector<DeckPreset> regional={{"mt-us","meshtastic","US LongFast","US","915 MHz"},{"mt-eu","meshtastic","EU LongFast","EU_868","869 MHz"},{"mc-us","meshcore","US Narrow","US","915 MHz"}};
+    d.page=DeckChat::Settings;d.cursor=1;d.key('\r',c,regional,400);assert(d.page==DeckChat::Network);
+    d.cursor=0;d.key('\r',c,regional,400);assert(d.page==DeckChat::Regions&&d.regions(regional).size()==2);
+    d.cursor=1;d.key('\r',c,regional,400);assert(d.page==DeckChat::Presets&&d.filtered(regional).size()==1);
+    auto preset=d.key('\r',c,regional,400);assert(preset.network=="meshtastic"&&preset.preset=="mt-eu");
+    d.back();assert(d.page==DeckChat::Regions);d.back();assert(d.page==DeckChat::Network);d.back();assert(d.page==DeckChat::Settings);
+    d.page=DeckChat::Appearance;d.cursor=1;auto appearance=d.key('\r',c,regional,400);assert(!d.dark&&d.appearance==1);
+    JsonDocument appearanceRequest;deckRequest(appearanceRequest,appearance);assert(appearanceRequest["op"]=="deckAppearance"&&appearanceRequest["appearance"]==1);
+    d.page=DeckChat::Appearance;d.cursor=0;d.systemDark=true;d.key('\r',c,regional,400);assert(d.dark&&d.appearance==0);
     c.messages.clear();action=activateDeckHit(replyHit,d,c,catalog,400);assert(action.op.empty()&&!d.error.empty()); // Stale frames cannot target evicted posts.
   }
   {

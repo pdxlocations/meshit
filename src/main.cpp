@@ -168,6 +168,13 @@ String dispatch(const String& input){
         else if(!core.submit(e,millis()))res["error"]="Cannot queue: invalid text, displaced thread, full queue, or storage unavailable";
         else {res["ok"]=true;res["messageId"]=hex(core.pending.back().event.id);changed();persist();}
       }
+    }else if(op=="deckAppearance"){
+      const int appearance=req["appearance"]|-1;
+      if(appearance<0||appearance>2)res["error"]="Choose System, Light or Dark";
+      else {JsonDocument next;next.set(settings);next["deckAppearance"]=appearance;String s;serializeJson(next,s);
+        if(!fsReady||!writeFile("/settings.json",s))res["error"]="Could not save appearance";
+        else {settings.set(next);res["ok"]=true;}
+      }
     }else if(op=="settings"){
       String selected=req["preset"]|settings["preset"]|"",net=req["network"]|settings["network"]|"";JsonObjectConst p;
       for(JsonObjectConst v:presets.as<JsonArrayConst>())if(v["id"]==selected&&v["network"]==net)p=v;
@@ -257,7 +264,7 @@ void setup(){
 #endif
   initRadio();
 #if defined(MESHIT_TDECK)
-  deckUi.begin(settings["configured"]|false,settings["deckDark"]|false);
+  deckUi.begin(settings["configured"]|false,settings["deckDark"]|false,settings["deckAppearance"]|-1);
   // E-paper busy waits release SPI; keep receiving radio packets during refresh.
   deckPanel().serviceWhileBusy([](const void*){pollRadio();delay(1);});
 #endif

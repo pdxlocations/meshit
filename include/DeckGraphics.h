@@ -64,7 +64,12 @@ public:
         case S::Text:label(x,y,op.text,op.font,c);break;
         case S::Dot:if(op.text=="on")surface.fillCircle(x+w/2,y+h/2,w/2,c);else surface.drawCircle(x+w/2,y+h/2,w/2,c);break;
         case S::Chat:surface.drawRoundRect(x,y,w,h-3,3,c);surface.drawLine(x+4,y+h-4,x+1,y+h,c);surface.drawLine(x+1,y+h,x+8,y+h-4,c);break;
-        case S::Gear:surface.drawCircle(x+8,y+8,5,c);surface.drawCircle(x+8,y+8,2,c);for(int i=0;i<4;++i){const int dx[]={0,1,0,-1},dy[]={-1,0,1,0};surface.drawLine(x+8+dx[i]*5,y+8+dy[i]*5,x+8+dx[i]*8,y+8+dy[i]*8,c);}break;
+        case S::Gear:{
+          // The same 24-unit outline used by the companion client's settings SVG.
+          const float points[][2]={{9.5,3},{8.9,5.2},{6.9,6.1},{4.9,5.4},{2.5,9.6},{4.1,11.1},{4.1,13.4},{2.5,14.9},{4.9,19.1},{6.9,18.4},{8.9,19.3},{9.5,21.5},{14.5,21.5},{15.1,19.3},{17.1,18.4},{19.1,19.1},{21.5,14.9},{19.9,13.4},{19.9,11.1},{21.5,9.6},{19.1,5.4},{17.1,6.1},{15.1,5.2},{14.5,3}};
+          for(size_t i=0;i<24;++i){const auto& a=points[i];const auto& b=points[(i+1)%24];surface.drawLine(x+int(a[0]*w/24),y+int(a[1]*h/24),x+int(b[0]*w/24),y+int(b[1]*h/24),c);}
+          surface.drawCircle(x+w/2,y+h/2,std::max(1,w/8),c);break;}
+
         case S::Up:surface.drawLine(x+w/2,y+2,x+w/2,y+h,c);surface.drawLine(x+1,y+6,x+w/2,y+1,c);surface.drawLine(x+w/2,y+1,x+w-1,y+6,c);break;
         case S::Reply:surface.drawLine(x,y,x,y+h-3,c);surface.drawLine(x,y+h-3,x+w,y+h-3,c);surface.drawLine(x+w-3,y+h-6,x+w,y+h-3,c);surface.drawLine(x+w,y+h-3,x+w-3,y+h,c);break;
         case S::Check:surface.drawLine(x+1,y+7,x+5,y+11,c);surface.drawLine(x+5,y+11,x+12,y+2,c);surface.drawLine(x+1,y+8,x+5,y+12,c);surface.drawLine(x+5,y+12,x+13,y+2,c);break;

@@ -19,12 +19,12 @@ class DeckUi {
 #endif
   std::vector<meshit::DeckPreset> choices(JsonDocument& presets){
     std::vector<meshit::DeckPreset> result;
-    for(JsonObjectConst p:presets.as<JsonArrayConst>())result.push_back({p["id"]|"",p["network"]|"",std::string(p["network"]|"")+" / "+(p["region"]|"")+" / "+(p["name"]|"")});
+    for(JsonObjectConst p:presets.as<JsonArrayConst>())result.push_back({p["id"]|"",p["network"]|"",std::string(p["network"]|"")+" / "+(p["region"]|"")+" / "+(p["name"]|""),p["region"]|"",std::string(String(p["frequency"].as<float>(),2).c_str())+" MHz / SF"+std::to_string(p["sf"].as<int>())+" / BW"+std::string(String(p["bandwidth"].as<float>(),1).c_str())+" / CR4/"+std::to_string(p["cr"].as<int>())});
     return result;
   }
 public:
-  void begin(bool configured,bool dark=false){
-    chat.dark=dark;
+  void begin(bool configured,bool dark=false,int appearance=-1){
+    chat.systemDark=false;chat.appearance=appearance>=0&&appearance<=2?appearance:dark?2:0;chat.dark=chat.appearance==2;
 #if defined(MESHIT_TDECK_PLUS)
     touch.begin();
 #endif
@@ -68,10 +68,6 @@ public:
     }
     chat.sync(core);
 #if defined(MESHIT_TDECK_PLUS)
-    if(chat.dark!=(settings["deckDark"]|false)){
-      settings["deckDark"]=chat.dark;String saved;serializeJson(settings,saved);
-      if(!writeFile("/settings.json",saved))chat.error="Could not save appearance";
-    }
     if(!keyboardReady)chat.error="Keyboard unavailable";
     unread.prune(core);
     {scene=meshit::makeDeckScene(chat,core,catalog,ready,name.c_str(),password.c_str(),DeckGraphics::measure,scroll.tick(millis(),scene.maxScroll),battery?std::to_string(battery/1000)+"."+std::to_string((battery%1000)/100)+"V":"",unread.count(),scroll.followSelection);
@@ -94,9 +90,9 @@ public:
         for(size_t i=start;i<body.size()&&lines.size()<maxLines-1;++i)lines.push_back(body[i]);
       }else lines.push_back("Message no longer stored");
       lines.push_back("Up/down: scroll  Enter: back");
-    }else if(page==meshit::DeckChat::Menu||page==meshit::DeckChat::Rooms||page==meshit::DeckChat::Presets){
-      lines={page==meshit::DeckChat::Menu?"meshit / menu":page==meshit::DeckChat::Rooms?"meshit / rooms":"meshit / radio preset"};
-      std::vector<std::string> items;if(page==meshit::DeckChat::Menu)items=chat.menu;else if(page==meshit::DeckChat::Rooms)items=chat.rooms(core);else for(const auto& p:catalog)items.push_back(p.label);
+    }else if(page==meshit::DeckChat::Menu||page==meshit::DeckChat::Rooms||page==meshit::DeckChat::Presets||page==meshit::DeckChat::Settings||page==meshit::DeckChat::Appearance||page==meshit::DeckChat::Network||page==meshit::DeckChat::Regions||page==meshit::DeckChat::Wifi){
+      lines={page==meshit::DeckChat::Menu?"meshit / menu":page==meshit::DeckChat::Rooms?"meshit / rooms":page==meshit::DeckChat::Settings?"meshit / settings":page==meshit::DeckChat::Appearance?"meshit / appearance":page==meshit::DeckChat::Network?"meshit / network":page==meshit::DeckChat::Regions?"meshit / region":page==meshit::DeckChat::Wifi?"meshit / local Wi-Fi":"meshit / radio preset"};
+      std::vector<std::string> items;if(page==meshit::DeckChat::Menu)items=chat.menu;else if(page==meshit::DeckChat::Rooms)items=chat.rooms(core);else if(page==meshit::DeckChat::Settings)items=chat.settingsItems();else if(page==meshit::DeckChat::Appearance)items={"System","Light","Dark"};else if(page==meshit::DeckChat::Network)items={"Meshtastic","MeshCore"};else if(page==meshit::DeckChat::Regions)items=chat.regions(catalog);else if(page==meshit::DeckChat::Wifi)items={"Network: "+chat.wifiSsid,"Password: keep saved","Save settings"};else for(const auto& p:chat.filtered(catalog))items.push_back(p.label);
       const size_t window=maxLines-3,start=chat.cursor>=window?chat.cursor-window+1:0;
       for(size_t i=start;i<items.size()&&lines.size()<maxLines-2;++i)lines.push_back((chat.cursor==i?"> ":"  ")+items[i]);
 #if defined(MESHIT_TDECK_PRO)
@@ -106,8 +102,8 @@ public:
       if(page==meshit::DeckChat::Presets)lines.push_back("New preset clears history");
       lines.push_back("Ball: move; Enter: select");
 #endif
-    }else if(page==meshit::DeckChat::NewRoom||page==meshit::DeckChat::Nickname){
-      lines={page==meshit::DeckChat::NewRoom?"meshit / new room":"meshit / nickname"};deckPanel().wrap(lines,chat.draft+"_");lines.push_back("Enter: save  Menu: cancel");
+    }else if(chat.isEditor()){
+      lines={page==meshit::DeckChat::NewRoom?"meshit / new room":page==meshit::DeckChat::Nickname?"meshit / nickname":page==meshit::DeckChat::Ssid?"meshit / network name":"meshit / Wi-Fi password"};deckPanel().wrap(lines,(page==meshit::DeckChat::WifiPassword?std::string(chat.draft.size(),'*'):chat.draft)+"_");lines.push_back("Enter: save  Menu: cancel");
     }else {
       lines={"# "+chat.room+" / "+(chat.top?"Top":"New")+" / "+batteryText,
              std::string(ready?"Radio ready":(settings["configured"]|false)?"Radio unavailable":"Choose radio preset")+"  Out:"+std::to_string(outgoing)+" New:"+std::to_string(unread.count())+(bluetooth?" BT":"")};

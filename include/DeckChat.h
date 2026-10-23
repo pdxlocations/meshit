@@ -3,19 +3,22 @@
 
 namespace meshit {
 enum DeckKey {DeckUp=256,DeckDown,DeckMenu,DeckBack,DeckLeft,DeckRight};
-struct DeckPreset {std::string id,network,label;};
+struct DeckPreset {std::string id,network,label,region,detail;};
 struct DeckAction {std::string op,text,room,network,preset,ssid,password;Id target=0;bool up=true;};
 struct DeckRow {Id id;unsigned depth;};
 // Hardware-independent chat interaction; actions go through the same RPC as companions.
 class DeckChat {
 public:
-  enum Page {Chat,Menu,Rooms,NewRoom,Presets,Nickname,Credentials,Read,Settings,Wifi,Ssid,WifiPassword};
-  Page page=Chat;std::string room="general",draft,error;Id selected=0,reply=0;bool top=true,dark=false,focused=true;size_t cursor=0;
+  enum Page {Chat,Menu,Rooms,NewRoom,Presets,Nickname,Credentials,Read,Settings,Wifi,Ssid,WifiPassword,Appearance,Network,Regions};
+  Page page=Chat;std::string room="general",draft,error;Id selected=0,reply=0;bool top=true,dark=false,focused=true,systemDark=false;int appearance=0;std::string network,region;size_t cursor=0;
   std::string savedDraft,savedSsid,savedNickname,wifiSsid,wifiPassword;Id savedReply=0;Page editReturn=Chat;
   bool isEditor()const{return page==NewRoom||page==Nickname||page==Ssid||page==WifiPassword;}
   void edit(Page next,const std::string& value,Page back){savedDraft=draft;savedReply=reply;draft=value;editReturn=back;page=next;cursor=0;focused=true;}
   void leaveEditor(){draft=savedDraft;reply=savedReply;page=editReturn;cursor=0;}
-  void back(){error.clear();if(isEditor())leaveEditor();else{page=page==Read||page==Menu||page==Rooms||page==Settings?Chat:Settings;cursor=0;}}
+  void back(){error.clear();if(isEditor())leaveEditor();else{if(page==Presets&&!network.empty()){page=Regions;cursor=0;return;}if(page==Regions){page=Network;cursor=0;return;}page=page==Read||page==Menu||page==Rooms||page==Settings?Chat:Settings;cursor=0;}}
+  std::vector<DeckPreset> filtered(const std::vector<DeckPreset>& presets)const{std::vector<DeckPreset> out;for(const auto& p:presets)if((network.empty()||p.network==network)&&(region.empty()||p.region==region))out.push_back(p);return out;}
+  std::vector<std::string> regions(const std::vector<DeckPreset>& presets)const{std::vector<std::string> out;for(const auto& p:presets)if(p.network==network&&std::find(out.begin(),out.end(),p.region)==out.end())out.push_back(p.region);return out;}
+  std::vector<std::string> settingsItems()const{return {"Radio connection","Network","Nickname","Appearance","Local Wi-Fi"};}
   const std::vector<std::string> menu={"Reply","Toggle upvote","Resend","Rooms","New room","New post","New / Top","Radio preset","Nickname","Wi-Fi / Bluetooth","Read full message"};
   std::vector<std::string> rooms(const Core& core)const{
     std::vector<std::string> list{room};for(const auto& m:core.messages)if(std::find(list.begin(),list.end(),m.event.room)==list.end())list.push_back(m.event.room);
@@ -40,13 +43,16 @@ public:
     if(key==DeckBack||key==27){if(page!=Chat)back();else reply=0;return action;}
     if(key==DeckUp||key==DeckDown){
       if(page==Read){if(key==DeckDown&&cursor<MAX_TEXT)++cursor;else if(key==DeckUp&&cursor)--cursor;return action;}
-      const bool down=key==DeckDown;size_t count=page==Menu?menu.size():page==Rooms?rooms(core).size():page==Presets?presets.size():page==Settings?5:page==Wifi?3:0;
+      const bool down=key==DeckDown;size_t count=page==Menu?menu.size():page==Rooms?rooms(core).size():page==Presets?filtered(presets).size():page==Network?2:page==Regions?regions(presets).size():page==Appearance?3:page==Settings?settingsItems().size():page==Wifi?3:0;
       if(count){cursor=down?(cursor+1)%count:(cursor+count-1)%count;return action;}
       if(page==Chat){auto list=rows(core);for(size_t i=0;i<list.size();++i)if(list[i].id==selected){if(down&&i+1<list.size())selected=list[i+1].id;else if(!down&&i)selected=list[i-1].id;break;}}
       return action;
     }
     if(key=='\r'||key=='\n'){
-      if(page==Settings){switch(cursor){case 0:page=Credentials;break;case 1:page=Presets;break;case 2:edit(Nickname,savedNickname,Settings);break;case 3:dark=!dark;break;case 4:wifiSsid=savedSsid;wifiPassword.clear();page=Wifi;break;}cursor=0;return action;}
+      if(page==Settings){switch(cursor){case 0:page=Credentials;break;case 1:page=Network;break;case 2:edit(Nickname,savedNickname,Settings);break;case 3:page=Appearance;cursor=appearance;return action;case 4:wifiSsid=savedSsid;wifiPassword.clear();page=Wifi;break;}cursor=0;return action;}
+      if(page==Appearance){appearance=int(cursor);dark=appearance==0?systemDark:appearance==2;action.op="deckAppearance";action.text=std::to_string(appearance);page=Settings;cursor=3;return action;}
+      if(page==Network){network=cursor==0?"meshtastic":"meshcore";region.clear();page=Regions;cursor=0;return action;}
+      if(page==Regions){auto list=regions(presets);if(cursor<list.size()){region=list[cursor];page=Presets;cursor=0;}return action;}
       if(page==Wifi){if(cursor==0)edit(Ssid,wifiSsid,Wifi);else if(cursor==1)edit(WifiPassword,wifiPassword,Wifi);else{action.op="wifi";action.ssid=wifiSsid;action.password=wifiPassword;}return action;}
       if(page==Menu){
         switch(cursor){
@@ -55,11 +61,11 @@ public:
           case 2:if(selected){action.op="resend";action.target=selected;page=Chat;}break;
           case 3:page=Rooms;break;case 4:edit(NewRoom,"",Rooms);break;
           case 5:page=Chat;reply=0;break;case 6:top=!top;page=Chat;break;
-          case 7:page=Presets;break;case 8:edit(Nickname,savedNickname,Chat);break;case 9:page=Credentials;break;case 10:if(selected)page=Read;break;
+          case 7:page=Network;break;case 8:edit(Nickname,savedNickname,Chat);break;case 9:page=Credentials;break;case 10:if(selected)page=Read;break;
         }cursor=0;return action;
       }
       if(page==Rooms){auto list=rooms(core);if(cursor<list.size()){room=list[cursor];selected=reply=0;draft.clear();page=Chat;sync(core);}return action;}
-      if(page==Presets){if(cursor<presets.size()){const auto& p=presets[cursor];action.op="settings";action.network=p.network;action.preset=p.id;}return action;}
+      if(page==Presets){auto list=filtered(presets);if(cursor<list.size()){const auto& p=list[cursor];action.op="settings";action.network=p.network;action.preset=p.id;}return action;}
       if(page==Credentials||page==Read){page=Chat;return action;}
       if(page==Ssid||page==WifiPassword){if(page==Ssid)wifiSsid=draft;else wifiPassword=draft;leaveEditor();return action;}
       if(page==NewRoom){

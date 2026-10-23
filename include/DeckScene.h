@@ -33,7 +33,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
   draw(DeckShape::Fill,full,p.paper);draw(DeckShape::Fill,{0,0,320,29},p.header);
   draw(DeckShape::Poop,{7,5,20,20},p.ink);hit(DeckTap::Chat,{0,0,205,30});text(33,19,"meshit",DeckFont::Bold);if(!battery.empty())text(165,18,battery,DeckFont::Small,p.muted);
   draw(DeckShape::Dot,{215,11,8,8},connected?0x2d2b:p.muted,connected?"on":"off");hit(DeckTap::Connection,{205,0,28,30});
-  const bool settings=chat.page==DeckChat::Settings||chat.page==DeckChat::Presets||chat.page==DeckChat::Nickname||chat.page==DeckChat::Credentials||chat.page==DeckChat::Wifi||chat.page==DeckChat::Ssid||chat.page==DeckChat::WifiPassword;
+  const bool settings=chat.page==DeckChat::Settings||chat.page==DeckChat::Presets||chat.page==DeckChat::Nickname||chat.page==DeckChat::Credentials||chat.page==DeckChat::Wifi||chat.page==DeckChat::Ssid||chat.page==DeckChat::WifiPassword||chat.page==DeckChat::Appearance||chat.page==DeckChat::Network||chat.page==DeckChat::Regions;
   draw(DeckShape::Round,{237,2,34,25},settings?p.header:p.selected);draw(DeckShape::Chat,{245,7,17,15},p.ink);hit(DeckTap::Chat,{233,0,42,30});
   draw(DeckShape::Round,{278,2,34,25},settings?p.selected:p.header);draw(DeckShape::Gear,{287,7,17,17},p.ink);hit(DeckTap::Settings,{277,0,43,30});
   if(chat.page==DeckChat::Chat){
@@ -80,10 +80,13 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     if(rows.empty())text(116,feedTop+30,"No messages",DeckFont::Small,p.muted);
   }else {
     std::string title;std::vector<std::string> items;
-    if(chat.page==DeckChat::Settings){title="Settings";items={"Radio connection","Radio preset","Nickname",chat.dark?"Appearance: Dark":"Appearance: Light","Local Wi-Fi"};}
+    if(chat.page==DeckChat::Settings){title="Settings";items=chat.settingsItems();}
+    else if(chat.page==DeckChat::Appearance){title="Appearance";items={"System","Light","Dark"};items[chat.appearance]+=" (selected)";}
+    else if(chat.page==DeckChat::Network){title="Network";items={"Meshtastic","MeshCore"};}
+    else if(chat.page==DeckChat::Regions){title="Region";items=chat.regions(presets);}
     else if(chat.page==DeckChat::Menu){title="Message";items=chat.menu;}
     else if(chat.page==DeckChat::Rooms){title="Rooms";items=chat.rooms(core);draw(DeckShape::Round,{244,35,68,23},p.selected);text(253,51,"+ New room");hit(DeckTap::NewRoom,{238,31,82,30});}
-    else if(chat.page==DeckChat::Presets){title="Radio preset";for(const auto& preset:presets)items.push_back(preset.label);}
+    else if(chat.page==DeckChat::Presets){title="Radio preset";for(const auto& preset:chat.filtered(presets))items.push_back(preset.label);}
     else if(chat.page==DeckChat::Credentials){size_t outgoing=0;for(const auto& job:core.pending)if(!job.ack&&!job.history&&(job.event.kind==Kind::Post||job.event.kind==Kind::Vote))++outgoing;title="Radio connection";items={name,"Password: "+password,"http://192.168.4.1","Bluetooth PIN: "+(password.size()>2?password.substr(2):""),"http://meshit.local","New: "+std::to_string(unread)+"  Out: "+std::to_string(outgoing)};}
     else if(chat.page==DeckChat::Wifi){title="Local Wi-Fi";items={"Network: "+chat.wifiSsid,"Password: "+(chat.wifiPassword.empty()?std::string("keep saved"):std::string(chat.wifiPassword.size(),'*')),"Save settings"};}
     else if(chat.isEditor()){title=chat.page==DeckChat::NewRoom?"New room":chat.page==DeckChat::Nickname?"Nickname":chat.page==DeckChat::Ssid?"Network name":"Wi-Fi password";}
@@ -101,7 +104,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
       draw(DeckShape::Round,{163,139,69,30},p.selected);text(180,158,"Cancel");hit(DeckTap::Back,{163,137,69,34});
       draw(DeckShape::Round,{241,139,71,30},p.button);text(263,158,"Save",DeckFont::Small,p.buttonInk);hit(DeckTap::Save,{241,137,71,34});
     }else{
-      const int bottom=chat.page==DeckChat::Read?205:chat.page==DeckChat::Presets?215:240;
+      const int bottom=chat.page==DeckChat::Read?205:chat.page==DeckChat::Presets?200:240;
       s.viewport={0,63,320,bottom-63};s.maxScroll=std::max(0,int(items.size())*28-s.viewport.h);
       s.scroll=std::max(0,std::min(previousScroll,s.maxScroll));
       if(followSelection){const int selected=int(chat.cursor)*28;if(selected<s.scroll)s.scroll=selected;else if(selected+28>s.scroll+s.viewport.h)s.scroll=selected+28-s.viewport.h;s.scroll=std::min(s.scroll,s.maxScroll);}
@@ -117,7 +120,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         const auto* m=core.find(chat.selected);if(m&&m->mine&&!m->acked){text(224,226,"Resend");hit(DeckTap::Resend,{206,207,109,33},chat.selected);}
       }
     }
-    if(chat.page==DeckChat::Presets)text(8,234,"Changing preset clears history",DeckFont::Small,p.muted);
+    if(chat.page==DeckChat::Presets){const auto list=chat.filtered(presets);if(chat.cursor<list.size())text(8,215,deckFit(list[chat.cursor].detail,304,DeckFont::Small,measure),DeckFont::Small,p.muted);text(8,234,"Changing preset clears history",DeckFont::Small,p.muted);}
   }
   if(!chat.error.empty()){draw(DeckShape::Fill,{0,220,320,20},p.header);text(8,234,deckFit(chat.error,304,DeckFont::Small,measure));}
   return s;
