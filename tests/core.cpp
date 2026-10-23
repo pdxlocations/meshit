@@ -72,7 +72,7 @@ int main(){
     radio.receive(vote(300,2,action.target),200,false);key(DeckMenu);deck.cursor=2;action=key('\r');assert(!action.up);
     key(DeckMenu);deck.cursor=3;action=key('\r');assert(action.op=="resend"&&action.target==deck.selected);
     key(DeckMenu);deck.cursor=5;key('\r');for(char c:std::string("camp"))key(c);key('\r');assert(deck.room=="camp"&&!deck.reply);
-    key(DeckMenu);deck.cursor=8;key('\r');key(DeckDown);key('\r');assert(deck.page==DeckChat::Regions);key('\r');assert(deck.page==DeckChat::Presets);action=key('\r');assert(action.op=="settings"&&action.preset=="mc-eu-narrow"&&action.network=="meshcore");
+    key(DeckMenu);deck.cursor=8;key('\r');key(DeckDown);key(DeckDown);key('\r');assert(deck.page==DeckChat::Regions);key(DeckDown);key('\r');assert(deck.page==DeckChat::Presets);key(DeckDown);action=key('\r');assert(action.op=="settings"&&action.preset=="mc-eu-narrow"&&action.network=="meshcore");
     deck.accepted(action);assert(deck.page==DeckChat::Chat);
     for(unsigned i=0;i<170;++i)key('x');assert(deck.draft.size()==160);key(8);assert(deck.draft.size()==159);
     deck.draft="Hi 🙂";key(8);assert(deck.draft=="Hi ");
@@ -83,7 +83,7 @@ int main(){
     assert((deckTouchPoint(0,0,true)==std::make_pair(319,0)));
     assert((deckTouchPoint(239,319,true)==std::make_pair(0,239)));
     assert((deckTouchPoint(0,319,false)==std::make_pair(319,239)));
-    DeckGesture pointer;pointer.contact(100,150);pointer.contact(102,151);auto e=pointer.release();assert(e.tap&&e.x==102);
+    DeckGesture pointer;pointer.contact(100,150);pointer.contact(102,151);auto e=pointer.release();assert(e.tap&&e.x==100);
     assert(!pointer.release().tap); // Held fingers and repeated release frames never post twice.
     pointer.contact(100,180);pointer.contact(100,110);e=pointer.release();assert(!e.tap&&e.swipe==1);
     pointer.contact(100,100);pointer.contact(150,100);pointer.contact(100,100);assert(!pointer.release().tap); // Dragging away and back is not a tap.
@@ -110,6 +110,14 @@ int main(){
       activateDeckHit(*bodyTap,d,c,catalog,400);assert(d.page==DeckChat::Menu); // Repeated taps also open actions, never Rooms or the full-text view.
       activateDeckHit({DeckTap::MenuItem,{},0,1},d,c,catalog,400);assert(d.page==DeckChat::Chat&&d.reply==hit.target);d.reply=0;
     }
+    DeckTapLatch latch;const auto selectedHit=find(DeckTap::Select,root.id);d.page=DeckChat::Chat;
+    latch.begin(scene,d,selectedHit.box.x+45,selectedHit.box.y+3);
+    auto movedScene=scene;movedScene.hits.clear();movedScene.hits.push_back({DeckTap::Rooms,selectedHit.box});
+    const auto* latched=latch.finish(d,true);assert(latched&&latched->action==DeckTap::Select&&latched->target==root.id);
+    activateDeckHit(*latched,d,c,catalog,400);assert(d.page==DeckChat::Menu&&d.selected==root.id);assert(!latch.finish(d,true));
+    d.page=DeckChat::Chat;latch.begin(scene,d,selectedHit.box.x+45,selectedHit.box.y+3);assert(!latch.finish(d,false));
+    latch.begin(scene,d,selectedHit.box.x+45,selectedHit.box.y+3);d.page=DeckChat::Rooms;assert(!latch.finish(d,true));d.page=DeckChat::Chat;
+    latch.begin(scene,d,selectedHit.box.x+45,selectedHit.box.y+3);const auto originalRoom=d.room;d.room="other";assert(!latch.finish(d,true));d.room=originalRoom;
     auto replyHit=find(DeckTap::Reply,root.id);assert(replyHit.box.y>=100&&replyHit.box.y+replyHit.box.h<=240);
     const auto* picked=deckHitAt(scene,replyHit.box.x+2,replyHit.box.y+2);assert(picked&&picked->action==DeckTap::Reply);
     activateDeckHit(*picked,d,c,catalog,400);assert(d.reply==root.id);
@@ -122,17 +130,25 @@ int main(){
     d.draft="Touch reply";auto action=activateDeckHit(find(DeckTap::Post),d,c,catalog,400);assert(action.op=="post"&&action.target==root.id&&action.text=="Touch reply");
     action=activateDeckHit(find(DeckTap::Vote,root.id),d,c,catalog,400);assert(action.op=="vote"&&action.up);
     activateDeckHit(find(DeckTap::Settings),d,c,catalog,400);assert(d.page==DeckChat::Settings);
-    activateDeckHit({DeckTap::MenuItem,{},0,3},d,c,catalog,400);assert(d.page==DeckChat::Appearance);activateDeckHit({DeckTap::MenuItem,{},0,2},d,c,catalog,400);assert(d.dark);
+    activateDeckHit({DeckTap::MenuItem,{},0,4},d,c,catalog,400);assert(d.page==DeckChat::Appearance);activateDeckHit({DeckTap::MenuItem,{},0,3},d,c,catalog,400);assert(d.dark);
     scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);assert(scene.paint.front().color==deckPalette(true).paper);
     const std::vector<DeckPreset> regional={{"mt-us","meshtastic","US LongFast","US","915 MHz"},{"mt-eu","meshtastic","EU LongFast","EU_868","869 MHz"},{"mc-us","meshcore","US Narrow","US","915 MHz"}};
-    d.page=DeckChat::Settings;d.cursor=1;d.key('\r',c,regional,400);assert(d.page==DeckChat::Network);
-    d.cursor=0;d.key('\r',c,regional,400);assert(d.page==DeckChat::Regions&&d.regions(regional).size()==2);
-    d.cursor=1;d.key('\r',c,regional,400);assert(d.page==DeckChat::Presets&&d.filtered(regional).size()==1);
-    auto preset=d.key('\r',c,regional,400);assert(preset.network=="meshtastic"&&preset.preset=="mt-eu");
+    d.page=DeckChat::Settings;d.cursor=2;d.key('\r',c,regional,400);assert(d.page==DeckChat::Network);
+    d.cursor=1;d.key('\r',c,regional,400);assert(d.page==DeckChat::Regions&&d.regions(regional).size()==2);
+    d.cursor=2;d.key('\r',c,regional,400);assert(d.page==DeckChat::Presets&&d.filtered(regional).size()==1);
+    d.cursor=1;auto preset=d.key('\r',c,regional,400);assert(preset.network=="meshtastic"&&preset.preset=="mt-eu");
     d.back();assert(d.page==DeckChat::Regions);d.back();assert(d.page==DeckChat::Network);d.back();assert(d.page==DeckChat::Settings);
-    d.page=DeckChat::Appearance;d.cursor=1;auto appearance=d.key('\r',c,regional,400);assert(!d.dark&&d.appearance==1);
+    d.page=DeckChat::Appearance;d.cursor=2;auto appearance=d.key('\r',c,regional,400);assert(!d.dark&&d.appearance==1);
     JsonDocument appearanceRequest;deckRequest(appearanceRequest,appearance);assert(appearanceRequest["op"]=="deckAppearance"&&appearanceRequest["appearance"]==1);
-    d.page=DeckChat::Appearance;d.cursor=0;d.systemDark=true;d.key('\r',c,regional,400);assert(d.dark&&d.appearance==0);
+    d.page=DeckChat::Appearance;d.cursor=1;d.systemDark=true;d.key('\r',c,regional,400);assert(d.dark&&d.appearance==0);
+    for(const auto page:{DeckChat::Settings,DeckChat::Rooms,DeckChat::Presets,DeckChat::Network,DeckChat::Regions,DeckChat::Appearance,DeckChat::Wifi}){
+      d.page=page;d.cursor=0;auto menuFrame=makeDeckScene(d,c,regional,true,"mesit-00af","12345678",measure);
+      assert(std::any_of(menuFrame.paint.begin(),menuFrame.paint.end(),[](const DeckPaint& p){return p.text=="Back"&&p.box.y==81;}));
+      const auto* backRow=deckHitAt(menuFrame,25,75);assert(backRow&&backRow->action==DeckTap::MenuItem&&backRow->index==0);
+      auto backAction=activateDeckHit(*backRow,d,c,regional,400);assert(backAction.op.empty()&&d.page!=page);
+      d.page=page;d.cursor=0;d.key(DeckUp,c,regional,400);assert(d.cursor>0);d.key(DeckDown,c,regional,400);assert(d.cursor==0);
+      backAction=d.key('\r',c,regional,400);assert(backAction.op.empty()&&d.page!=page);
+    }
     c.messages.clear();action=activateDeckHit(replyHit,d,c,catalog,400);assert(action.op.empty()&&!d.error.empty()); // Stale frames cannot target evicted posts.
   }
   {
@@ -163,17 +179,17 @@ int main(){
     tap(DeckTap::Back);assert(d.page==DeckChat::Chat);
     d.page=DeckChat::Read;frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);tap(DeckTap::Reply);assert(d.page==DeckChat::Chat&&d.reply==selected);
     d.draft="Draft kept while editing settings";d.savedNickname="Old nickname";
-    d.page=DeckChat::Settings;d.cursor=2;d.key('\r',c,{},450);assert(d.page==DeckChat::Nickname);
+    d.page=DeckChat::Settings;d.cursor=3;d.key('\r',c,{},450);assert(d.page==DeckChat::Nickname);
     d.draft="New nickname";frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
     auto action=tap(DeckTap::Save);assert(action.op=="nickname"&&action.text=="New nickname");d.accepted(action);
     assert(d.page==DeckChat::Settings&&d.draft=="Draft kept while editing settings"&&d.reply==selected);
     d.back();assert(d.page==DeckChat::Chat);d.page=DeckChat::Settings;
-    d.cursor=4;d.savedSsid="Old wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi);
-    d.key('\r',c,{},450);assert(d.page==DeckChat::Ssid);d.draft="New wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi&&d.wifiSsid=="New wifi");
-    d.cursor=1;d.key('\r',c,{},450);d.draft="secret123";frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
+    d.cursor=5;d.savedSsid="Old wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi);
+    d.cursor=1;d.key('\r',c,{},450);assert(d.page==DeckChat::Ssid);d.draft="New wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi&&d.wifiSsid=="New wifi");
+    d.cursor=2;d.key('\r',c,{},450);d.draft="secret123";frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
     assert(std::none_of(frame.paint.begin(),frame.paint.end(),[](const DeckPaint& op){return op.text.find("secret123")!=std::string::npos;}));
     tap(DeckTap::Back);assert(d.page==DeckChat::Wifi&&d.wifiPassword.empty());
-    d.cursor=2;action=d.key('\r',c,{},450);JsonDocument request;deckRequest(request,action);
+    d.cursor=3;action=d.key('\r',c,{},450);JsonDocument request;deckRequest(request,action);
     assert(request["op"]=="settings"&&request["ssid"]=="New wifi"&&request["password"].isNull());
     d.page=DeckChat::Chat;d.draft="A real reply";frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
     action=tap(DeckTap::Post);deckRequest(request,action);

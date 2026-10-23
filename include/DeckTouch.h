@@ -3,7 +3,7 @@
 #include <Wire.h>
 #include "DeckScene.h"
 class DeckTouch {
-  uint8_t address=0;uint32_t lastContact=0;meshit::DeckGesture gesture;
+  uint8_t address=0;uint32_t lastContact=0;bool blocked=false;int track=-1;meshit::DeckGesture gesture;
   bool read(uint16_t reg,uint8_t* data,size_t size){
     Wire.beginTransmission(address);Wire.write(uint8_t(reg>>8));Wire.write(uint8_t(reg));if(Wire.endTransmission(false))return false;
     if(Wire.requestFrom(address,uint8_t(size))!=size)return false;for(size_t i=0;i<size;++i)data[i]=Wire.read();return true;
@@ -16,11 +16,11 @@ public:
     if(!address)return {};uint8_t status=0;
     if(!read(0x814e,&status,1)||!(status&0x80)){
       // Recover a lost release report instead of retaining the previous gesture axis.
-      if(uint32_t(millis()-lastContact)>750)return gesture.cancel();return {};
+      if(uint32_t(millis()-lastContact)>750){blocked=false;track=-1;return gesture.cancel();}return {};
     }
-    const unsigned count=status&15;if(!count){clear();return gesture.release();}
-    uint8_t point[8]={};if(count>5||!read(0x8150,point,sizeof(point))){clear();return {};}
-    clear();const auto xy=meshit::deckTouchPoint(point[0]|(int(point[1])<<8),point[2]|(int(point[3])<<8),true);
+    const unsigned count=status&15;if(!count){clear();track=-1;if(blocked){blocked=false;return gesture.cancel();}return gesture.release();}
+    uint8_t point[8]={};if(count!=1||!read(0x814f,point,sizeof(point))){clear();blocked=true;track=-1;return gesture.cancel();}if(blocked){clear();return {};}if(track>=0&&track!=point[0]){clear();blocked=true;track=-1;return gesture.cancel();}track=point[0];
+    clear();const auto xy=meshit::deckTouchPoint(point[1]|(int(point[2])<<8),point[3]|(int(point[4])<<8),true);
     if(xy.first<0||xy.second<0||xy.first>=320||xy.second>=240)return {};
     lastContact=millis();return gesture.contact(xy.first,xy.second);
   }

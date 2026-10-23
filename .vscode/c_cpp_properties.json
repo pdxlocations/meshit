@@ -13,9 +13,11 @@
                 "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/ESPmDNS/src",
                 "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src",
                 "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
+                "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                 "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/LittleFS/src",
                 "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/FS/src",
                 "/Users/benlipsey/Meshtastic/github/pdxlocations/meshit/lib/Meshit/src",
+                "/Users/benlipsey/Meshtastic/github/pdxlocations/meshit/.pio/libdeps/heltec-v3/ESP8266 and ESP32 OLED driver for SSD1306 displays/src",
                 "/Users/benlipsey/Meshtastic/github/pdxlocations/meshit/.pio/libdeps/heltec-v3/NimBLE-Arduino/src",
                 "/Users/benlipsey/Meshtastic/github/pdxlocations/meshit/.pio/libdeps/heltec-v3/Crypto",
                 "/Users/benlipsey/Meshtastic/github/pdxlocations/meshit/.pio/libdeps/heltec-v3/ArduinoJson/src",
@@ -247,7 +249,6 @@
                 "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                 "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
                 "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
-                "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                 ""
             ],
             "browse": {
@@ -258,9 +259,11 @@
                     "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/ESPmDNS/src",
                     "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src",
                     "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
+                    "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                     "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/LittleFS/src",
                     "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/FS/src",
                     "/Users/benlipsey/Meshtastic/github/pdxlocations/meshit/lib/Meshit/src",
+                    "/Users/benlipsey/Meshtastic/github/pdxlocations/meshit/.pio/libdeps/heltec-v3/ESP8266 and ESP32 OLED driver for SSD1306 displays/src",
                     "/Users/benlipsey/Meshtastic/github/pdxlocations/meshit/.pio/libdeps/heltec-v3/NimBLE-Arduino/src",
                     "/Users/benlipsey/Meshtastic/github/pdxlocations/meshit/.pio/libdeps/heltec-v3/Crypto",
                     "/Users/benlipsey/Meshtastic/github/pdxlocations/meshit/.pio/libdeps/heltec-v3/ArduinoJson/src",
@@ -492,7 +495,6 @@
                     "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                     "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
                     "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
-                    "/Users/benlipsey/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                     ""
                 ]
             },
@@ -503,6 +505,7 @@
                 "ARDUINO_RUNNING_CORE=1",
                 "ARDUINO_EVENT_RUNNING_CORE=1",
                 "MESHIT_ESP32",
+                "MESHIT_HAS_OLED",
                 "CONFIG_BT_NIMBLE_MAX_CONNECTIONS=1",
                 "HAVE_CONFIG_H",
                 "MBEDTLS_CONFIG_FILE=\"mbedtls/esp_config.h\"",

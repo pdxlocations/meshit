@@ -93,7 +93,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     else if(chat.isEditor()){title=chat.page==DeckChat::NewRoom?"New room":chat.page==DeckChat::Nickname?"Nickname":chat.page==DeckChat::Ssid?"Network name":"Wi-Fi password";}
 
     else {title="# "+chat.room;if(const auto* m=core.find(chat.selected)){items=deckWrap(m->event.text,294,DeckFont::Body,measure);}}
-    text(10,50,"<",DeckFont::Body);hit(DeckTap::Back,{0,30,35,30});text(40,51,deckFit(title,chat.page==DeckChat::Rooms?195:268,DeckFont::Bold,measure),DeckFont::Bold);
+    text(10,50,"Back",DeckFont::Small);hit(DeckTap::Back,{0,30,60,30});text(65,51,deckFit(title,chat.page==DeckChat::Rooms?170:243,DeckFont::Bold,measure),DeckFont::Bold);
     if(chat.isEditor()){
       draw(DeckShape::Round,{8,68,304,56},p.card);draw(DeckShape::Outline,{8,68,304,56},chat.focused?p.muted:p.line);
       std::string value=chat.page==DeckChat::WifiPassword?std::string(chat.draft.size(),'*'):chat.draft;
@@ -105,6 +105,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
       draw(DeckShape::Round,{163,139,69,30},p.selected);text(180,158,"Cancel");hit(DeckTap::Back,{163,137,69,34});
       draw(DeckShape::Round,{241,139,71,30},p.button);text(263,158,"Save",DeckFont::Small,p.buttonInk);hit(DeckTap::Save,{241,137,71,34});
     }else{
+      if(chat.hasBackRow())items.insert(items.begin(),"Back");
       const int bottom=chat.page==DeckChat::Read?205:chat.page==DeckChat::Presets?200:240;
       s.viewport={0,63,320,bottom-63};s.maxScroll=std::max(0,int(items.size())*28-s.viewport.h);
       s.scroll=std::max(0,std::min(previousScroll,s.maxScroll));
@@ -113,7 +114,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
       for(size_t i=0;i<items.size();++i){const int y=63+int(i)*28-s.scroll;if(y+26<=63||y>=bottom)continue;
         draw(DeckShape::Round,{7,y,306,26},i==chat.cursor?p.selected:p.card,"",DeckFont::Small,s.viewport);
         draw(DeckShape::Text,{15,y+18,0,0},p.ink,deckFit(items[i],chat.page==DeckChat::Rooms?192:290,DeckFont::Small,measure),DeckFont::Small,s.viewport);
-        if(chat.page==DeckChat::Rooms){const size_t fresh=roomUnread?roomUnread(items[i]):0;const std::string count=std::to_string(roomMessageCount(core,items[i]))+(fresh?" / "+std::to_string(fresh)+" new":"");draw(DeckShape::Text,{310-measure(count,DeckFont::Small),y+18,0,0},fresh?p.ink:p.muted,count,DeckFont::Small,s.viewport);}
+        if(chat.page==DeckChat::Rooms&&i>0){const size_t fresh=roomUnread?roomUnread(items[i]):0;const std::string count=std::to_string(roomMessageCount(core,items[i]))+(fresh?" / "+std::to_string(fresh)+" new":"");draw(DeckShape::Text,{310-measure(count,DeckFont::Small),y+18,0,0},fresh?p.ink:p.muted,count,DeckFont::Small,s.viewport);}
         if(chat.page!=DeckChat::Credentials&&chat.page!=DeckChat::Read)hit(DeckTap::MenuItem,{7,std::max(63,y),306,std::min(bottom,y+27)-std::max(63,y)},0,i);
       }
       if(chat.page==DeckChat::Read&&chat.selected){
@@ -123,7 +124,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         const auto* m=core.find(chat.selected);if(m&&m->mine&&!m->acked){text(252,226,"Resend");hit(DeckTap::Resend,{240,207,80,33},chat.selected);}
       }
     }
-    if(chat.page==DeckChat::Presets){const auto list=chat.filtered(presets);if(chat.cursor<list.size())text(8,215,deckFit(list[chat.cursor].detail,304,DeckFont::Small,measure),DeckFont::Small,p.muted);text(8,234,"Changing preset clears history",DeckFont::Small,p.muted);}
+    if(chat.page==DeckChat::Presets){const auto list=chat.filtered(presets);if(chat.cursor>0&&chat.cursor<=list.size())text(8,215,deckFit(list[chat.cursor-1].detail,304,DeckFont::Small,measure),DeckFont::Small,p.muted);text(8,234,"Changing preset clears history",DeckFont::Small,p.muted);}
   }
   if(!chat.error.empty()){draw(DeckShape::Fill,{0,220,320,20},p.header);text(8,234,deckFit(chat.error,304,DeckFont::Small,measure));}
   return s;
@@ -151,6 +152,12 @@ inline DeckAction activateDeckHit(const DeckHit& hit,DeckChat& chat,const Core& 
     case T::MenuItem:if((chat.page==DeckChat::NewRoom||chat.page==DeckChat::Nickname)&&hit.index==0)break;chat.cursor=hit.index;action=chat.key('\r',core,catalog,identity);break;
   }return action;
 }
+class DeckTapLatch {
+  DeckHit target{};bool valid=false;DeckChat::Page page=DeckChat::Chat;std::string room;
+public:
+  void begin(const DeckScene& scene,const DeckChat& chat,int x,int y){page=chat.page;room=chat.room;const auto* hit=deckHitAt(scene,x,y);valid=hit;if(hit)target=*hit;}
+  const DeckHit* finish(const DeckChat& chat,bool tap){const bool accept=valid&&tap&&chat.page==page&&chat.room==room;valid=false;return accept?&target:nullptr;}
+};
 struct DeckPointerEvent {bool tap=false;int x=0,y=0,swipe=0,dragY=0;bool released=false,pressed=false;int originY=0,swipeX=0;};
 inline int deckTouchScrollDelta(const DeckChat& chat,const DeckScene& scene,const DeckPointerEvent& event){
   if(chat.page==DeckChat::Chat)return event.originY>=30?-event.dragY:0;
@@ -166,7 +173,7 @@ public:
     return {false,x,y,0,delta,false,fresh,startY};
   }
   DeckPointerEvent cancel(){if(!active)return {};active=false;axis=0;dragged=false;DeckPointerEvent event;event.released=true;return event;}
-  DeckPointerEvent release(){if(!active)return {};active=false;const int delta=lastY-startY;return {!dragged&&travel<18,lastX,lastY,std::abs(delta)>18?(delta>0?-1:1):0,0,true,false,startY,axis==1&&std::abs(lastX-startX)>=60&&std::abs(lastX-startX)>2*std::abs(lastY-startY)?(lastX>startX?1:-1):0};}
+  DeckPointerEvent release(){if(!active)return {};active=false;const int delta=lastY-startY;return {!dragged&&travel<18,startX,startY,std::abs(delta)>18?(delta>0?-1:1):0,0,true,false,startY,axis==1&&std::abs(lastX-startX)>=60&&std::abs(lastX-startX)>2*std::abs(lastY-startY)?(lastX>startX?1:-1):0};}
 };
 // Scroll content with the finger; preserve pixel distance instead of advancing selection.
 class DeckScroll {
