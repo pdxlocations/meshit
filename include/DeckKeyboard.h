@@ -6,9 +6,9 @@
 #include <Adafruit_TCA8418.h>
 #endif
 class DeckKeyboard {
-  uint32_t next=0;meshit::DeckCenterButton center;
+  uint32_t next=0;meshit::DeckCenterButton center;bool inputActive=false;
 #if defined(MESHIT_TDECK_PRO)
-  Adafruit_TCA8418 keypad;bool ready=false;bool shiftLeft=false,shiftRight=false,symbol=false,alt=false;
+  uint64_t heldKeys=0;Adafruit_TCA8418 keypad;bool ready=false;bool shiftLeft=false,shiftRight=false,symbol=false,alt=false;
 #else
   bool ball[4]={false,false,false,false};uint32_t lastBall=0;
 #endif
@@ -21,20 +21,28 @@ public:
     Wire.beginTransmission(0x55);return Wire.endTransmission()==0;
 #endif
   }
+  bool active()const{return inputActive;}
+  void cancelCenter(){center=meshit::DeckCenterButton();}
   int read(){
-    const bool pressed=digitalRead(0)==LOW;
+    const bool pressed=digitalRead(0)==LOW;inputActive=pressed;
+#if defined(MESHIT_TDECK_PRO)
+    inputActive=inputActive||heldKeys!=0;
+#else
+    inputActive=inputActive||digitalRead(38)==LOW;
+#endif
 #if defined(MESHIT_TDECK_PRO)
     const int centerKey=center.update(pressed,millis(),meshit::DeckMenu,meshit::DeckSettings);
 #else
     const int centerKey=center.update(pressed,millis(),'\r',meshit::DeckSettings);
 #endif
-    if(centerKey)return centerKey;
+    if(centerKey){inputActive=true;return centerKey;}
     if(int32_t(millis()-next)<0)return 0;next=millis()+10;
 #if defined(MESHIT_TDECK_PRO)
     if(!ready)return 0;
     // TCA8418 key numbers follow its fixed 10-column FIFO scan order.
     for(unsigned n=0;n<10&&keypad.available();++n){
       const uint8_t event=keypad.getEvent(),number=event&0x7f;const bool down=event&0x80;
+      inputActive=true;if(number&&number<=40){const uint64_t mask=uint64_t(1)<<number;if(down)heldKeys|=mask;else heldKeys&=~mask;}
       if(number==31){shiftRight=down;continue;}if(number==35){shiftLeft=down;continue;}
       if(number==32){symbol=down;continue;}if(number==30){alt=down;continue;}
       if(!down||!number||number>35)continue;
@@ -49,8 +57,8 @@ public:
     }return 0;
 #else
     const int pins[]={3,15,1,2};
-    for(unsigned i=0;i<4;++i){const bool value=digitalRead(pins[i]);const bool moved=value!=ball[i];ball[i]=value;if(i<2&&moved&&uint32_t(millis()-lastBall)>90){lastBall=millis();return i==0?meshit::DeckUp:meshit::DeckDown;}}
-    Wire.requestFrom(uint8_t(0x55),uint8_t(1));if(Wire.available())return Wire.read();return 0;
+    for(unsigned i=0;i<4;++i){const bool value=digitalRead(pins[i]);const bool moved=value!=ball[i];ball[i]=value;if(moved)inputActive=true;if(i<2&&moved&&uint32_t(millis()-lastBall)>90){lastBall=millis();return i==0?meshit::DeckUp:meshit::DeckDown;}}
+    Wire.requestFrom(uint8_t(0x55),uint8_t(1));if(Wire.available()){const int key=Wire.read();if(key)inputActive=true;return key;}return 0;
 #endif
   }
 };

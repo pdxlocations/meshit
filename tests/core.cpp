@@ -7,6 +7,7 @@
 #include "../include/BatteryGauge.h"
 #include "../include/UnreadMessages.h"
 #include "../include/DeckChat.h"
+#include "../include/DeckScreenIdle.h"
 #include "../include/DeckScene.h"
 #include "../include/DeckRequest.h"
 #include "../include/RadioPower.h"
@@ -24,6 +25,24 @@ struct Memory {
 };
 std::string hexBytes(const Bytes& b){std::string s;char x[3];for(auto c:b){snprintf(x,3,"%02x",c);s+=x;}return s;}
 int main(){
+  {
+    DeckScreenIdle idle;idle.begin(100);assert(idle.update(60099,false).allowInput);
+    auto state=idle.update(60100,false);assert(state.sleep&&!state.allowInput);
+    state=idle.update(61000,true);assert(state.wake&&!state.allowInput);
+    assert(!idle.update(63000,true).allowInput); // Held wake button cannot trigger its long action.
+    assert(!idle.update(63199,false).allowInput);assert(idle.update(63200,false).allowInput);
+    assert(idle.update(123000,false).sleep);state=idle.update(124000,false,true);assert(state.wake&&state.allowInput);
+    assert(!idle.update(183999,false).sleep);assert(idle.update(184000,false).sleep);
+    idle.begin(0xfffffff0);assert(!idle.update(uint32_t(0xfffffff0u+59999u),false).sleep);assert(idle.update(uint32_t(0xfffffff0u+60000u),false).sleep);
+    auto receiver=client(900);auto msg=post(901,1);receiver.receive(msg,0,false);assert(receiver.messageActivity==1);
+    receiver.receive(msg,1,false);assert(receiver.messageActivity==1);auto up=vote(902,1,msg.id);receiver.receive(up,2,false);assert(receiver.messageActivity==2);
+    receiver.receive(up,3,false);assert(receiver.messageActivity==2);auto clear=vote(902,2,msg.id,false);receiver.receive(clear,4,false);assert(receiver.messageActivity==3);
+    receiver.receive(up,5,false);assert(receiver.messageActivity==3);auto down=vote(902,3,msg.id,false);down.down=true;receiver.receive(down,6,false);assert(receiver.messageActivity==4);
+    Event ack;ack.kind=Kind::Ack;ack.id=id(903,1);ack.ref=msg.id;receiver.receive(ack,7,false);assert(receiver.messageActivity==4);
+    Event request;request.kind=Kind::Request;request.id=id(904,1);request.ref=msg.id;receiver.receive(request,8,false);assert(receiver.messageActivity==4);
+    assert(receiver.submit(vote(900,1,msg.id),9));assert(receiver.messageActivity==5);
+  }
+
   for(auto profile:{RadioPowerProfile::Sx1262,RadioPowerProfile::Gc1109,RadioPowerProfile::Kct8103l}){
     for(int ceiling=-9;ceiling<=30;++ceiling){const auto power=selectTxPower(profile,ceiling);
       if(power.valid){assert(power.drive>=-9&&power.drive<=(profile==RadioPowerProfile::Sx1262?22:21));assert(power.output<=ceiling&&power.output<=maxTxPower(profile));}

@@ -26,6 +26,7 @@ class DeckPanel {
 #if defined(MESHIT_TDECK_PLUS)
   DeckGraphics graphics;
 #endif
+  bool sleeping=false;uint32_t asleepSince=0;
   bool ready=false;uint32_t last=0;std::string previous;
 public:
   bool begin(){
@@ -55,12 +56,27 @@ public:
   }
 #if defined(MESHIT_TDECK_PLUS)
   bool drawScene(const meshit::DeckScene& scene){
+    if(!ready||sleeping)return false;
     std::string signature;
     for(const auto& op:scene.paint){signature+=std::to_string(int(op.shape))+":"+std::to_string(op.box.x)+","+std::to_string(op.box.y)+","+std::to_string(op.box.w)+","+std::to_string(op.box.h)+","+std::to_string(op.color)+":"+op.text+";";}
     if(signature==previous)return true;
     graphics.draw(scene,screen);previous=signature;return true;
   }
 #endif
+  void setSleeping(bool value){
+    if(!ready||sleeping==value)return;sleeping=value;
+#if defined(MESHIT_TDECK_PRO)
+    if(sleeping)screen.hibernate(); // E-paper retains its image without refreshing.
+#else
+    if(sleeping){digitalWrite(42,LOW);screen.sendCommand(0x28);screen.sendCommand(0x10);asleepSince=millis();}
+    else {const uint32_t elapsed=millis()-asleepSince;if(elapsed<120)delay(120-elapsed);screen.sendCommand(0x11);delay(120);screen.sendCommand(0x29);digitalWrite(42,HIGH);}
+#endif
+    if(!sleeping){previous.clear();
+#if defined(MESHIT_TDECK_PLUS)
+      graphics.invalidate();
+#endif
+    }
+  }
   void serviceWhileBusy(void (*callback)(const void*)){ 
 #if defined(MESHIT_TDECK_PRO)
     screen.epd2.setBusyCallback(callback);
@@ -81,7 +97,7 @@ public:
   // replaced only for display. The stored/transmitted UTF-8 remains untouched.
   static std::string printable(const std::string& value){std::string out;for(unsigned char c:value){if(c>=32&&c<127)out+=char(c);else if(c>=0xc0)out+='?';else if(c=='\n')out+=' ';}return out;}
   bool draw(const std::vector<std::string>& lines,bool force=false){
-    if(!ready)return false;
+    if(!ready||sleeping)return false;
     std::string signature;for(const auto& line:lines){signature+=line;signature+='\n';}
     if(signature==previous)return true;
 #if defined(MESHIT_TDECK_PLUS)

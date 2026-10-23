@@ -56,11 +56,11 @@ class Core {
     if(p==peers.end()){if(peers.size()==64)peers.erase(peers.begin());peers.push_back({sender(e.id),n});return;}
     if(n>p->high){for(uint32_t k=std::max(uint32_t(p->high)+1,n>16?uint32_t(n)-16:1);k<n;++k)want((Id(p->id)<<16)|k,now);p->high=n;}
   }
-  void applyVote(const Event& e){
+  bool applyVote(const Event& e){
     auto& list=find(e.ref)?votes:deferredVotes;
     auto p=std::find_if(list.begin(),list.end(),[&](const Vote& v){return v.target==e.ref&&v.voter==sender(e.id);});
-    if(p!=list.end()){if(e.id>p->event){p->event=e.id;p->up=e.up;p->down=e.down;}}
-    else {list.push_back({e.id,e.ref,sender(e.id),e.up,e.down});bounded(list,&list==&votes?512:32);}
+    if(p!=list.end()){if(e.id>p->event){p->event=e.id;p->up=e.up;p->down=e.down;return true;}return false;}
+    else {list.push_back({e.id,e.ref,sender(e.id),e.up,e.down});bounded(list,&list==&votes?512:32);return true;}
   }
   void removeTree(Id id){
     std::vector<Id> removed{id};
@@ -74,6 +74,7 @@ class Core {
   void trim(){while(messages.size()>MAX_MESSAGES){auto p=std::min_element(messages.begin(),messages.end(),[&](const Message& a,const Message& b){auto x=score(a.event.id),y=score(b.event.id);return x!=y?x<y:a.order<b.order;});removeTree(p->event.id);}}
 public:
   bool directAckEnabled=true;
+  uint32_t messageActivity=0; // New message/vote state; ACKs and duplicates stay quiet.
   Core(){messages.reserve(MAX_MESSAGES+1);}
   std::vector<Message> messages;
   std::vector<Vote> votes;
@@ -131,10 +132,10 @@ public:
       }
       Event post=e;post.kind=Kind::Post;messages.push_back({post,++clock,local,false});
       for(auto it=deferredVotes.begin();it!=deferredVotes.end();)if(it->target==e.id){votes.push_back(*it);it=deferredVotes.erase(it);}else ++it;
-      trim();wantDependentThreads(e.id,now);if(!local&&!relayed&&e.kind==Kind::Post)acknowledgeDirect(e,now);
+      trim();if(find(e.id))++messageActivity;wantDependentThreads(e.id,now);if(!local&&!relayed&&e.kind==Kind::Post)acknowledgeDirect(e,now);
     }else if(e.kind==Kind::Vote){
       if(contains(dead,e.ref))return;
-      applyVote(e);if(e.up||e.down)wantThread(e.ref,now);
+      if(applyVote(e))++messageActivity;if(e.up||e.down)wantThread(e.ref,now);
     }else if(e.kind==Kind::Request){
       if(pending.size()>=12||contains(dead,e.ref))return;
       Event answer;bool found=false;

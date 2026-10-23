@@ -5,6 +5,7 @@
 #include "DeckRequest.h"
 #include "DeckKeyboard.h"
 #include "DeckPanel.h"
+#include "DeckScreenIdle.h"
 #include "UnreadMessages.h"
 #include "RadioStats.h"
 #include "DeckTouch.h"
@@ -13,6 +14,17 @@
 #endif
 class DeckUi {
   meshit::DeckChat chat;DeckKeyboard keyboard;bool keyboardReady=false,initialized=false;uint32_t next=0;
+  meshit::DeckScreenIdle idle;bool touchDown=false;uint32_t seenActivity=0;
+  bool screenInput(bool active,uint32_t activity){
+    const bool traffic=activity!=seenActivity;seenActivity=activity;
+    const auto state=idle.update(millis(),active,traffic);
+    if(state.sleep||state.wake)deckPanel().setSleeping(state.sleep);
+#if defined(MESHIT_TDECK_PLUS)
+    if(state.sleep||state.wake){tapLatch=meshit::DeckTapLatch();scroll.stop(millis());hasRendered=false;}
+#endif
+    if(!state.allowInput)keyboard.cancelCenter();
+    return state.allowInput;
+  }
   uint32_t syncedRevision=0;bool hasSynced=false;
   std::vector<meshit::DeckPreset> catalog;
 #if defined(MESHIT_TDECK_PLUS)
@@ -36,7 +48,7 @@ class DeckUi {
   }
 public:
   void begin(bool configured,bool dark=false,int appearance=-1){
-    hasSynced=false;
+    hasSynced=false;idle.begin(millis());touchDown=false;
     chat.systemDark=false;chat.appearance=appearance>=0&&appearance<=2?appearance:dark?2:0;chat.dark=chat.appearance==2;
 #if defined(MESHIT_TDECK_PLUS)
     chat.touchAvailable=touch.begin();
@@ -49,7 +61,7 @@ public:
     keyboardReady=keyboard.begin();chat.page=configured?meshit::DeckChat::Chat:meshit::DeckChat::Presets;initialized=true;}
   void tick(meshit::Core& core,JsonDocument& settings,JsonDocument& presets,uint32_t identity,uint32_t& revision,
             UnreadMessages& unread,bool ready,bool bluetooth,uint16_t battery,const String& name,const String& password,
-            const std::function<String(const String&)>& rpc,meshit::RadioActivity activity=meshit::RadioActivity::Standby){
+            const std::function<String(const String&)>& rpc,meshit::RadioActivity activity=meshit::RadioActivity::Standby,bool pairing=false){
     if(!initialized||int32_t(millis()-next)<0)return;next=millis()+20;
     if(catalog.empty())catalog=choices(presets);
     chat.transmitEnabled=settings["txEnabled"]|true;
@@ -59,6 +71,9 @@ public:
 #if defined(MESHIT_TDECK_PLUS)
     const bool calibrating=chat.page==meshit::DeckChat::Calibrate;
     const auto event=touch.poll(calibrating);
+    if(event.pressed)touchDown=true;if(event.released)touchDown=false;
+    if(!screenInput(keyboard.active()||key||touchDown||event.pressed||event.released||event.dragY,core.messageActivity))return;
+    if(pairing){hasRendered=false;return;}
     if(calibrating){
       touchHandled=event.pressed||event.released;
       if(event.tap){
@@ -80,6 +95,10 @@ public:
     if(event.released)scroll.release(millis());
     if(event.released){if(const auto* hit=tapLatch.finish(chat,event.tap)){action=meshit::activateDeckHit(*hit,chat,core,catalog,identity);if(hit->action==meshit::DeckTap::Cancel)scroll.reset(millis());touchHandled=true;}}
     }
+#endif
+#if !defined(MESHIT_TDECK_PLUS)
+    if(!screenInput(keyboard.active()||key,core.messageActivity))return;
+    if(pairing)return;
 #endif
     if(key&&!touchHandled){action=chat.key(key,core,catalog,identity);
 #if defined(MESHIT_TDECK_PLUS)

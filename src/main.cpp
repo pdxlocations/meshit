@@ -329,7 +329,7 @@ void loop(){
   if(txStateChanged){txStateChanged=false;persist();}
   if(dirty&&uint32_t(millis()-lastChange)>5000)persist();
 #if defined(MESHIT_TDECK)
-  if(!ble.pairing())deckUi.tick(core,settings,presets,identity,revision,unreadMessages,ready,ble.connected(),batteryReading().millivolts,setupName,setupPass,dispatch,radioActivity.state(ready,txBusy,millis()));
+  deckUi.tick(core,settings,presets,identity,revision,unreadMessages,ready,ble.connected(),batteryReading().millivolts,setupName,setupPass,dispatch,radioActivity.state(ready,txBusy,millis()),ble.pairing());
 #endif
   delay(1);
 }
