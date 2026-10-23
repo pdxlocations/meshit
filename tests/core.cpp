@@ -71,6 +71,8 @@ int main(){
     pointer.contact(220,120);auto horizontal=pointer.contact(160,123);assert(horizontal.dragY==0);e=pointer.release();assert(e.swipeX==-1&&!e.tap);
     pointer.contact(60,120);pointer.contact(130,122);e=pointer.release();assert(e.swipeX==1&&!e.tap);
     pointer.contact(100,180);pointer.contact(102,140);pointer.contact(180,120);e=pointer.release();assert(!e.swipeX&&!e.tap); // Vertical drags never switch tabs.
+    pointer.contact(100,120);pointer.contact(145,121);e=pointer.release();assert(!e.tap&&!e.swipeX); // Short horizontal drift cannot open Rooms.
+    pointer.contact(100,120);pointer.contact(170,160);e=pointer.release();assert(!e.tap&&!e.swipeX); // Diagonal scrolling cannot navigate sideways.
     DeckChat navigation;navigation.key(DeckLeft,Core(),{},1);assert(navigation.page==DeckChat::Chat);navigation.key(DeckRight,Core(),{},1);assert(navigation.page==DeckChat::Chat);
     navigation.swipe(-1);assert(navigation.page==DeckChat::Settings);navigation.swipe(1);assert(navigation.page==DeckChat::Chat);navigation.swipe(1);assert(navigation.page==DeckChat::Rooms);navigation.swipe(-1);assert(navigation.page==DeckChat::Chat);
     pointer.contact(70,150);pointer.contact(140,150);auto canceled=pointer.cancel();assert(canceled.released&&!canceled.tap&&!canceled.swipeX);assert(!pointer.cancel().released);
@@ -82,6 +84,13 @@ int main(){
     auto scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);
     assert(scene.width==320&&scene.height==240);
     auto find=[&](DeckTap action,Id id=0){for(const auto& hit:scene.hits)if(hit.action==action&&(!id||hit.target==id))return hit;assert(false);return DeckHit{};};
+    for(const auto& hit:scene.hits)if(hit.action==DeckTap::Select){
+      const auto* bodyTap=deckHitAt(scene,hit.box.x+45,hit.box.y+3);assert(bodyTap&&bodyTap->action==DeckTap::Select&&bodyTap->target==hit.target);
+      d.selected=0;activateDeckHit(*bodyTap,d,c,catalog,400);assert(d.page==DeckChat::Menu&&d.selected==hit.target&&d.cursor==0&&d.menu.front()=="Back");
+      d.key('\r',c,catalog,400);assert(d.page==DeckChat::Chat);
+      activateDeckHit(*bodyTap,d,c,catalog,400);assert(d.page==DeckChat::Menu); // Repeated taps also open actions, never Rooms or the full-text view.
+      activateDeckHit({DeckTap::MenuItem,{},0,1},d,c,catalog,400);assert(d.page==DeckChat::Chat&&d.reply==hit.target);d.reply=0;
+    }
     auto replyHit=find(DeckTap::Reply,root.id);assert(replyHit.box.y>=100&&replyHit.box.y+replyHit.box.h<=240);
     const auto* picked=deckHitAt(scene,replyHit.box.x+2,replyHit.box.y+2);assert(picked&&picked->action==DeckTap::Reply);
     activateDeckHit(*picked,d,c,catalog,400);assert(d.reply==root.id);

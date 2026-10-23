@@ -74,7 +74,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         draw(DeckShape::Reply,{bodyX,y+h-14,11,10},p.muted,"",DeckFont::Small,clip);draw(DeckShape::Text,{bodyX+15,y+h-5,0,0},p.muted,"Reply",DeckFont::Small,clip);
         const int top=std::max(y,feedTop),bottom=std::min(y+h,feedBottom);
         hit(DeckTap::Vote,{x+1,top,28,bottom-top},row.id);hit(DeckTap::Reply,{bodyX,std::max(feedTop,y+h-23),95,std::max(0,bottom-std::max(feedTop,y+h-23))},row.id);
-        hit(DeckTap::Select,{bodyX,top,235-indent,bottom-top},row.id);
+        hit(DeckTap::Select,{x,top,305-indent,bottom-top},row.id);
       }y+=h;
     }
     if(rows.empty())text(116,feedTop+30,"No messages",DeckFont::Small,p.muted);
@@ -138,7 +138,7 @@ inline DeckAction activateDeckHit(const DeckHit& hit,DeckChat& chat,const Core& 
     case T::Top:chat.top=true;break;case T::New:chat.top=false;break;
     case T::Post:if(!chat.draft.empty())action=chat.key('\r',core,catalog,identity);break;
     case T::Cancel:chat.reply=0;break;
-    case T::Select:if(chat.selected==hit.target){chat.page=DeckChat::Read;chat.cursor=0;}chat.selected=hit.target;break;
+    case T::Select:chat.selected=hit.target;chat.page=DeckChat::Menu;chat.cursor=0;break;
     case T::Reply:chat.selected=chat.reply=hit.target;chat.page=DeckChat::Chat;break;
     case T::Vote:action.op="vote";action.target=hit.target;action.up=!core.voted(hit.target,identity);break;
     case T::Resend:action.op="resend";action.target=hit.target;break;
@@ -164,7 +164,7 @@ public:
     return {false,x,y,0,delta,false,fresh,startY};
   }
   DeckPointerEvent cancel(){if(!active)return {};active=false;axis=0;dragged=false;DeckPointerEvent event;event.released=true;return event;}
-  DeckPointerEvent release(){if(!active)return {};active=false;const int delta=lastY-startY;return {!dragged&&travel<18,lastX,lastY,std::abs(delta)>18?(delta>0?-1:1):0,0,true,false,startY,axis==1&&std::abs(lastX-startX)>=40?(lastX>startX?1:-1):0};}
+  DeckPointerEvent release(){if(!active)return {};active=false;const int delta=lastY-startY;return {!dragged&&travel<18,lastX,lastY,std::abs(delta)>18?(delta>0?-1:1):0,0,true,false,startY,axis==1&&std::abs(lastX-startX)>=60&&std::abs(lastX-startX)>2*std::abs(lastY-startY)?(lastX>startX?1:-1):0};}
 };
 // Scroll content with the finger; preserve pixel distance instead of advancing selection.
 class DeckScroll {
