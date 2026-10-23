@@ -19,7 +19,7 @@ public:
     uint8_t point[8]={};if(count>5||!read(0x8150,point,sizeof(point))){clear();return {};}
     clear();const auto xy=meshit::deckTouchPoint(point[0]|(int(point[1])<<8),point[2]|(int(point[3])<<8),true);
     if(xy.first<0||xy.second<0||xy.first>=320||xy.second>=240)return {};
-    gesture.contact(xy.first,xy.second);return {};
+    return gesture.contact(xy.first,xy.second);
   }
 };
 #endif

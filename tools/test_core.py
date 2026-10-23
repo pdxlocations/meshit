@@ -10,7 +10,7 @@ if not crypto.exists():
 out = root / 'output'
 out.mkdir(exist_ok=True)
 sources = ['Crypto','Cipher','AuthenticatedCipher','BlockCipher','ChaCha','ChaChaPoly','Poly1305','SHA256','Hash','AES128','AESCommon']
-subprocess.run(['c++','-std=c++17','-g','-O1','-fsanitize=address,undefined','-fno-omit-frame-pointer','-I'+str(crypto),'-I'+str(root/'lib/Meshit/src'),str(root/'tests/core.cpp'),*[str(crypto/(s+'.cpp')) for s in sources],'-o',str(out/'test-core')],check=True)
+subprocess.run(['c++','-std=c++17','-g','-O1','-fsanitize=address,undefined','-fno-omit-frame-pointer','-I'+str(crypto),'-I'+str(root/'lib/Meshit/src'),'-I'+str(root/'.pio/libdeps/heltec-v3/ArduinoJson/src'),str(root/'tests/core.cpp'),*[str(crypto/(s+'.cpp')) for s in sources],'-o',str(out/'test-core')],check=True)
 result = subprocess.run([str(out/'test-core')],check=True,capture_output=True,text=True)
 (out/'vectors.json').write_text(result.stdout)
 subprocess.run(['node',str(root/'tests/vectors.mjs'),str(out/'vectors.json')],check=True)

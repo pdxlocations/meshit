@@ -33,7 +33,12 @@ public:
     screen.epd2.selectSPI(SPI,SPISettings(2000000,MSBFIRST,SPI_MODE0));
     screen.init(0,true,2,false);screen.setRotation(0);
 #else
-    screen.init(240,320);screen.setSPISpeed(20000000);
+    screen.init(240,320);
+#if defined(MESHIT_TDECK_PLUS)
+    screen.setSPISpeed(40000000);
+#else
+    screen.setSPISpeed(20000000);
+#endif
 #if defined(MESHIT_TDECK_PLUS)
     // LILYGO's newer Plus panel needs different ST7789 power/gamma settings.
     const uint8_t b2[]={0x0c,0x0c,0x00,0x33,0x33},b7[]={0x75},bb[]={0x1a},c0[]={0x2c},c2[]={1},c3[]={0x13},c4[]={0x20},c6[]={0x0f},d0[]={0xa4,0xa1},d6[]={0xa1};
@@ -79,6 +84,9 @@ public:
     if(!ready)return false;
     std::string signature;for(const auto& line:lines){signature+=line;signature+='\n';}
     if(signature==previous)return true;
+#if defined(MESHIT_TDECK_PLUS)
+    graphics.invalidate();
+#endif
 #if defined(MESHIT_TDECK_PRO)
     if(!force&&uint32_t(millis()-last)<750)return false;
     if(frames++%30==0)screen.setFullWindow();else screen.setPartialWindow(0,0,screen.width(),screen.height());

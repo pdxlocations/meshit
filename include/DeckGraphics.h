@@ -6,14 +6,23 @@
 #include <Fonts/FreeSansBold9pt7b.h>
 #include "DeckScene.h"
 class DeckSurface:public Adafruit_GFX {
-  uint16_t* pixels=nullptr;Adafruit_ST7789* target=nullptr;
+  uint16_t* pixels=nullptr;uint16_t* previous=nullptr;bool firstFrame=true;Adafruit_ST7789* target=nullptr;
 public:
   meshit::DeckBox clip{0,0,320,240};
   DeckSurface():Adafruit_GFX(320,240){}
-  void begin(Adafruit_ST7789& display){target=&display;if(!pixels){pixels=static_cast<uint16_t*>(ps_malloc(320*240*2));if(!pixels)pixels=static_cast<uint16_t*>(malloc(320*240*2));}}
+  void begin(Adafruit_ST7789& display){target=&display;if(!pixels){pixels=static_cast<uint16_t*>(ps_malloc(320*240*2));if(!pixels)pixels=static_cast<uint16_t*>(malloc(320*240*2));if(pixels){previous=static_cast<uint16_t*>(ps_malloc(320*240*2));if(previous)memset(previous,0,320*240*2);}}}
   void drawPixel(int16_t x,int16_t y,uint16_t color)override{if(x<0||y<0||x>=320||y>=240||!clip.contains(x,y))return;if(pixels)pixels[y*320+x]=color;else if(target)target->drawPixel(x,y,color);}
   uint16_t pixel(int x,int y)const{return pixels&&x>=0&&y>=0&&x<320&&y<240?pixels[y*320+x]:0xffff;}
-  void present(){if(pixels&&target)target->drawRGBBitmap(0,0,pixels,320,240);}
+  void invalidate(){firstFrame=true;}
+  void present(){
+    if(!pixels||!target)return;if(!previous||firstFrame){target->drawRGBBitmap(0,0,pixels,320,240);if(previous)memcpy(previous,pixels,320*240*2);firstFrame=false;return;}
+    int left=320,top=240,right=-1,bottom=-1;
+    for(int y=0;y<240;++y)for(int x=0;x<320;++x)if(pixels[y*320+x]!=previous[y*320+x]){left=std::min(left,x);right=std::max(right,x);top=std::min(top,y);bottom=std::max(bottom,y);}
+    if(right<left)return;
+    target->startWrite();target->setAddrWindow(left,top,right-left+1,bottom-top+1);
+    for(int y=top;y<=bottom;++y){target->writePixels(pixels+y*320+left,right-left+1);memcpy(previous+y*320+left,pixels+y*320+left,(right-left+1)*2);}
+    target->endWrite();
+  }
 };
 class DeckGraphics {
   DeckSurface surface;
@@ -38,6 +47,7 @@ class DeckGraphics {
     }
   }
 public:
+  void invalidate(){surface.invalidate();}
   static int measure(const std::string& value,meshit::DeckFont f){
     const auto& face=font(f);const auto* glyphs=reinterpret_cast<const GFXglyph*>(pgm_read_ptr(&face.glyph));int width=0;
     for(unsigned char c:printable(value)){const int advance=pgm_read_byte(&glyphs[c-32].xAdvance);width+=f==meshit::DeckFont::Small?advance*2/3:advance;}return width;

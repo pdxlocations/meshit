@@ -2,6 +2,7 @@
 #if defined(MESHIT_TDECK)
 #include <ArduinoJson.h>
 #include "DeckChat.h"
+#include "DeckRequest.h"
 #include "DeckKeyboard.h"
 #include "DeckPanel.h"
 #include "UnreadMessages.h"
@@ -13,7 +14,7 @@ class DeckUi {
   meshit::DeckChat chat;DeckKeyboard keyboard;bool keyboardReady=false,initialized=false;uint32_t next=0;
   std::vector<meshit::DeckPreset> catalog;
 #if defined(MESHIT_TDECK_PLUS)
-  DeckTouch touch;meshit::DeckScene scene;int scroll=0;
+  DeckTouch touch;meshit::DeckScene scene;meshit::DeckScroll scroll;
 
 #endif
   std::vector<meshit::DeckPreset> choices(JsonDocument& presets){
@@ -33,24 +34,36 @@ public:
             const std::function<String(const String&)>& rpc){
     if(!initialized||int32_t(millis()-next)<0)return;next=millis()+20;
     if(catalog.empty())catalog=choices(presets);
+    chat.savedSsid=settings["ssid"]|"";chat.savedNickname=settings["nickname"]|"";
+    const auto previousPage=chat.page;const auto previousRoom=chat.room;
     int key=keyboard.read();meshit::DeckAction action;
 #if defined(MESHIT_TDECK_PLUS)
     const auto event=touch.poll();
-    if(event.swipe)key=event.swipe>0?meshit::DeckDown:meshit::DeckUp;
+    if(event.pressed)scroll.stop(millis());
+    if(event.dragY&&scene.viewport.contains(event.x,event.originY))scroll.drag(event.dragY,millis());
+    if(event.released)scroll.release(millis());
     if(event.tap){if(const auto* hit=meshit::deckHitAt(scene,event.x,event.y))action=meshit::activateDeckHit(*hit,chat,core,catalog,identity);}
 #endif
-    if(key)action=chat.key(key,core,catalog,identity);
+    if(key){action=chat.key(key,core,catalog,identity);
+#if defined(MESHIT_TDECK_PLUS)
+      if(key==meshit::DeckUp||key==meshit::DeckDown){if(chat.page==meshit::DeckChat::Read)scroll.move(key==meshit::DeckDown?28:-28,millis());else scroll.select(millis());}
+#endif
+    }
+#if defined(MESHIT_TDECK_PLUS)
+    if(chat.page!=previousPage||chat.room!=previousRoom)scroll.reset(millis());
+#endif
     {
       if(!action.op.empty()){
-        JsonDocument req,res;req["op"]=action.op=="nickname"?"settings":action.op;
-        if(action.op=="post"){req["room"]=action.room;req["text"]=action.text;req["parent"]=action.target?meshit::hex(action.target):"";}
-        else if(action.op=="vote"||action.op=="resend"){req["target"]=meshit::hex(action.target);if(action.op=="vote")req["up"]=action.up;}
-        else if(action.op=="settings"){req["network"]=action.network;req["preset"]=action.preset;}
-        else if(action.op=="nickname")req["nickname"]=action.text;
+        JsonDocument req,res;meshit::deckRequest(req,action);
         String input;serializeJson(req,input);
         if(deserializeJson(res,rpc(input)))chat.error="Radio response unavailable";
         else if(res["error"].is<const char*>())chat.error=res["error"].as<std::string>();
-        else {chat.accepted(action,meshit::fromHex(res["messageId"]|""));}
+        else {chat.accepted(action,meshit::fromHex(res["messageId"]|""));
+#if defined(MESHIT_TDECK_PLUS)
+          if(action.op=="post")scroll.select(millis());
+#endif
+          if(action.op=="wifi")chat.error="Restart to join saved Wi-Fi.";
+        }
       }
     }
     chat.sync(core);
@@ -61,8 +74,8 @@ public:
     }
     if(!keyboardReady)chat.error="Keyboard unavailable";
     unread.prune(core);
-    {scene=meshit::makeDeckScene(chat,core,catalog,ready,name.c_str(),password.c_str(),DeckGraphics::measure,scroll,battery?std::to_string(battery/1000)+"."+std::to_string((battery%1000)/100)+"V":"",unread.count());
-    scroll=scene.scroll;const uint32_t renderedRevision=revision;
+    {scene=meshit::makeDeckScene(chat,core,catalog,ready,name.c_str(),password.c_str(),DeckGraphics::measure,scroll.tick(millis(),scene.maxScroll),battery?std::to_string(battery/1000)+"."+std::to_string((battery%1000)/100)+"V":"",unread.count(),scroll.followSelection);
+    scroll.setPosition(scene.scroll);const uint32_t renderedRevision=revision;
     if(deckPanel().drawScene(scene)&&chat.page==meshit::DeckChat::Chat)unread.viewed(chat.room,renderedRevision,revision,core);
     return;}
 #endif

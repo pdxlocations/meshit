@@ -8,6 +8,7 @@
 #include "../include/UnreadMessages.h"
 #include "../include/DeckChat.h"
 #include "../include/DeckScene.h"
+#include "../include/DeckRequest.h"
 #include <cassert>
 #include <iostream>
 using namespace meshit;
@@ -83,6 +84,47 @@ int main(){
     activateDeckHit({DeckTap::MenuItem,{},0,3},d,c,catalog,400);assert(d.dark);
     scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);assert(scene.paint.front().color==deckPalette(true).paper);
     c.messages.clear();action=activateDeckHit(replyHit,d,c,catalog,400);assert(action.op.empty()&&!d.error.empty()); // Stale frames cannot target evicted posts.
+  }
+  {
+    // Drag distance controls pixels directly, with the content following the finger.
+    DeckGesture gesture;DeckScroll scroll;scroll.move(100,100);
+    gesture.contact(100,190);auto move=gesture.contact(100,150);assert(move.dragY==-40&&!move.tap);
+    scroll.drag(move.dragY,116);assert(scroll.position()==140&&!scroll.followSelection);
+    auto release=gesture.release();assert(release.released&&!release.tap);scroll.release(116);
+    assert(scroll.tick(132,1000)>140); // Momentum continues after release.
+    const int before=scroll.position();scroll.stop(150);scroll.drag(30,166);assert(scroll.position()==before-30); // Finger down moves content down.
+    scroll.move(-10000,200);assert(scroll.tick(200,1000)==0);
+    scroll.move(10000,200);assert(scroll.tick(200,1000)==1000);
+    auto c=client(450);for(int n=1;n<=12;++n)c.receive(post(451,n),n,false);
+    DeckChat d;d.sync(c);const Id selected=d.selected;
+    auto measure=[](const std::string& text,DeckFont f){return int(text.size())*(f==DeckFont::Small?5:8);};
+    auto frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure,120,"",0,false);
+    assert(frame.scroll==120&&d.selected==selected); // Touch scrolling must not snap to the selected message.
+    for(const auto& hit:frame.hits)assert(hit.box.h>=0&&hit.box.y>=0&&hit.box.y+hit.box.h<=240);
+    auto tap=[&](DeckTap kind){for(const auto& hit:frame.hits)if(hit.action==kind)return activateDeckHit(hit,d,c,{},450);assert(false);return DeckAction{};};
+    d.focused=false;tap(DeckTap::Focus);assert(d.focused);
+    d.page=DeckChat::Read;frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
+    tap(DeckTap::Reply);assert(d.page==DeckChat::Chat&&d.reply==selected);
+    d.draft="Draft kept while editing settings";d.savedNickname="Old nickname";
+    d.page=DeckChat::Settings;d.cursor=2;d.key('\r',c,{},450);assert(d.page==DeckChat::Nickname);
+    d.draft="New nickname";frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
+    auto action=tap(DeckTap::Save);assert(action.op=="nickname"&&action.text=="New nickname");d.accepted(action);
+    assert(d.page==DeckChat::Settings&&d.draft=="Draft kept while editing settings"&&d.reply==selected);
+    d.back();assert(d.page==DeckChat::Chat);d.page=DeckChat::Settings;
+    d.cursor=4;d.savedSsid="Old wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi);
+    d.key('\r',c,{},450);assert(d.page==DeckChat::Ssid);d.draft="New wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi&&d.wifiSsid=="New wifi");
+    d.cursor=1;d.key('\r',c,{},450);d.draft="secret123";frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
+    assert(std::none_of(frame.paint.begin(),frame.paint.end(),[](const DeckPaint& op){return op.text.find("secret123")!=std::string::npos;}));
+    tap(DeckTap::Back);assert(d.page==DeckChat::Wifi&&d.wifiPassword.empty());
+    d.cursor=2;action=d.key('\r',c,{},450);JsonDocument request;deckRequest(request,action);
+    assert(request["op"]=="settings"&&request["ssid"]=="New wifi"&&request["password"].isNull());
+    d.page=DeckChat::Chat;d.draft="A real reply";frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
+    action=tap(DeckTap::Post);deckRequest(request,action);
+    assert(request["parent"]==hex(selected)&&action.target==selected);
+    Event e;e.room=request["room"].as<std::string>();e.text=request["text"].as<std::string>();e.ref=fromHex(request["parent"]|"");assert(c.submit(e,100));
+    assert(c.find(c.pending.back().event.id)->event.ref==selected); // Existing threading behavior stays intact.
+    d.edit(DeckChat::NewRoom,"unused",DeckChat::Rooms);frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
+    tap(DeckTap::Back);assert(d.page==DeckChat::Rooms&&d.draft=="A real reply");
   }
   assert(!plausibleBatteryVoltage(0));assert(!plausibleBatteryVoltage(5000));
   assert(batteryBars(3400)==0&&batteryBars(3600)==1&&batteryBars(3800)==2&&batteryBars(4000)==3&&batteryBars(4200)==4);
