@@ -59,6 +59,9 @@ int main(){
       d.page=DeckChat::Settings;d.cursor=touch?7:6;auto action=d.key('\r',Core(),{},1);assert(action.op=="deckBluetoothEnabled"&&action.enabled);JsonDocument request;deckRequest(request,action);assert(request["op"]=="deckBluetoothEnabled"&&request["enabled"]==true);
       d.bluetoothEnabled=true;action=d.key('\r',Core(),{},1);assert(action.op=="deckBluetoothEnabled"&&!action.enabled);
       d.cursor=touch?8:7;action=d.key('\r',Core(),{},1);assert(action.op=="deckWifiEnabled"&&action.enabled);deckRequest(request,action);assert(request["enabled"]==true);
+      assert(!d.largeText);d.cursor=d.settingsItems().size()-1;action=d.key('\r',Core(),{},1);assert(action.op=="deckLargeText"&&action.enabled);deckRequest(request,action);assert(request["op"]=="deckLargeText"&&request["enabled"]==true);d.accepted(action);assert(d.largeText&&d.settingsItems()[d.settingsItems().size()-2]=="Text size: Large");
+      action=activateDeckHit({DeckTap::MenuItem,{},0,d.cursor},d,Core(),{},1);assert(action.op=="deckLargeText"&&!action.enabled);d.accepted(action);assert(!d.largeText);
+
     }
     auto core=client(950);auto message=post(951,1);message.text=std::string(160,'W');core.receive(message,0,false);DeckChat d;d.sync(core);
     assert(d.menuItems(core,950).size()==4);d.page=DeckChat::Menu;d.cursor=4;assert(d.key('\r',core,{},950).op.empty());
@@ -165,7 +168,7 @@ int main(){
     }
     DeckCalibration invalid;invalid.coefficients.fill(0);assert(!invalid.valid());invalid.coefficients[0]=NAN;assert(!invalid.valid());
     auto calibrationCore=client(480);auto calibrationMessage=post(481,1);calibrationCore.receive(calibrationMessage,0,false);
-    DeckChat calibrationChat;assert(calibrationChat.settingsItems().size()==8);calibrationChat.touchAvailable=true;assert(calibrationChat.settingsItems()[4]=="Calibrate touch");
+    DeckChat calibrationChat;assert(calibrationChat.settingsItems().size()==9);calibrationChat.touchAvailable=true;assert(calibrationChat.settingsItems()[4]=="Calibrate touch");
     calibrationChat.page=DeckChat::Settings;calibrationChat.cursor=5;calibrationChat.draft="Keep draft";calibrationChat.reply=calibrationMessage.id;
     calibrationChat.key('\r',calibrationCore,{},1);assert(calibrationChat.page==DeckChat::Calibrate&&calibrationChat.cursor==0);
     auto calibrationMeasure=[](const std::string& text,DeckFont){return int(text.size())*5;};

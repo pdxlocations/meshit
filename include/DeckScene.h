@@ -68,7 +68,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     const auto rows=chat.rows(core);std::vector<int> heights;std::vector<std::vector<std::string>> bodies;int total=0,selectedTop=0,selectedHeight=0;
     for(const auto& row:rows){const auto* m=core.find(row.id);const int indent=std::min(row.depth,4u)*14;auto body=deckWrap(m->event.text,252-indent,DeckFont::Body,measure);
       // Reserve a separate footer so Reply does not cover the last line of message text.
-      const int height=38+int(body.size())*18;if(row.id==chat.selected){selectedTop=total;selectedHeight=height;}heights.push_back(height);bodies.push_back(std::move(body));total+=height;
+      const int height=std::max(56,38+int(body.size())*(chat.largeText?18:16));if(row.id==chat.selected){selectedTop=total;selectedHeight=height;}heights.push_back(height);bodies.push_back(std::move(body));total+=height;
     }
     s.maxScroll=std::max(0,total-viewport);s.viewport={0,feedTop,320,viewport};
     s.scroll=std::max(0,std::min(previousScroll,s.maxScroll));
@@ -86,7 +86,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
           draw(m->acked?DeckShape::Check:pending?DeckShape::Pending:DeckShape::Retry,{291,y+4,14,14},p.ink,"",DeckFont::Small,clip);
           if(DeckChat::canResend(core,row.id))hit(DeckTap::Resend,{280,std::max(feedTop,y),33,std::max(0,std::min(feedBottom,y+24)-std::max(feedTop,y))},row.id);
         }
-        for(size_t j=0;j<bodies[i].size();++j)draw(DeckShape::Text,{bodyX,y+33+int(j)*18,0,0},p.ink,bodies[i][j],DeckFont::Body,clip);
+        for(size_t j=0;j<bodies[i].size();++j)draw(DeckShape::Text,{bodyX,y+33+int(j)*(chat.largeText?18:16),0,0},p.ink,bodies[i][j],DeckFont::Body,clip);
         draw(DeckShape::Reply,{bodyX,y+h-14,11,10},p.muted,"",DeckFont::Small,clip);draw(DeckShape::Text,{bodyX+15,y+h-5,0,0},p.muted,"Reply",DeckFont::Small,clip);
         const int top=std::max(y,feedTop),bottom=std::min(y+h,feedBottom);
         const int split=std::max(top,std::min(bottom,y+29));

@@ -169,15 +169,15 @@ String dispatch(const String& input){
       else res["ok"]=unreadMessages.viewed(req["room"]|"",req["revision"]|0u,revision,core);
     }else if(op=="messages"){
       res["revision"]=revision;auto a=res["messages"].to<JsonArray>();size_t offset=req["offset"]|0;for(size_t i=offset;i<core.messages.size()&&i<offset+8;++i)eventJson(a.add<JsonObject>(),core.messages[i]);
-    }else if(op=="deckBluetoothEnabled"||op=="deckWifiEnabled"){
+    }else if(op=="deckBluetoothEnabled"||op=="deckWifiEnabled"||op=="deckLargeText"){
 #if defined(MESHIT_TDECK)
       if(!req["enabled"].is<bool>())res["error"]="Enabled must be true or false";
       else {JsonDocument next;next.set(settings);next[op]=req["enabled"].as<bool>();String serialized;serializeJson(next,serialized);
-        if(!fsReady||!writeFile("/settings.json",serialized))res["error"]="Could not save connectivity setting";
+        if(!fsReady||!writeFile("/settings.json",serialized))res["error"]="Could not save display or connectivity setting";
         else {settings.set(next);changed();res["ok"]=true;}
       }
 #else
-      res["error"]="Connectivity switches are available on T-Deck";
+      res["error"]="This setting is available on T-Deck";
 #endif
     }else if(op=="txEnabled"){
       if(!req["enabled"].is<bool>())res["error"]="Transmit enabled must be true or false";

@@ -5,6 +5,7 @@
 #include <Adafruit_GFX.h>
 #if !defined(MESHIT_TDECK_PLUS)
 #include <Fonts/FreeSans9pt7b.h>
+#include "fonts/FreeSans8pt7b.h"
 #endif
 #include <vector>
 #include "DeckBatteryIcon.h"
@@ -27,9 +28,18 @@ class DeckPanel {
 #if defined(MESHIT_TDECK_PLUS)
   DeckGraphics graphics;
 #endif
+  bool largeText=false;
   bool sleeping=false;uint32_t asleepSince=0;
   bool ready=false;uint32_t last=0;std::string previous;
 public:
+  void setLargeText(bool large){
+    if(largeText==large)return;largeText=large;previous.clear();
+#if defined(MESHIT_TDECK_PLUS)
+    graphics.setLargeText(large);graphics.invalidate();
+#else
+    screen.setFont(large?&FreeSans9pt7b:&FreeSans8pt7b);
+#endif
+  }
   bool begin(){
 #if defined(MESHIT_TDECK_PRO)
     screen.epd2.selectSPI(SPI,SPISettings(2000000,MSBFIRST,SPI_MODE0));
@@ -53,7 +63,7 @@ public:
     screen.setRotation(DECK_DISPLAY_ROTATION);screen.invertDisplay(true);
     pinMode(42,OUTPUT);digitalWrite(42,LOW);delay(4);digitalWrite(42,HIGH);
 #endif
-    screen.setFont(&FreeSans9pt7b);screen.setTextWrap(false);ready=true;return true;
+    screen.setFont(largeText?&FreeSans9pt7b:&FreeSans8pt7b);screen.setTextWrap(false);ready=true;return true;
   }
 #if defined(MESHIT_TDECK_PLUS)
   bool drawScene(const meshit::DeckScene& scene){
@@ -84,7 +94,7 @@ public:
 #endif
   }
   int width()const{return screen.width();}
-  size_t lineCount()const{return (screen.height()-8)/20;}
+  size_t lineCount()const{return (screen.height()-8)/(largeText?20:16);}
   void wrap(std::vector<std::string>& lines,const std::string& value,unsigned depth=0){
     std::string text=printable(value),prefix(std::min(depth,4u)*2,' ');
     while(!text.empty()){
@@ -109,11 +119,11 @@ public:
     if(frames++%30==0)screen.setFullWindow();else screen.setPartialWindow(0,0,screen.width(),screen.height());
     screen.firstPage();do {
 #endif
-      screen.fillScreen(0xffff);screen.setTextColor(0);screen.setFont(&FreeSans9pt7b);
+      screen.fillScreen(0xffff);screen.setTextColor(0);screen.setFont(largeText?&FreeSans9pt7b:&FreeSans8pt7b);
       for(size_t i=0;i<lines.size()&&i<lineCount();++i){
         std::string text=printable(lines[i]);int16_t x,y;uint16_t w,h;
         do {screen.getTextBounds(text.c_str(),0,0,&x,&y,&w,&h);if(w>screen.width()-(i==0&&batteryMv>=0?42:8)&&!text.empty())text.pop_back();else break;}while(true);
-        screen.setCursor(4,18+i*20);screen.print(text.c_str());
+        screen.setCursor(4,(largeText?18:15)+i*(largeText?20:16));screen.print(text.c_str());
       }
       if(batteryMv>=0)meshit::drawDeckBattery(screen,screen.width()-34,4,29,14,plausibleBatteryVoltage(batteryMv)?int(batteryBars(batteryMv)):-1,0);
 #if defined(MESHIT_TDECK_PRO)

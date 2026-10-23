@@ -77,4 +77,6 @@ T-Deck Plus labels use native-resolution FreeSans Bold 9pt instead of shrinking 
 
 The header battery icon uses the existing coarse LiPo voltage bands rather than a precise percentage. An empty icon indicates low battery; a diagonal slash indicates an unavailable reading. The Plus uses red for the low-battery outline.
 
+Text defaults to **Small**. Select **Settings → Text size** to toggle between Small and Large. The choice is saved across restarts; Large uses the previous 9-point text. Small retains the sans-serif font with 8-point messages and 7-point labels on the Plus, and 8-point text on the other T-Deck displays. Tap targets keep their existing size.
+
 [Wiki home](Home.md)

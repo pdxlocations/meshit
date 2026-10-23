@@ -33,11 +33,11 @@ class DeckUi {
   std::array<std::pair<int,int>,3> calibrationSamples{};meshit::DeckCalibration pendingCalibration;
   struct RenderState {
     uint32_t revision=0;uint16_t battery=0;size_t unread=0,cursor=0;
-    int page=0,appearance=0,scroll=0;meshit::RadioActivity activity=meshit::RadioActivity::Standby;meshit::Id selected=0,reply=0;
+    bool largeText=false;int page=0,appearance=0,scroll=0;meshit::RadioActivity activity=meshit::RadioActivity::Standby;meshit::Id selected=0,reply=0;
     bool ready=false,bluetooth=false,keyboardReady=false,top=false,dark=false,focused=false,systemDark=false,followSelection=false,transmitEnabled=true,bluetoothEnabled=false,wifiEnabled=false;
     std::string room,draft,error,network,region,wifiSsid,wifiPassword,savedNickname,name,password;
     bool operator==(const RenderState& other)const{
-      return bluetoothEnabled==other.bluetoothEnabled&&wifiEnabled==other.wifiEnabled&&activity==other.activity&&transmitEnabled==other.transmitEnabled&&followSelection==other.followSelection&&revision==other.revision&&battery==other.battery&&unread==other.unread&&cursor==other.cursor&&page==other.page&&appearance==other.appearance&&scroll==other.scroll&&selected==other.selected&&reply==other.reply&&ready==other.ready&&bluetooth==other.bluetooth&&keyboardReady==other.keyboardReady&&top==other.top&&dark==other.dark&&focused==other.focused&&systemDark==other.systemDark&&room==other.room&&draft==other.draft&&error==other.error&&network==other.network&&region==other.region&&wifiSsid==other.wifiSsid&&wifiPassword==other.wifiPassword&&savedNickname==other.savedNickname&&name==other.name&&password==other.password;
+      return largeText==other.largeText&&bluetoothEnabled==other.bluetoothEnabled&&wifiEnabled==other.wifiEnabled&&activity==other.activity&&transmitEnabled==other.transmitEnabled&&followSelection==other.followSelection&&revision==other.revision&&battery==other.battery&&unread==other.unread&&cursor==other.cursor&&page==other.page&&appearance==other.appearance&&scroll==other.scroll&&selected==other.selected&&reply==other.reply&&ready==other.ready&&bluetooth==other.bluetooth&&keyboardReady==other.keyboardReady&&top==other.top&&dark==other.dark&&focused==other.focused&&systemDark==other.systemDark&&room==other.room&&draft==other.draft&&error==other.error&&network==other.network&&region==other.region&&wifiSsid==other.wifiSsid&&wifiPassword==other.wifiPassword&&savedNickname==other.savedNickname&&name==other.name&&password==other.password;
     }
   } renderedState;
   bool hasRendered=false;
@@ -65,7 +65,7 @@ public:
             const std::function<String(const String&)>& rpc,meshit::RadioActivity activity=meshit::RadioActivity::Standby,bool pairing=false){
     if(!initialized||int32_t(millis()-next)<0)return;next=millis()+20;
     if(catalog.empty())catalog=choices(presets);
-    chat.transmitEnabled=settings["txEnabled"]|true;chat.bluetoothEnabled=settings["deckBluetoothEnabled"]|false;chat.wifiEnabled=settings["deckWifiEnabled"]|false;
+    chat.largeText=settings["deckLargeText"]|false;chat.transmitEnabled=settings["txEnabled"]|true;chat.bluetoothEnabled=settings["deckBluetoothEnabled"]|false;chat.wifiEnabled=settings["deckWifiEnabled"]|false;
     chat.savedSsid=settings["ssid"]|"";chat.savedNickname=settings["nickname"]|"";
     const auto previousPage=chat.page;const auto previousRoom=chat.room;
     int key=keyboard.read();meshit::DeckAction action;bool touchHandled=false;
@@ -129,13 +129,14 @@ public:
 #if !defined(MESHIT_TDECK_PLUS)
     if(chat.room!=previousRoom)textScroll.reset();else if(chat.page!=previousPage||action.op=="post")textScroll.select();
 #endif
+    deckPanel().setLargeText(chat.largeText);
     if(!hasSynced||syncedRevision!=revision){chat.sync(core);syncedRevision=revision;hasSynced=true;}
 #if defined(MESHIT_TDECK_PLUS)
     if(!keyboardReady)chat.error="Keyboard unavailable";
     unread.prune(core);
     const int requestedScroll=scroll.tick(millis(),scene.maxScroll);
     RenderState current;current.activity=activity;current.revision=revision;current.battery=plausibleBatteryVoltage(battery)?batteryBars(battery)+1:0;current.unread=unread.count();
-    current.cursor=chat.cursor;current.page=chat.page;current.appearance=chat.appearance;current.scroll=requestedScroll;
+    current.largeText=chat.largeText;current.cursor=chat.cursor;current.page=chat.page;current.appearance=chat.appearance;current.scroll=requestedScroll;
     current.selected=chat.selected;current.reply=chat.reply;current.ready=ready;current.bluetooth=bluetooth;
     current.keyboardReady=keyboardReady;current.top=chat.top;current.dark=chat.dark;current.focused=chat.focused;
     current.bluetoothEnabled=chat.bluetoothEnabled;current.wifiEnabled=chat.wifiEnabled;current.transmitEnabled=chat.transmitEnabled;current.followSelection=scroll.followSelection;current.systemDark=chat.systemDark;current.room=chat.room;current.draft=chat.draft;current.error=chat.error;

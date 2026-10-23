@@ -58,7 +58,7 @@ T-Deck models run [chat on their screen and keyboard](docs/wiki/T-Deck.md), alon
 
 - Bluetooth and Wi-Fi default to Off, with separate saved Settings toggles.
 - Complete messages wrap and scroll in the list. Resend appears only on our own unacknowledged, unqueued messages.
-- Native-size bold labels improve small-text legibility; a battery icon replaces header voltage.
+- Clear sans-serif text defaults to Small; Settings → Text size switches to Large (the previous size); a battery icon replaces header voltage.
 - The display sleeps after one minute and wakes on input or new messages/votes. The wake-up press is consumed; ACKs and duplicates stay quiet.
 
 ## Build firmware

@@ -33,7 +33,7 @@ public:
 class DeckChat {
 public:
   enum Page {Chat,Menu,Rooms,NewRoom,Presets,Nickname,Credentials,Read,Settings,Wifi,Ssid,WifiPassword,Appearance,Network,Regions,Calibrate,Navigation};
-  Page page=Chat;std::string room="general",draft,error;Id selected=0,reply=0;bool top=true,dark=false,focused=true,systemDark=false;int appearance=0;std::string network,region;size_t cursor=0;
+  Page page=Chat;std::string room="general",draft,error;Id selected=0,reply=0;bool top=true,dark=false,focused=true,systemDark=false;bool largeText=false;int appearance=0;std::string network,region;size_t cursor=0;
   std::string savedDraft,savedSsid,savedNickname,wifiSsid,wifiPassword;Id savedReply=0;Page editReturn=Chat;
   bool touchAvailable=false,transmitEnabled=true,bluetoothEnabled=false,wifiEnabled=false;
   bool isEditor()const{return page==NewRoom||page==Nickname||page==Ssid||page==WifiPassword;}
@@ -44,7 +44,7 @@ public:
   bool hasBackRow()const{return page==Settings||page==Rooms||page==Presets||page==Appearance||page==Network||page==Regions||page==Wifi;}
   std::vector<DeckPreset> filtered(const std::vector<DeckPreset>& presets)const{std::vector<DeckPreset> out;for(const auto& p:presets)if((network.empty()||p.network==network)&&(region.empty()||p.region==region))out.push_back(p);return out;}
   std::vector<std::string> regions(const std::vector<DeckPreset>& presets)const{std::vector<std::string> out;for(const auto& p:presets)if(p.network==network&&std::find(out.begin(),out.end(),p.region)==out.end())out.push_back(p.region);return out;}
-  std::vector<std::string> settingsItems()const{auto items=std::vector<std::string>{"Radio connection","Network","Nickname","Local Wi-Fi"};if(touchAvailable)items.push_back("Calibrate touch");items.push_back(transmitEnabled?"Transmit: On":"Transmit: Off");items.push_back(bluetoothEnabled?"Bluetooth: On":"Bluetooth: Off");items.push_back(wifiEnabled?"Wi-Fi: On":"Wi-Fi: Off");items.push_back("Appearance");return items;}
+  std::vector<std::string> settingsItems()const{auto items=std::vector<std::string>{"Radio connection","Network","Nickname","Local Wi-Fi"};if(touchAvailable)items.push_back("Calibrate touch");items.push_back(transmitEnabled?"Transmit: On":"Transmit: Off");items.push_back(bluetoothEnabled?"Bluetooth: On":"Bluetooth: Off");items.push_back(wifiEnabled?"Wi-Fi: On":"Wi-Fi: Off");items.push_back(largeText?"Text size: Large":"Text size: Small");items.push_back("Appearance");return items;}
   void swipe(int direction){if(!direction)return;if(isEditor())leaveEditor();error.clear();if(direction<0){if(page==Rooms)page=Chat;else page=Settings;}else{if(page==Chat)page=Rooms;else if(page!=Rooms)page=Chat;}cursor=0;}
   const std::vector<std::string> menu={"Back","Reply","Toggle upvote","Toggle downvote"};
   const std::vector<std::string> navigationItems={"Back","Rooms","New room","New post","New / Top","Settings"};
@@ -87,7 +87,7 @@ public:
     }
     if(key=='\r'||key=='\n'){
       if(hasBackRow()&&cursor==0){back();return action;}const size_t option=hasBackRow()?cursor-1:cursor;
-      if(page==Settings){if(option==settingsItems().size()-1){page=Appearance;cursor=0;return action;}if(option==(touchAvailable?6u:5u)){action.op="deckBluetoothEnabled";action.enabled=!bluetoothEnabled;return action;}if(option==(touchAvailable?7u:6u)){action.op="deckWifiEnabled";action.enabled=!wifiEnabled;return action;}if(option==(touchAvailable?5u:4u)){action.op="txEnabled";action.enabled=!transmitEnabled;return action;}switch(option){case 0:page=Credentials;break;case 1:page=Network;break;case 2:edit(Nickname,savedNickname,Settings);break;case 3:wifiSsid=savedSsid;wifiPassword.clear();page=Wifi;break;case 4:if(touchAvailable)page=Calibrate;break;}cursor=0;return action;}
+      if(page==Settings){if(option==settingsItems().size()-2){action.op="deckLargeText";action.enabled=!largeText;return action;}if(option==settingsItems().size()-1){page=Appearance;cursor=0;return action;}if(option==(touchAvailable?6u:5u)){action.op="deckBluetoothEnabled";action.enabled=!bluetoothEnabled;return action;}if(option==(touchAvailable?7u:6u)){action.op="deckWifiEnabled";action.enabled=!wifiEnabled;return action;}if(option==(touchAvailable?5u:4u)){action.op="txEnabled";action.enabled=!transmitEnabled;return action;}switch(option){case 0:page=Credentials;break;case 1:page=Network;break;case 2:edit(Nickname,savedNickname,Settings);break;case 3:wifiSsid=savedSsid;wifiPassword.clear();page=Wifi;break;case 4:if(touchAvailable)page=Calibrate;break;}cursor=0;return action;}
       if(page==Appearance){appearance=int(option);dark=appearance==0?systemDark:appearance==2;action.op="deckAppearance";action.text=std::to_string(appearance);page=Settings;cursor=settingsItems().size();return action;}
       if(page==Network){network=option==0?"meshtastic":"meshcore";region.clear();page=Regions;cursor=0;return action;}
       if(page==Regions){auto list=regions(presets);if(option<list.size()){region=list[option];page=Presets;cursor=0;}return action;}
@@ -123,6 +123,6 @@ public:
     if(key>=32&&key<127){auto next=draft+char(key);const size_t limit=page==Chat?MAX_CHARS:page==Ssid?32:page==WifiPassword?63:16;if(textValid(next,page==Chat?MAX_TEXT:limit,limit))draft=next;}
     return action;
   }
-  void accepted(const DeckAction& action,Id id=0){if(action.op=="post"){draft.clear();reply=0;if(id)selected=id;}else if(action.op=="nickname"){savedNickname=action.text;leaveEditor();}else if(action.op=="settings"){page=Chat;}else if(action.op=="wifi"){savedSsid=action.ssid;page=Settings;wifiPassword.clear();}}
+  void accepted(const DeckAction& action,Id id=0){if(action.op=="deckLargeText")largeText=action.enabled;if(action.op=="post"){draft.clear();reply=0;if(id)selected=id;}else if(action.op=="nickname"){savedNickname=action.text;leaveEditor();}else if(action.op=="settings"){page=Chat;}else if(action.op=="wifi"){savedSsid=action.ssid;page=Settings;wifiPassword.clear();}}
 };
 }

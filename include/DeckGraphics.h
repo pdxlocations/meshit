@@ -4,6 +4,8 @@
 #include <Adafruit_ST7789.h>
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSansBold9pt7b.h>
+#include "fonts/FreeSans8pt7b.h"
+#include "fonts/FreeSansBold7pt7b.h"
 #include "DeckScene.h"
 #include "DeckBatteryIcon.h"
 class DeckSurface:public Adafruit_GFX {
@@ -27,7 +29,8 @@ public:
 };
 class DeckGraphics {
   DeckSurface surface;
-  static const GFXfont& font(meshit::DeckFont f){return f==meshit::DeckFont::Body?FreeSans9pt7b:FreeSansBold9pt7b;}
+  inline static bool largeText=false;
+  static const GFXfont& font(meshit::DeckFont f){if(!largeText)return f==meshit::DeckFont::Body?FreeSans8pt7b:f==meshit::DeckFont::Small?FreeSansBold7pt7b:FreeSansBold9pt7b;return f==meshit::DeckFont::Body?FreeSans9pt7b:FreeSansBold9pt7b;}
   static std::string printable(const std::string& value){std::string out;for(unsigned char c:value){if(c>=32&&c<127)out+=char(c);else if(c>=0xc0)out+='?';else if(c=='\n')out+=' ';}return out;}
   void label(int x,int baseline,const std::string& value,meshit::DeckFont f,uint16_t color){
     const GFXfont& face=font(f);const GFXglyph* glyphs=reinterpret_cast<const GFXglyph*>(pgm_read_ptr(&face.glyph));const uint8_t* bitmap=reinterpret_cast<const uint8_t*>(pgm_read_ptr(&face.bitmap));
@@ -39,6 +42,7 @@ class DeckGraphics {
     }
   }
 public:
+  void setLargeText(bool large){largeText=large;}
   void invalidate(){surface.invalidate();}
   static int measure(const std::string& value,meshit::DeckFont f){
     const auto& face=font(f);const auto* glyphs=reinterpret_cast<const GFXglyph*>(pgm_read_ptr(&face.glyph));int width=0;
