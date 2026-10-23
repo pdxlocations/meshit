@@ -19,6 +19,7 @@ public:
   std::vector<DeckPreset> filtered(const std::vector<DeckPreset>& presets)const{std::vector<DeckPreset> out;for(const auto& p:presets)if((network.empty()||p.network==network)&&(region.empty()||p.region==region))out.push_back(p);return out;}
   std::vector<std::string> regions(const std::vector<DeckPreset>& presets)const{std::vector<std::string> out;for(const auto& p:presets)if(p.network==network&&std::find(out.begin(),out.end(),p.region)==out.end())out.push_back(p.region);return out;}
   std::vector<std::string> settingsItems()const{return {"Radio connection","Network","Nickname","Appearance","Local Wi-Fi"};}
+  void swipe(int direction){if(!direction)return;if(isEditor())leaveEditor();error.clear();if(direction<0){if(page==Rooms)page=Chat;else page=Settings;}else{if(page==Chat)page=Rooms;else if(page!=Rooms)page=Chat;}cursor=0;}
   const std::vector<std::string> menu={"Reply","Toggle upvote","Resend","Rooms","New room","New post","New / Top","Radio preset","Nickname","Wi-Fi / Bluetooth","Read full message"};
   std::vector<std::string> rooms(const Core& core)const{
     std::vector<std::string> list{room};for(const auto& m:core.messages)if(std::find(list.begin(),list.end(),m.event.room)==list.end())list.push_back(m.event.room);
@@ -38,7 +39,7 @@ public:
   void sync(const Core& core){const auto list=rows(core);if(std::none_of(list.begin(),list.end(),[&](const DeckRow& r){return r.id==selected;}))selected=list.empty()?0:list.front().id;if(reply&&!core.find(reply))reply=0;}
   DeckAction key(int key,const Core& core,const std::vector<DeckPreset>& presets,uint32_t identity){
     sync(core);error.clear();DeckAction action;
-    if(key==DeckLeft||key==DeckRight){page=page==Chat?(key==DeckLeft?Rooms:Settings):Chat;cursor=0;return action;}
+    if(key==DeckLeft||key==DeckRight)return action;
     if(key==DeckMenu||key==12){if(isEditor())leaveEditor();page=page==Menu?Chat:Menu;cursor=0;return action;}
     if(key==DeckBack||key==27){if(page!=Chat)back();else reply=0;return action;}
     if(key==DeckUp||key==DeckDown){

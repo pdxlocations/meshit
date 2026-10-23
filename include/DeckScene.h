@@ -41,9 +41,9 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     draw(DeckShape::Round,{235,33,38,18},chat.top?p.card:p.selected);text(242,46,"New");hit(DeckTap::New,{232,30,42,23});
     draw(DeckShape::Round,{276,33,36,18},chat.top?p.selected:p.card);text(284,46,"Top");hit(DeckTap::Top,{275,30,45,23});
     const auto draft=deckWrap(chat.draft,290,DeckFont::Body,measure);const int count=std::min(3,int(draft.size()));
-    const int replyHeight=chat.reply?14:0,composerHeight=42+(count-1)*18+replyHeight,composerBottom=55+composerHeight;
+    const int replyHeight=chat.reply?34:0,composerHeight=42+(count-1)*18+replyHeight,composerBottom=55+composerHeight;
     draw(DeckShape::Round,{7,55,306,composerHeight},p.card);draw(DeckShape::Outline,{7,55,306,composerHeight},chat.focused?p.muted:p.line);hit(DeckTap::Focus,{8,56,304,composerHeight-23});
-    if(chat.reply){const auto* parent=core.find(chat.reply);text(14,67,deckFit(parent?(parent->event.nick.empty()?"Anonymous":parent->event.nick)+": "+parent->event.text:"Reply",205,DeckFont::Small,measure),DeckFont::Small,p.muted);text(241,67,"Cancel reply");hit(DeckTap::Cancel,{231,55,82,18});}
+    if(chat.reply){const auto* parent=core.find(chat.reply);text(14,76,deckFit(parent?(parent->event.nick.empty()?"Anonymous":parent->event.nick)+": "+parent->event.text:"Reply",178,DeckFont::Small,measure),DeckFont::Small,p.muted);draw(DeckShape::Round,{203,57,108,30},p.selected);text(222,76,"Cancel reply");hit(DeckTap::Cancel,{201,55,112,34});}
     if(chat.draft.empty())text(14,72+replyHeight,chat.reply?"Post a reply":"Write something interesting...",DeckFont::Small,p.muted);
     else for(int i=0;i<count;++i)text(14,73+replyHeight+i*18,draft[draft.size()-count+i],DeckFont::Body);
     if(chat.focused){const std::string last=chat.draft.empty()?"":draft.back();const int caret=14+measure(last,DeckFont::Body);draw(DeckShape::Line,{std::min(caret,303),60+replyHeight+(count-1)*18,0,14},p.ink);}
@@ -148,15 +148,17 @@ inline DeckAction activateDeckHit(const DeckHit& hit,DeckChat& chat,const Core& 
     case T::MenuItem:if((chat.page==DeckChat::NewRoom||chat.page==DeckChat::Nickname)&&hit.index==0)break;chat.cursor=hit.index;action=chat.key('\r',core,catalog,identity);break;
   }return action;
 }
-struct DeckPointerEvent {bool tap=false;int x=0,y=0,swipe=0,dragY=0;bool released=false,pressed=false;int originY=0;};
+struct DeckPointerEvent {bool tap=false;int x=0,y=0,swipe=0,dragY=0;bool released=false,pressed=false;int originY=0,swipeX=0;};
 class DeckGesture {
-  bool active=false,dragged=false;int startX=0,startY=0,lastX=0,lastY=0,travel=0;
+  bool active=false,dragged=false;int axis=0;int startX=0,startY=0,lastX=0,lastY=0,travel=0;
 public:
-  DeckPointerEvent contact(int x,int y){const bool fresh=!active;if(fresh){active=true;dragged=false;startX=x;startY=y;travel=0;}const int previousY=lastY;lastX=x;lastY=y;travel=std::max(travel,std::max(std::abs(x-startX),std::abs(y-startY)));
-    int delta=0;if(dragged)delta=y-previousY;else if(std::abs(y-startY)>8&&std::abs(y-startY)>=std::abs(x-startX)){dragged=true;delta=y-startY;}
+  DeckPointerEvent contact(int x,int y){const bool fresh=!active;if(fresh){active=true;dragged=false;axis=0;startX=x;startY=y;travel=0;}const int previousY=lastY;lastX=x;lastY=y;travel=std::max(travel,std::max(std::abs(x-startX),std::abs(y-startY)));
+    int delta=0;const bool alreadyDragged=dragged;
+    if(!axis&&travel>8){axis=std::abs(y-startY)>=std::abs(x-startX)?2:1;dragged=true;}
+    if(axis==2)delta=alreadyDragged?y-previousY:y-startY;
     return {false,x,y,0,delta,false,fresh,startY};
   }
-  DeckPointerEvent release(){if(!active)return {};active=false;const int delta=lastY-startY;return {!dragged&&travel<18,lastX,lastY,std::abs(delta)>18?(delta>0?-1:1):0,0,true,false,startY};}
+  DeckPointerEvent release(){if(!active)return {};active=false;const int delta=lastY-startY;return {!dragged&&travel<18,lastX,lastY,std::abs(delta)>18?(delta>0?-1:1):0,0,true,false,startY,axis==1&&std::abs(lastX-startX)>=40?(lastX>startX?1:-1):0};}
 };
 // Scroll content with the finger; preserve pixel distance instead of advancing selection.
 class DeckScroll {

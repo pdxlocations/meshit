@@ -41,7 +41,7 @@ public:
     const auto event=touch.poll();
     if(event.pressed)scroll.stop(millis());
     if(event.dragY&&scene.viewport.contains(event.x,event.originY))scroll.drag(event.dragY,millis());
-    if(event.released)scroll.release(millis());
+    if(event.released){scroll.release(millis());if(event.swipeX)chat.swipe(event.swipeX);}
     if(event.tap){if(const auto* hit=meshit::deckHitAt(scene,event.x,event.y))action=meshit::activateDeckHit(*hit,chat,core,catalog,identity);}
 #endif
     if(key){action=chat.key(key,core,catalog,identity);

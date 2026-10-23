@@ -67,6 +67,11 @@ int main(){
     assert(!pointer.release().tap); // Held fingers and repeated release frames never post twice.
     pointer.contact(100,180);pointer.contact(100,110);e=pointer.release();assert(!e.tap&&e.swipe==1);
     pointer.contact(100,100);pointer.contact(150,100);pointer.contact(100,100);assert(!pointer.release().tap); // Dragging away and back is not a tap.
+    pointer.contact(220,120);auto horizontal=pointer.contact(160,123);assert(horizontal.dragY==0);e=pointer.release();assert(e.swipeX==-1&&!e.tap);
+    pointer.contact(60,120);pointer.contact(130,122);e=pointer.release();assert(e.swipeX==1&&!e.tap);
+    pointer.contact(100,180);pointer.contact(102,140);pointer.contact(180,120);e=pointer.release();assert(!e.swipeX&&!e.tap); // Vertical drags never switch tabs.
+    DeckChat navigation;navigation.key(DeckLeft,Core(),{},1);assert(navigation.page==DeckChat::Chat);navigation.key(DeckRight,Core(),{},1);assert(navigation.page==DeckChat::Chat);
+    navigation.swipe(-1);assert(navigation.page==DeckChat::Settings);navigation.swipe(1);assert(navigation.page==DeckChat::Chat);navigation.swipe(1);assert(navigation.page==DeckChat::Rooms);navigation.swipe(-1);assert(navigation.page==DeckChat::Chat);
     auto c=client(400);auto root=post(401,1),child=post(402,1,root.id);c.receive(root,0,false);c.receive(child,0,false);
     DeckChat d;d.sync(c);const std::vector<DeckPreset> catalog={{"mt-us-longfast","meshtastic","US LongFast"}};
     auto measure=[](const std::string& text,DeckFont f){return int(text.size())*(f==DeckFont::Small?5:8);};
@@ -78,6 +83,10 @@ int main(){
     activateDeckHit(*picked,d,c,catalog,400);assert(d.reply==root.id);
     scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);
     assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& op){return op.text=="Post a reply";}));
+    auto cancel=find(DeckTap::Cancel);assert(cancel.box.w>=100&&cancel.box.h>=32);
+    const auto* cancelEdge=deckHitAt(scene,cancel.box.x+1,cancel.box.y+cancel.box.h-1);assert(cancelEdge&&cancelEdge->action==DeckTap::Cancel);
+    d.draft="Keep this text";activateDeckHit(*cancelEdge,d,c,catalog,400);assert(!d.reply&&d.draft=="Keep this text");
+    d.reply=root.id;
     d.draft="Touch reply";auto action=activateDeckHit(find(DeckTap::Post),d,c,catalog,400);assert(action.op=="post"&&action.target==root.id&&action.text=="Touch reply");
     action=activateDeckHit(find(DeckTap::Vote,root.id),d,c,catalog,400);assert(action.op=="vote"&&action.up);
     activateDeckHit(find(DeckTap::Settings),d,c,catalog,400);assert(d.page==DeckChat::Settings);

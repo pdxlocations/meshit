@@ -40,7 +40,7 @@ The Plus display now uses landscape rotation 3 to correct the reported upside-do
 | Return / cancel reply | Menu → New post | **Alt + Q**, or Menu → New post |
 | Write a post | Type, then Enter | Type, then Enter |
 
-On Plus, rolling left opens Rooms and rolling right opens Settings; tapping the header controls provides the same navigation. The menu offers **Reply**, **Toggle upvote**, **Resend**, **Rooms**, **New room**, **New post**, **New / Top**, **Radio preset**, **Nickname**, **Wi-Fi / Bluetooth**, and **Read full message**. Actions apply to the selected message, shown with `>`. Posts default to Top sorting; replies remain below their parents.
+On Plus, swipe left from chat to open Settings and swipe right to open Rooms. Swipe in the opposite direction to return to chat, or tap the header controls. Horizontal trackball movement does not navigate; up/down movement still selects messages. While replying, tap the large **Cancel reply** button above the text field to return to a new post without deleting your draft. The menu offers **Reply**, **Toggle upvote**, **Resend**, **Rooms**, **New room**, **New post**, **New / Top**, **Radio preset**, **Nickname**, **Wi-Fi / Bluetooth**, and **Read full message**. Actions apply to the selected message, shown with `>`. Posts default to Top sorting; replies remain below their parents.
 
 Choose **Reply**, type, and press Enter to post to that message. Failed queue attempts retain your draft. **Resend** queues the original outgoing message without creating another post; it is available only when the radio permits a resend. `[ok]` means a matching rebroadcast was heard, `[...]` means queued, and `[retry]` means no acknowledgment is currently pending.
 
