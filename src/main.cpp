@@ -14,17 +14,21 @@
 #include "SetupDisplay.h"
 #include "Battery.h"
 #include "UnreadMessages.h"
+#include "DeckUi.h"
 #if defined(MESHIT_ESP32)
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <esp_system.h>
 #include <esp_mac.h>
-constexpr int RADIO_CS=8,RADIO_IRQ=14,RADIO_RESET=12,RADIO_BUSY=13;
+#include "../firmware/esp32/Pins.h"
 WebServer server(80);
 SetupDisplay setupDisplay;
 String setupName,setupPass;
-bool wifiSuspended=false;
+bool wifiSuspended=false,boardReady=true;
+#if defined(MESHIT_TDECK)
+DeckUi deckUi;
+#endif
 #else
 #include "../firmware/nrf52/Pins.h"
 constexpr int RADIO_CS=NRF_CS,RADIO_IRQ=NRF_IRQ,RADIO_RESET=NRF_RESET,RADIO_BUSY=NRF_BUSY;
@@ -73,9 +77,18 @@ void startRx(){radioFlag=false;radio.setPacketReceivedAction(radioIRQ);radio.sta
 void initRadio(){
   ready=false;txBusy=false;txPackets.clear();radioFlag=false;radio.standby();auto p=preset();
   if(p.isNull()||!settings["configured"].as<bool>())return;
+#if defined(MESHIT_ESP32)
+  if(!boardReady){radioError=RADIOLIB_ERR_CHIP_NOT_FOUND;return;}
+#endif
   bool mt=network()==Network::Meshtastic;
   uint16_t preamble=mt?16:(p["sf"].as<uint8_t>()<=8?32:16);
-  radioError=radio.begin(p["frequency"],p["bandwidth"],p["sf"],p["cr"],mt?0x2b:0x12,p["power"],preamble,1.8);
+  radioError=radio.begin(p["frequency"],p["bandwidth"],p["sf"],p["cr"],mt?0x2b:0x12,p["power"],preamble,
+#if defined(MESHIT_ESP32)
+    RADIO_TCXO
+#else
+    1.8
+#endif
+  );
   if(!radioError)radioError=radio.setCRC(1);
   if(!radioError)radioError=radio.setDio2AsRfSwitch(true);
 #if defined(MESHIT_HELTEC_V4) && !defined(MESHIT_HELTEC_V4_KCT8103L)
@@ -136,13 +149,7 @@ String dispatch(const String& input){
 #endif
       res["board"]=
 #if defined(MESHIT_ESP32)
-#if defined(MESHIT_HELTEC_V4_KCT8103L)
-      "Heltec V4.3";
-#elif defined(MESHIT_HELTEC_V4)
-      "Heltec V4.2";
-#else
-      "Heltec V3";
-#endif
+      MESHIT_BOARD_NAME;
 #else
       NRF_BOARD_NAME;
 #endif
@@ -236,7 +243,10 @@ void setup(){
 #endif
   delay(10);
 #endif
-  SPI.begin(9,11,10);setupWifi();
+#if defined(MESHIT_TDECK)
+  boardReady=beginDeckHardware();
+#endif
+  SPI.begin(RADIO_SCK,RADIO_MISO,RADIO_MOSI);setupWifi();
 #else
   pinMode(MESHIT_BOARD_POWER,OUTPUT);digitalWrite(MESHIT_BOARD_POWER,HIGH);delay(10);SPI.begin();
 #endif
@@ -246,6 +256,11 @@ void setup(){
   ble.begin(meshit::setupRadioName(uint16_t(NRF_FICR->DEVICEADDR[0])).c_str());
 #endif
   initRadio();
+#if defined(MESHIT_TDECK)
+  deckUi.begin(settings["configured"]|false);
+  // E-paper busy waits release SPI; keep receiving radio packets during refresh.
+  deckPanel().serviceWhileBusy([](const void*){pollRadio();delay(1);});
+#endif
 }
 void loop(){
 #if defined(MESHIT_ESP32)
@@ -271,6 +286,7 @@ void loop(){
   if(uint32_t(millis()-lastDisplay)>=100){
     lastDisplay=millis();
     if(ble.pairing())setupDisplay.showBluetooth(setupName,setupPass.substring(2));
+#if !defined(MESHIT_TDECK)
     else if(bluetooth||(!wifiSuspended&&webClientSeen&&uint32_t(millis()-lastWebActivity)<15000)){
       size_t outgoing=0;for(const auto& p:core.pending)if(!p.ack&&!p.history&&(p.event.kind==Kind::Post||p.event.kind==Kind::Vote))++outgoing;
       unreadMessages.prune(core);
@@ -278,11 +294,16 @@ void loop(){
     }
     else if(WiFi.getMode()&WIFI_AP)setupDisplay.showAccessPoint(setupName,setupPass);
     else setupDisplay.showNetwork(WiFi.status()==WL_CONNECTED,WiFi.localIP().toString());
+#endif
   }
 #endif
   pollLinks();pollRadio();size_t before=core.pending.size();
   if(ready&&identityReady)core.tick(millis(),sendEvent);
   if(core.pending.size()!=before||txStateChanged)changed();
   if(txStateChanged){txStateChanged=false;persist();}
-  if(dirty&&uint32_t(millis()-lastChange)>5000)persist();delay(1);
+  if(dirty&&uint32_t(millis()-lastChange)>5000)persist();
+#if defined(MESHIT_TDECK)
+  if(!ble.pairing())deckUi.tick(core,settings,presets,identity,revision,unreadMessages,ready,ble.connected(),batteryReading().millivolts,setupName,setupPass,dispatch);
+#endif
+  delay(1);
 }

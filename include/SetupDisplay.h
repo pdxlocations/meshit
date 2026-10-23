@@ -2,7 +2,17 @@
 #include <Arduino.h>
 #include "BatteryGauge.h"
 
-#if defined(MESHIT_ESP32) && defined(MESHIT_HAS_OLED)
+#if defined(MESHIT_TDECK)
+#include "DeckPanel.h"
+class SetupDisplay {
+public:
+  bool begin(){return deckPanel().begin();}
+  void showAccessPoint(const String& name,const String& password){deckPanel().draw({"meshit / setup",name.c_str(),"Wi-Fi password:",password.c_str(),"http://192.168.4.1","Press menu for standalone chat"},true);}
+  void showBluetooth(const String& name,const String& pin){deckPanel().draw({"meshit / Bluetooth",name.c_str(),"Pairing PIN:",pin.c_str(),"Enter PIN on your phone"},true);}
+  void showStatus(bool,uint16_t,size_t,uint32_t,bool,float){}
+  void showNetwork(bool,const String&){}
+};
+#elif defined(MESHIT_ESP32) && defined(MESHIT_HAS_OLED)
 #include <Wire.h>
 #include <SSD1306Wire.h>
 

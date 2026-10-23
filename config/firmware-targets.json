@@ -22,5 +22,45 @@
     "flashMiB": 16,
     "partitions": "partitions/heltec-v4.csv",
     "chipFamily": "ESP32-S3"
+  },
+  {
+    "environment": "t-deck",
+    "board": "LILYGO T-Deck",
+    "radio": "SX1262",
+    "flashMiB": 16,
+    "partitions": "partitions/t-deck.csv",
+    "chipFamily": "ESP32-S3"
+  },
+  {
+    "environment": "t-deck-plus",
+    "board": "LILYGO T-Deck Plus",
+    "radio": "SX1262",
+    "flashMiB": 16,
+    "partitions": "partitions/t-deck.csv",
+    "chipFamily": "ESP32-S3"
+  },
+  {
+    "environment": "t-deck-pro",
+    "board": "LILYGO T-Deck Pro v1.0",
+    "radio": "SX1262",
+    "flashMiB": 16,
+    "partitions": "partitions/t-deck.csv",
+    "chipFamily": "ESP32-S3"
+  },
+  {
+    "environment": "t-deck-pro-v1-1",
+    "board": "LILYGO T-Deck Pro v1.1",
+    "radio": "SX1262",
+    "flashMiB": 16,
+    "partitions": "partitions/t-deck.csv",
+    "chipFamily": "ESP32-S3"
+  },
+  {
+    "environment": "t-deck-pro-max",
+    "board": "LILYGO T-Deck Pro Max",
+    "radio": "SX1262",
+    "flashMiB": 16,
+    "partitions": "partitions/t-deck.csv",
+    "chipFamily": "ESP32-S3"
   }
 ]

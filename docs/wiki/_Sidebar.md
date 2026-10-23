@@ -9,3 +9,5 @@
 - [Development and Releases](Development-and-Releases.md)
 - [Troubleshooting](Troubleshooting.md)
 - [Hardware and Presets](Hardware-and-Presets.md)
+
+- [T-Deck standalone chat](T-Deck.md)

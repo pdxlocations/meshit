@@ -2,6 +2,7 @@
   {"id":"mt-us-longfast","network":"meshtastic","region":"US","name":"LongFast","frequency":906.875,"bandwidth":250,"sf":11,"cr":5,"power":20,"duty":100,"channel":"LongFast"},
   {"id":"mt-us-meshoregon","network":"meshtastic","region":"US","name":"MeshOregon","frequency":918.5,"bandwidth":125,"sf":8,"cr":5,"power":20,"duty":100,"channel":"LongFast"},
   {"id":"mt-eu-longfast","network":"meshtastic","region":"EU_868","name":"LongFast","frequency":869.525,"bandwidth":250,"sf":11,"cr":5,"power":14,"duty":10,"channel":"LongFast"},
+  {"id":"mt-eu433-longfast","network":"meshtastic","region":"EU_433","name":"LongFast","frequency":433.875,"bandwidth":250,"sf":11,"cr":5,"power":10,"duty":10,"channel":"LongFast"},
   {"id":"mc-us-narrow","network":"meshcore","region":"US","name":"US / Canada narrow","frequency":910.525,"bandwidth":62.5,"sf":7,"cr":5,"power":20,"duty":100,"channel":"meshit"},
   {"id":"mc-eu-narrow","network":"meshcore","region":"EU_868","name":"Europe narrow","frequency":869.618,"bandwidth":62.5,"sf":7,"cr":5,"power":14,"duty":10,"channel":"meshit"}
 ]

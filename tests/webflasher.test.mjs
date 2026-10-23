@@ -86,3 +86,17 @@ test('uploadable nRF catalog matches supported firmware boards', async () => {
   const {readFile}=await import('node:fs/promises');
   assert.equal(await readFile(new URL('../webflasher/nrf52-targets.json',import.meta.url),'utf8'),await readFile(new URL('../config/nrf52-targets.json',import.meta.url),'utf8'));
 });
+
+test('each T-Deck hardware revision remains a distinct ESP32-S3 installer choice',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const boards=JSON.parse(await readFile(new URL('../config/firmware-targets.json',import.meta.url),'utf8')).filter(t=>t.environment.startsWith('t-deck'));
+  assert.deepEqual(boards.map(t=>t.environment),['t-deck','t-deck-plus','t-deck-pro','t-deck-pro-v1-1','t-deck-pro-max']);
+  const manifest=boards.map(t=>({...t,...image,file:`meshit-${t.environment}.bin`,factory:{...factory,file:`meshit-${t.environment}-factory.bin`}}));
+  const assets=manifest.flatMap(t=>[{name:t.file},{name:t.factory.file}]);
+  const choices=validateTargets(manifest,{assets});assert.equal(choices.length,5);
+  for(const choice of choices){
+    assert.equal(choice.flashMiB,16);assert.equal(choice.chipFamily,'ESP32-S3');
+    assert.equal(installManifest(choice,choice.factory,'test','blob:verified').builds[0].parts[0].offset,0);
+    assert.equal(installManifest(choice,choice,'test','blob:verified').builds[0].parts[0].offset,0x10000);
+  }
+});

@@ -5,12 +5,17 @@
 | Heltec WiFi LoRa 32 V3 | ESP32-S3 | Local Wi-Fi or Bluetooth | Browser USB installer |
 | Heltec WiFi LoRa 32 V4.2 OLED / GC1109 | ESP32-S3 | Local Wi-Fi or Bluetooth | Browser USB installer (`heltec-v4`) |
 | Heltec WiFi LoRa 32 V4.3 OLED / KCT8103L | ESP32-S3 | Local Wi-Fi or Bluetooth | Browser USB installer (`heltec-v4-3`) |
+| LILYGO T-Deck | ESP32-S3 | Standalone + local Wi-Fi or Bluetooth | Browser USB installer (`t-deck`) |
+| LILYGO T-Deck Plus | ESP32-S3 | Standalone + local Wi-Fi or Bluetooth | Browser USB installer (`t-deck-plus`) |
+| LILYGO T-Deck Pro v1.0 | ESP32-S3 | Standalone + local Wi-Fi or Bluetooth | Browser USB installer (`t-deck-pro`) |
+| LILYGO T-Deck Pro v1.1 | ESP32-S3 | Standalone + local Wi-Fi or Bluetooth | Browser USB installer (`t-deck-pro-v1-1`) |
+| LILYGO T-Deck Pro Max | ESP32-S3 | Standalone + local Wi-Fi or Bluetooth | Browser USB installer (`t-deck-pro-max`) |
 | Heltec Mesh Node T114 | nRF52840 | Bluetooth | S140 7.3.0 UF2/HEX (`heltec-t114`) |
 | RAK4631 | nRF52840 | Bluetooth | Matching S140 UF2/HEX download |
 
 Heltec V3/V4 OLED boards’ built-in 128×64 OLED shows setup Wi-Fi credentials and the setup URL. If the display is absent or initialization fails, its AP uses `12345678`. RAK4631 and T114 use Bluetooth and has no setup AP.
 
-V4 profiles use 16 MiB flash; V3 uses 8 MiB. Match the V4 OLED revision/FEM to the [manufacturer’s guide](https://wiki.heltec.org/docs/devices/open-source-hardware/esp32-series/lora-32/wifi-lora-32-v4/). The T114 TFT and optional V4 TFT are not initialized by these profiles. New board profiles are build-verified; physical radio, pairing, amplifier, battery, and display verification remains outstanding. Other boards have not been ported. Select hardware suitable for your local frequency band.
+V4 profiles use 16 MiB flash; V3 uses 8 MiB. Match the V4 OLED revision/FEM to the [manufacturer’s guide](https://wiki.heltec.org/docs/devices/open-source-hardware/esp32-series/lora-32/wifi-lora-32-v4/). The T114 TFT and optional V4 TFT are not initialized by these profiles. New board profiles are build-verified; physical radio, pairing, amplifier, battery, and display verification remains outstanding. [T-Deck models](T-Deck.md) use their TFT/e-paper screen and keyboard for standalone chat, with Wi-Fi/Bluetooth companions available too. The five new T-Deck profiles have passed syntax checks and host tests; firmware builds and physical-device verification are pending. Other boards have not been ported. Select hardware suitable for your local frequency band.
 
 ## Included presets
 
@@ -19,6 +24,7 @@ V4 profiles use 16 MiB flash; V3 uses 8 MiB. Match the V4 OLED revision/FEM to t
 | meshtastic | US | LongFast | 906.875 | 250 | 11 | 4/5 |
 | meshtastic | US | MeshOregon | 918.5 | 125 | 8 | 4/5 |
 | meshtastic | EU_868 | LongFast | 869.525 | 250 | 11 | 4/5 |
+| meshtastic | EU_433 | LongFast | 433.875 | 250 | 11 | 4/5 |
 | meshcore | US | US / Canada narrow | 910.525 | 62.5 | 7 | 4/5 |
 | meshcore | EU_868 | Europe narrow | 869.618 | 62.5 | 7 | 4/5 |
 

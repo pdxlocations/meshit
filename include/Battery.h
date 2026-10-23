@@ -3,7 +3,22 @@
 #include "BatteryGauge.h"
 struct BatteryReading {uint16_t millivolts=0;};
 inline BatteryReading& batteryReading(){static BatteryReading reading;return reading;}
-#if defined(MESHIT_ESP32) && defined(MESHIT_HAS_OLED)
+#if defined(MESHIT_TDECK)
+#include "DeckHardware.h"
+inline void updateBattery(uint32_t now){
+  static uint32_t next=0;if(int32_t(now-next)<0)return;next=now+5000;
+  uint32_t mv=0;
+#if defined(MESHIT_TDECK_PRO)
+  // BQ27220 standard Voltage() command, little endian millivolts.
+  Wire.beginTransmission(0x55);Wire.write(0x08);
+  if(Wire.endTransmission(false)==0&&Wire.requestFrom(uint8_t(0x55),uint8_t(2))==2){mv=Wire.read();mv|=uint32_t(Wire.read())<<8;}
+#else
+  static bool initialized=false;if(!initialized){pinMode(4,INPUT);analogSetPinAttenuation(4,ADC_11db);initialized=true;}
+  for(unsigned i=0;i<8;++i)mv+=analogReadMilliVolts(4);mv=(mv+2)/4; // 2:1 divider, eight samples.
+#endif
+  batteryReading().millivolts=plausibleBatteryVoltage(mv)?mv:0;
+}
+#elif defined(MESHIT_ESP32) && defined(MESHIT_HAS_OLED)
 // Heltec V3/V4: GPIO1, 390k/100k divider, GPIO37 enable. Detect V3/V3.2 polarity.
 inline void updateBattery(uint32_t now) {
   static bool initialized=false,sampling=false;

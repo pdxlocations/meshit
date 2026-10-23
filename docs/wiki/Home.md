@@ -19,3 +19,5 @@ Small, threaded LoRa chat on Heltec V3/V4, RAK4631, and T114, using nearby Mesht
 - [Development and releases](Development-and-Releases.md)
 - [Host the web flasher](../../webflasher/README.md)
 - [Verification record](../VALIDATION.md)
+
+LILYGO T-Deck, Plus, Pro v1.0/v1.1, and Pro Max have [standalone screen/keyboard chat](T-Deck.md) alongside Wi-Fi/Bluetooth companions. The new port has syntax and host-test coverage; firmware builds and hardware verification are pending.

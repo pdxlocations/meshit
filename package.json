@@ -11,7 +11,7 @@
     "mobile:android": "npm run mobile:prepare && node tools/add-mobile.mjs android",
     "mobile:ios": "npm run mobile:prepare && node tools/add-mobile.mjs ios",
     "mobile:sync": "npm run mobile:prepare && node tools/configure-mobile.mjs && cap sync && node tools/ios-bluetooth-spm.mjs",
-    "build:firmware": "pio run -e heltec-v3 -e heltec-v4 -e heltec-v4-3 -e rak4631 -e rak4631-s140-6-1-1 -e heltec-t114",
+    "build:firmware": "pio run -e heltec-v3 -e heltec-v4 -e heltec-v4-3 -e rak4631 -e rak4631-s140-6-1-1 -e heltec-t114 -e t-deck -e t-deck-plus -e t-deck-pro -e t-deck-pro-v1-1 -e t-deck-pro-max",
     "package:firmware": "python3 tools/package_firmware.py",
     "webflasher:prepare": "node tools/prepare-webflasher.mjs",
     "test:webflasher": "node --test tests/webflasher*.test.mjs && php tests/webflasher-api.php",

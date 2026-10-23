@@ -6,6 +6,7 @@
 #include "../include/SetupAccess.h"
 #include "../include/BatteryGauge.h"
 #include "../include/UnreadMessages.h"
+#include "../include/DeckChat.h"
 #include <cassert>
 #include <iostream>
 using namespace meshit;
@@ -32,6 +33,30 @@ int main(){
     unread.add(a.id,c);c.messages.clear();unread.prune(c);assert(unread.count()==0);
   }
 
+  {
+    auto radio=client(300);auto root=post(301,1),replyPost=post(302,1,root.id);
+    radio.receive(root,0,false);radio.receive(replyPost,0,false);
+    DeckChat deck;deck.sync(radio);auto rows=deck.rows(radio);assert(rows.size()==2&&rows[0].id==root.id&&rows[1].depth==1);
+    const std::vector<DeckPreset> catalog={{"mt-us-longfast","meshtastic","US LongFast"},{"mc-eu-narrow","meshcore","EU narrow"}};
+    auto key=[&](int k){return deck.key(k,radio,catalog,300);};
+    key(DeckMenu);key('\r');assert(deck.reply==root.id&&deck.page==DeckChat::Chat);
+    for(char c:std::string("Keyboard reply"))key(c);
+    auto action=key('\r');assert(action.op=="post"&&action.target==root.id&&action.text=="Keyboard reply");
+    // An unsuccessful queue attempt leaves the draft and reply target intact.
+    assert(deck.draft=="Keyboard reply"&&deck.reply==root.id);
+    Event outgoing;outgoing.room=action.room;outgoing.ref=action.target;outgoing.text=action.text;assert(radio.submit(outgoing,100));
+    deck.accepted(action,radio.pending.back().event.id);assert(deck.draft.empty()&&!deck.reply&&radio.find(deck.selected)->mine);
+    key(DeckMenu);deck.cursor=1;action=key('\r');assert(action.op=="vote"&&action.up&&action.target==deck.selected);
+    radio.receive(vote(300,2,action.target),200,false);key(DeckMenu);deck.cursor=1;action=key('\r');assert(!action.up);
+    key(DeckMenu);deck.cursor=2;action=key('\r');assert(action.op=="resend"&&action.target==deck.selected);
+    key(DeckMenu);deck.cursor=4;key('\r');for(char c:std::string("camp"))key(c);key('\r');assert(deck.room=="camp"&&!deck.reply);
+    key(DeckMenu);deck.cursor=7;key('\r');key(DeckDown);action=key('\r');assert(action.op=="settings"&&action.preset=="mc-eu-narrow"&&action.network=="meshcore");
+    deck.accepted(action);assert(deck.page==DeckChat::Chat);
+    for(unsigned i=0;i<170;++i)key('x');assert(deck.draft.size()==160);key(8);assert(deck.draft.size()==159);
+    deck.draft="Hi 🙂";key(8);assert(deck.draft=="Hi ");
+    key(DeckMenu);deck.cursor=9;key('\r');assert(deck.page==DeckChat::Credentials);key('\r');assert(deck.page==DeckChat::Chat);
+    deck.room="general";deck.sync(radio);key(DeckMenu);deck.cursor=10;key('\r');assert(deck.page==DeckChat::Read);key(DeckDown);assert(deck.cursor==1);key('\r');assert(deck.page==DeckChat::Chat);
+  }
   assert(!plausibleBatteryVoltage(0));assert(!plausibleBatteryVoltage(5000));
   assert(batteryBars(3400)==0&&batteryBars(3600)==1&&batteryBars(3800)==2&&batteryBars(4000)==3&&batteryBars(4200)==4);
 

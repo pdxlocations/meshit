@@ -22,7 +22,7 @@ jobs:
   firmware:
     name: Host tests and web flasher
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v7
         with:

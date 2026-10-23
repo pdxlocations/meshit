@@ -31,7 +31,7 @@ Status: initial implementation complete; firmware, host tests, Android debug, an
 - ChaCha20-Poly1305 application encryption uses a built-in shared key and hardware-generated random nonces. No user key configuration; no custom cipher.
 - One initial transmission plus three retries, stopping on a matching rebroadcast. A green check denotes rebroadcast evidence only.
 - Compact persistent radio history, votes, tombstones, and pending sends; companion caches 200 messages and drafts locally.
-- Targets are Heltec V3, V4.2 OLED / GC1109, V4.3 OLED / KCT8103L, RAK4631 S140 7.3.0 and 6.1.1, and Heltec T114 S140 7.3.0. Other Form8 targets remain future work.
+- Targets are Heltec V3, V4.2 OLED / GC1109, V4.3 OLED / KCT8103L, RAK4631 S140 7.3.0 and 6.1.1, Heltec T114 S140 7.3.0, and LILYGO T-Deck, Plus, Pro v1.0, Pro v1.1, and Pro Max. T-Deck supports both standalone screen/keyboard chat and Wi-Fi/Bluetooth companions; unused GPS, cellular, audio, and touch peripherals remain outside chat scope.
 - See `docs/PROTOCOL.md` for resource bounds and `docs/VALIDATION.md` for evidence and remaining physical checks.
 
 ## Protocol references

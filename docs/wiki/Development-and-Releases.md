@@ -75,3 +75,5 @@ git -C /tmp/meshit-wiki push
 ```
 
 Create the first Home page in GitHub's Wiki UI before cloning a new wiki. The export converts page links to wiki routes and source/image links to the main repository. It does not commit or push automatically.
+
+T-Deck release targets are `t-deck`, `t-deck-plus`, `t-deck-pro` (v1.0), `t-deck-pro-v1-1`, and `t-deck-pro-max`. Run a selected target with `pio run -e TARGET`. Release builds include all five; push/PR CI still runs checks without building firmware or Android.

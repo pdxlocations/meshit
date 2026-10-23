@@ -71,3 +71,9 @@ Meshtastic channel-name entry is removed. Firmware selects its internal transpor
 The target catalog and build command include Heltec V3, V4.2 OLED (GC1109), V4.3 OLED (KCT8103L), RAK4631 with S140 7.3.0 or 6.1.1, and Heltec T114 with S140 7.3.0. V4 uses its own 16 MiB partition layout and FEM power/switch pins; T114 uses its SX1262 SPI/IRQ/reset/busy pins and peripheral enable instead of the RAK mapping. New board profiles require physical verification. T114's TFT and optional V4 TFT are not initialized.
 
 The webflasher uses a logo-only header and a slate dark palette. Brand text, setup AP/Bluetooth names, USB product name, native app labels, docs, and release titles use lowercase meshit. Protocol key-derivation literals retain their original bytes for compatibility with existing radios.
+
+## T-Deck port verification
+
+The five T-Deck profiles have passed `-fsyntax-only` checks of `src/main.cpp` with the installed ESP32-S3 Arduino, RadioLib, NimBLE, display, and keyboard headers. These checks create no target object files or firmware binaries. The dependency versions resolve for the TFT and e-paper profiles. Host C++ tests cover threaded ordering, keyboard replies, retained drafts on failed queue attempts, upvote toggles, resend actions, new rooms, preset selection, input length, Unicode-safe backspace, and full-message viewing. Flasher tests verify that all five profiles remain distinct choices with the correct installation offsets. Catalog checks cover all eight ESP32 and three nRF targets.
+
+No T-Deck firmware or Android binaries have been built locally. Link-time size, actual RF operation for each frequency option, Pro Max expander power/antenna routing, ST7789 panel revisions, e-paper behavior during traffic, physical keyboard events, battery readings, and real-device Wi-Fi/Bluetooth pairing remain to be verified on hardware. Release workflows build the new targets when explicitly invoked; push/PR CI remains checks-only.

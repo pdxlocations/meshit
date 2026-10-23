@@ -26,7 +26,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_every_pio_target_is_cataloged(self):
         esp, nrf = check(ROOT)
-        self.assertEqual({t["environment"] for t in esp+nrf}, {"heltec-v3", "heltec-v4", "heltec-v4-3", "rak4631", "rak4631-s140-6-1-1", "heltec-t114"})
+        self.assertEqual({t["environment"] for t in esp+nrf}, {"heltec-v3", "heltec-v4", "heltec-v4-3", "rak4631", "rak4631-s140-6-1-1", "heltec-t114", "t-deck", "t-deck-plus", "t-deck-pro", "t-deck-pro-v1-1", "t-deck-pro-max"})
 
     def test_releases_reject_mixed_builds_before_replacing_previous_bundle(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -54,7 +54,9 @@ class ReleaseTests(unittest.TestCase):
             for name in ['esp32/meshit-heltec-v3.bin', 'esp32/meshit-heltec-v3-factory.bin',
                          'nrf52/meshit-rak4631.uf2', 'nrf52/meshit-rak4631-s140-6-1-1.uf2',
                          'esp32/meshit-heltec-v4-factory.bin', 'esp32/meshit-heltec-v4-3.bin',
-                         'nrf52/meshit-heltec-t114.uf2', 'nrf52/nrf52-targets.json', 'webflasher/api.php', 'webflasher/index.html']:
+                         'esp32/meshit-t-deck.bin', 'esp32/meshit-t-deck-plus-factory.bin',
+                         'esp32/meshit-t-deck-pro.bin', 'esp32/meshit-t-deck-pro-v1-1.bin',
+                         'esp32/meshit-t-deck-pro-max-factory.bin', 'nrf52/meshit-heltec-t114.uf2', 'nrf52/nrf52-targets.json', 'webflasher/api.php', 'webflasher/index.html']:
                 self.assertIn(name, names)
             self.assertFalse(any(name.endswith('.apk') for name in names))
             for line in bundle.read('SHA256SUMS').decode().splitlines():

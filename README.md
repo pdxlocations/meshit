@@ -2,7 +2,7 @@
 
 **[Install firmware → meshit.pdxlocs.com](https://meshit.pdxlocs.com)** · [GitHub Releases](https://github.com/pdxlocations/meshit/releases) · [Wiki](https://github.com/pdxlocations/meshit/wiki) · [Documentation source](docs/wiki/Home.md)
 
-Small, threaded LoRa chat for **Heltec V3/V4 (ESP32-S3)** and **RAK4631 / T114 (nRF52840)**. meshit originates encrypted application traffic on a selected Meshtastic or MeshCore network. Existing infrastructure supplies the relays; meshit never forwards ordinary received traffic.
+Small, threaded LoRa chat for **Heltec V3/V4 and LILYGO T-Deck / Plus / Pro / Pro Max (ESP32-S3)** and **RAK4631 / T114 (nRF52840)**. meshit originates encrypted application traffic on a selected Meshtastic or MeshCore network. Existing infrastructure supplies the relays; meshit never forwards ordinary received traffic.
 
 Chat has rooms, replies, removable upvotes, New/Top sorting, and an optional nickname (Anonymous by default). Posts and replies accept **160 Unicode characters**. A check means **another radio was heard rebroadcasting the message**, not that everyone received it. Without a check, the radio makes at most three retries after the initial send.
 
@@ -24,7 +24,7 @@ Captured from the local simulator with sample messages. Rebroadcast checks are s
 
 ## Get started
 
-1. Open **[meshit.pdxlocs.com](https://meshit.pdxlocs.com)** and [install the firmware for your board](docs/wiki/Installation.md). Heltec V3/V4 use browser USB installation; RAK4631 and T114 use downloads matching their installed S140 SoftDevice.
+1. Open **[meshit.pdxlocs.com](https://meshit.pdxlocs.com)** and [install the firmware for your board](docs/wiki/Installation.md). Heltec V3/V4 and T-Deck models use browser USB installation; RAK4631 and T114 use downloads matching their installed S140 SoftDevice.
 2. [Connect the companion](docs/wiki/Connection-and-Settings.md) over local Wi-Fi on ESP or Bluetooth on all supported boards.
 3. Choose a matching network and preset, then [join a room and post](docs/wiki/Using-Meshit.md).
 
@@ -41,6 +41,8 @@ npm run dev
 ```
 
 Open **http://127.0.0.1:8787**. The preview uses the actual C++ chat core and **simulates** rebroadcasts. It does not transmit radio traffic. Preview history lasts for the server process; browser drafts and the last received feed are saved locally.
+
+T-Deck models also run [standalone chat on their screen and keyboard](docs/wiki/T-Deck.md), alongside the phone/browser companion. Match the Pro hardware revision when installing. These new profiles have syntax and host-test coverage; firmware builds and physical-device checks are pending.
 
 ## Build firmware
 
