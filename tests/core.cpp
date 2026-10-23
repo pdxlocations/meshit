@@ -54,7 +54,7 @@ int main(){
     unread.viewedIds("general",{a.id,other.id},c);assert(unread.count()==2&&unread.count("general",c)==1&&unread.count("camp",c)==1);
     unread.viewedIds("general",{a.id},c);assert(unread.count()==2); // Repeated views never clear later arrivals.
     DeckChat d;d.page=DeckChat::Rooms;auto measure=[](const std::string& text,DeckFont){return int(text.size())*5;};
-    auto scene=makeDeckScene(d,c,{},true,"mesit-0001","12345678",measure,0,"4.1V",unread.count(),true,[&](const std::string& room){return unread.count(room,c);});
+    auto scene=makeDeckScene(d,c,{},true,"meshit-0001","12345678",measure,0,"4.1V",unread.count(),true,[&](const std::string& room){return unread.count(room,c);});
     assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& p){return p.text=="New 2";}));
     assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& p){return p.text=="2 / 1 new";}));
     assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& p){return p.text=="1 / 1 new";}));
@@ -165,7 +165,7 @@ int main(){
     auto c=client(400);auto root=post(401,1),child=post(402,1,root.id);c.receive(root,0,false);c.receive(child,0,false);
     DeckChat d;d.sync(c);const std::vector<DeckPreset> catalog={{"mt-us-longfast","meshtastic","US LongFast"}};
     auto measure=[](const std::string& text,DeckFont f){return int(text.size())*(f==DeckFont::Small?5:8);};
-    auto scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);
+    auto scene=makeDeckScene(d,c,catalog,true,"meshit-00af","12345678",measure);
     assert(scene.width==320&&scene.height==240);
     auto find=[&](DeckTap action,Id id=0){for(const auto& hit:scene.hits)if(hit.action==action&&(!id||hit.target==id))return hit;assert(false);return DeckHit{};};
     for(const auto& hit:scene.hits)if(hit.action==DeckTap::Select){
@@ -180,7 +180,7 @@ int main(){
       auto threaded=client(450);Id parent=0,leaf=0;
       for(unsigned level=0;level<=depth;++level){auto message=post(451,level+1,parent);message.text="Reply body";threaded.receive(message,0,false);parent=leaf=message.id;}
       DeckChat replyChat;replyChat.selected=leaf;
-      auto replyScene=makeDeckScene(replyChat,threaded,catalog,true,"mesit-00af","12345678",measure);
+      auto replyScene=makeDeckScene(replyChat,threaded,catalog,true,"meshit-00af","12345678",measure);
       const DeckHit* leafHit=nullptr;for(const auto& hit:replyScene.hits)if(hit.action==DeckTap::Select&&hit.target==leaf)leafHit=&hit;
       assert(leafHit);
       const auto* tapped=deckHitAt(replyScene,50+int(std::min(depth,4u))*14,leafHit->box.y+30);
@@ -193,7 +193,7 @@ int main(){
       feed.receive(first,0,false);feed.receive(reply,0,false);feed.receive(last,0,false);
       DeckChat touchChat;touchChat.selected=last.id;
       DeckScroll touchScroll;touchScroll.move(50,100);
-      auto scrolled=makeDeckScene(touchChat,feed,catalog,true,"mesit-00af","12345678",measure,touchScroll.position(),"",0,touchScroll.followSelection);
+      auto scrolled=makeDeckScene(touchChat,feed,catalog,true,"meshit-00af","12345678",measure,touchScroll.position(),"",0,touchScroll.followSelection);
       assert(touchChat.selected==last.id);
       size_t tappedRows=0;
       for(const auto& hit:scrolled.hits)if(hit.action==DeckTap::Select&&hit.target!=last.id){
@@ -217,7 +217,7 @@ int main(){
     auto replyHit=find(DeckTap::Reply,root.id);assert(replyHit.box.y>=100&&replyHit.box.y+replyHit.box.h<=240);
     const auto* picked=deckHitAt(scene,replyHit.box.x+2,replyHit.box.y+2);assert(picked&&picked->action==DeckTap::Reply);
     activateDeckHit(*picked,d,c,catalog,400);assert(d.reply==root.id);
-    scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);
+    scene=makeDeckScene(d,c,catalog,true,"meshit-00af","12345678",measure);
     assert(std::any_of(scene.paint.begin(),scene.paint.end(),[](const DeckPaint& op){return op.text=="Post a reply";}));
     auto cancel=find(DeckTap::Cancel);assert(cancel.box.w>=100&&cancel.box.h>=32);
     const auto* cancelEdge=deckHitAt(scene,cancel.box.x+1,cancel.box.y+cancel.box.h-1);assert(cancelEdge&&cancelEdge->action==DeckTap::Cancel);
@@ -225,12 +225,12 @@ int main(){
     assert(d.page==DeckChat::Chat&&!d.focused);
     // Exercise a real press/release on Cancel and rebuild the resulting message list.
     d.reply=root.id;d.focused=true;d.cursor=3;
-    auto replying=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);
+    auto replying=makeDeckScene(d,c,catalog,true,"meshit-00af","12345678",measure);
     DeckTapLatch cancelTap;cancelTap.begin(replying,d,cancel.box.x+cancel.box.w/2,cancel.box.y+cancel.box.h/2);
     const auto* cancelTarget=cancelTap.finish(d,true);assert(cancelTarget&&cancelTarget->action==DeckTap::Cancel);
     auto canceledReply=activateDeckHit(*cancelTarget,d,c,catalog,400);
     assert(canceledReply.op.empty()&&d.page==DeckChat::Chat&&!d.reply&&!d.focused&&d.cursor==0&&d.draft=="Keep this text");
-    auto afterCancel=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);
+    auto afterCancel=makeDeckScene(d,c,catalog,true,"meshit-00af","12345678",measure);
     assert(std::none_of(afterCancel.hits.begin(),afterCancel.hits.end(),[](const DeckHit& hit){return hit.action==DeckTap::Cancel;}));
     assert(afterCancel.viewport.y==replying.viewport.y-34);
     d.reply=root.id;d.key(27,c,catalog,400);assert(!d.reply&&d.page==DeckChat::Chat&&!d.focused);
@@ -238,11 +238,11 @@ int main(){
     d.draft="Touch reply";auto action=activateDeckHit(find(DeckTap::Post),d,c,catalog,400);assert(action.op=="post"&&action.target==root.id&&action.text=="Touch reply");
     action=activateDeckHit(find(DeckTap::Vote,root.id),d,c,catalog,400);assert(action.op=="vote"&&action.up);
     c.receive(vote(400,2,root.id),1,false);d.selected=root.id;
-    scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure,0,"",0,true,{},400);
+    scene=makeDeckScene(d,c,catalog,true,"meshit-00af","12345678",measure,0,"",0,true,{},400);
     assert(std::any_of(scene.paint.begin(),scene.paint.end(),[&](const DeckPaint& op){return op.shape==DeckShape::Up&&op.color==deckPalette(d.dark).button;}));
     activateDeckHit(find(DeckTap::Settings),d,c,catalog,400);assert(d.page==DeckChat::Settings);
     activateDeckHit({DeckTap::MenuItem,{},0,4},d,c,catalog,400);assert(d.page==DeckChat::Appearance);activateDeckHit({DeckTap::MenuItem,{},0,3},d,c,catalog,400);assert(d.dark);
-    scene=makeDeckScene(d,c,catalog,true,"mesit-00af","12345678",measure);assert(scene.paint.front().color==deckPalette(true).paper);
+    scene=makeDeckScene(d,c,catalog,true,"meshit-00af","12345678",measure);assert(scene.paint.front().color==deckPalette(true).paper);
     const std::vector<DeckPreset> regional={{"mt-us","meshtastic","US LongFast","US","915 MHz"},{"mt-eu","meshtastic","EU LongFast","EU_868","869 MHz"},{"mc-us","meshcore","US Narrow","US","915 MHz"}};
     d.page=DeckChat::Settings;d.cursor=2;d.key('\r',c,regional,400);assert(d.page==DeckChat::Network);
     d.cursor=1;d.key('\r',c,regional,400);assert(d.page==DeckChat::Regions&&d.regions(regional).size()==2);
@@ -253,7 +253,7 @@ int main(){
     JsonDocument appearanceRequest;deckRequest(appearanceRequest,appearance);assert(appearanceRequest["op"]=="deckAppearance"&&appearanceRequest["appearance"]==1);
     d.page=DeckChat::Appearance;d.cursor=1;d.systemDark=true;d.key('\r',c,regional,400);assert(d.dark&&d.appearance==0);
     for(const auto page:{DeckChat::Settings,DeckChat::Rooms,DeckChat::Presets,DeckChat::Network,DeckChat::Regions,DeckChat::Appearance,DeckChat::Wifi}){
-      d.page=page;d.cursor=0;auto menuFrame=makeDeckScene(d,c,regional,true,"mesit-00af","12345678",measure);
+      d.page=page;d.cursor=0;auto menuFrame=makeDeckScene(d,c,regional,true,"meshit-00af","12345678",measure);
       assert(std::any_of(menuFrame.paint.begin(),menuFrame.paint.end(),[](const DeckPaint& p){return p.text=="Back"&&p.box.y==81;}));
       const auto* backRow=deckHitAt(menuFrame,25,75);assert(backRow&&backRow->action==DeckTap::MenuItem&&backRow->index==0);
       auto backAction=activateDeckHit(*backRow,d,c,regional,400);assert(backAction.op.empty()&&d.page!=page);
@@ -270,11 +270,11 @@ int main(){
     for(const auto page:{DeckChat::Chat,DeckChat::Menu,DeckChat::Navigation,DeckChat::Rooms,DeckChat::NewRoom,DeckChat::Presets,DeckChat::Nickname,DeckChat::Credentials,DeckChat::Read,DeckChat::Settings,DeckChat::Wifi,DeckChat::Ssid,DeckChat::WifiPassword,DeckChat::Appearance,DeckChat::Network,DeckChat::Regions}){
       DeckChat chat;chat.selected=message.id;chat.reply=message.id;chat.network="meshtastic";chat.page=page;
       if(chat.isEditor()){chat.page=DeckChat::Chat;chat.draft="Preserved draft";chat.edit(page,"Edited value",DeckChat::Rooms);}
-      auto frame=makeDeckScene(chat,core,presets,true,"mesit-00af","12345678",measure);
+      auto frame=makeDeckScene(chat,core,presets,true,"meshit-00af","12345678",measure);
       // Include controls below the fold on selection menus.
       auto targets=frame.hits;
       for(int offset:{84,168,252}){
-        auto scrolled=makeDeckScene(chat,core,presets,true,"mesit-00af","12345678",measure,offset,"",0,false);
+        auto scrolled=makeDeckScene(chat,core,presets,true,"meshit-00af","12345678",measure,offset,"",0,false);
         for(const auto& candidate:scrolled.hits)if(candidate.action==DeckTap::MenuItem){
           const int x=candidate.box.x+candidate.box.w/2,y=candidate.box.y+candidate.box.h/2;
           DeckGesture finger;DeckTapLatch latch;auto copy=chat;finger.contact(x,y);latch.begin(scrolled,copy,x,y);
@@ -319,33 +319,33 @@ int main(){
     touchMove.dragY=-40;reverseScroll.drag(deckTouchScrollDelta(d,touchScene,touchMove),132);assert(reverseScroll.position()==100);
     touchMove.originY=10;assert(!deckTouchScrollDelta(d,touchScene,touchMove));
     d.page=DeckChat::Settings;touchMove.originY=150;assert(deckTouchScrollDelta(d,touchScene,touchMove)==-40);d.page=DeckChat::Chat;
-    auto frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure,120,"",0,false);
+    auto frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure,120,"",0,false);
     assert(frame.scroll==120&&d.selected==selected); // Touch scrolling must not snap to the selected message.
     for(const auto& hit:frame.hits)assert(hit.box.h>=0&&hit.box.y>=0&&hit.box.y+hit.box.h<=240);
     auto tap=[&](DeckTap kind){for(const auto& hit:frame.hits)if(hit.action==kind)return activateDeckHit(hit,d,c,{},450);assert(false);return DeckAction{};};
     d.focused=false;tap(DeckTap::Focus);assert(d.focused);
-    d.page=DeckChat::Read;frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
+    d.page=DeckChat::Read;frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure);
     tap(DeckTap::Back);assert(d.page==DeckChat::Chat);
-    d.page=DeckChat::Read;frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);tap(DeckTap::Reply);assert(d.page==DeckChat::Chat&&d.reply==selected);
+    d.page=DeckChat::Read;frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure);tap(DeckTap::Reply);assert(d.page==DeckChat::Chat&&d.reply==selected);
     d.draft="Draft kept while editing settings";d.savedNickname="Old nickname";
     d.page=DeckChat::Settings;d.cursor=3;d.key('\r',c,{},450);assert(d.page==DeckChat::Nickname);
-    d.draft="New nickname";frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
+    d.draft="New nickname";frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure);
     auto action=tap(DeckTap::Save);assert(action.op=="nickname"&&action.text=="New nickname");d.accepted(action);
     assert(d.page==DeckChat::Settings&&d.draft=="Draft kept while editing settings"&&d.reply==selected);
     d.back();assert(d.page==DeckChat::Chat);d.page=DeckChat::Settings;
     d.cursor=5;d.savedSsid="Old wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi);
     d.cursor=1;d.key('\r',c,{},450);assert(d.page==DeckChat::Ssid);d.draft="New wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi&&d.wifiSsid=="New wifi");
-    d.cursor=2;d.key('\r',c,{},450);d.draft="secret123";frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
+    d.cursor=2;d.key('\r',c,{},450);d.draft="secret123";frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure);
     assert(std::none_of(frame.paint.begin(),frame.paint.end(),[](const DeckPaint& op){return op.text.find("secret123")!=std::string::npos;}));
     tap(DeckTap::Back);assert(d.page==DeckChat::Wifi&&d.wifiPassword.empty());
     d.cursor=3;action=d.key('\r',c,{},450);JsonDocument request;deckRequest(request,action);
     assert(request["op"]=="settings"&&request["ssid"]=="New wifi"&&request["password"].isNull());
-    d.page=DeckChat::Chat;d.draft="A real reply";frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
+    d.page=DeckChat::Chat;d.draft="A real reply";frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure);
     action=tap(DeckTap::Post);deckRequest(request,action);
     assert(request["parent"]==hex(selected)&&action.target==selected);
     Event e;e.room=request["room"].as<std::string>();e.text=request["text"].as<std::string>();e.ref=fromHex(request["parent"]|"");assert(c.submit(e,100));
     assert(c.find(c.pending.back().event.id)->event.ref==selected); // Existing threading behavior stays intact.
-    d.edit(DeckChat::NewRoom,"unused",DeckChat::Rooms);frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
+    d.edit(DeckChat::NewRoom,"unused",DeckChat::Rooms);frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure);
     tap(DeckTap::Back);assert(d.page==DeckChat::Rooms&&d.draft=="A real reply");
   }
   assert(!plausibleBatteryVoltage(0));assert(!plausibleBatteryVoltage(5000));
@@ -354,9 +354,9 @@ int main(){
   assert(setupPassword(false,"",0)=="12345678");
   assert(setupPassword(false,"48214821",99)=="48214821");
   assert(setupPassword(true,"12345678",99)=="12345678");
-  assert(setupRadioName(0x000a)=="mesit-000a");
-  assert(setupRadioName(0xabcd)=="mesit-abcd");
-  assert(setupRadioName(0xffff)=="mesit-ffff");
+  assert(setupRadioName(0x000a)=="meshit-000a");
+  assert(setupRadioName(0xabcd)=="meshit-abcd");
+  assert(setupRadioName(0xffff)=="meshit-ffff");
   assert(setupPassword(true,"48214821",99)=="48214821");
   for(const auto& saved:{"","abcdefghijkl","1234123x","123412341234","１２３４１２３４"}){
     auto pass=setupPassword(true,saved,0);assert(pass=="10001000");

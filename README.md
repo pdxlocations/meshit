@@ -78,12 +78,12 @@ This uses the packaged firmware above and creates `dist/meshit-release.zip`, its
 
 ## Connect
 
-- **ESP:** read the `mesit-…` setup Wi-Fi name and eight-digit password on the radio’s OLED. The password is a four-digit PIN repeated twice (for example, `48214821`). On first setup without a working display, join the `mesit-…` Wi-Fi network with **`12345678`**. Open **http://192.168.4.1**; no serial monitor is needed. Choose the network, region, and preset. In Settings, supply your home Wi-Fi details, then restart the radio and visit **http://meshit.local**. The setup hotspot closes after one minute on the LAN; the display then shows `meshit.local` and the LAN IP.
-- **Wi-Fi (ESP32):** join `mesit-…` in device Wi-Fi settings. The native companion uses `192.168.4.1`; browsers use the radio’s own page.
+- **ESP:** read the `meshit-…` setup Wi-Fi name and eight-digit password on the radio’s OLED. The password is a four-digit PIN repeated twice (for example, `48214821`). On first setup without a working display, join the `meshit-…` Wi-Fi network with **`12345678`**. Open **http://192.168.4.1**; no serial monitor is needed. Choose the network, region, and preset. In Settings, supply your home Wi-Fi details, then restart the radio and visit **http://meshit.local**. The setup hotspot closes after one minute on the LAN; the display then shows `meshit.local` and the LAN IP.
+- **Wi-Fi (ESP32):** join `meshit-…` in device Wi-Fi settings. The native companion uses `192.168.4.1`; browsers use the radio’s own page.
 - **Bluetooth (ESP32 / nRF52):** in Settings choose **Find radios**, select a radio, then **Connect**. ESP32 pairing uses the last six digits of its setup Wi-Fi password (`345678` without a display). Disconnect Wi-Fi clients first; Bluetooth pauses ESP32 Wi-Fi until you choose **Disconnect**. iPhone uses the native companion.
 - **Mobile:** the UI is bundled locally, so it can open without an internet connection. Connect by Bluetooth or by local Wi-Fi on ESP. Local drafts and a bounded cached feed remain available while disconnected.
 
-AP and Bluetooth names use `mesit-` plus the last four hexadecimal digits of the factory MAC (for example, `mesit-00af`). Saved numeric setup passwords, Bluetooth PINs, and home Wi-Fi credentials are retained by application-only firmware updates. Factory/full-erase installation removes saved credentials.
+AP and Bluetooth names use `meshit-` plus the last four hexadecimal digits of the factory MAC (for example, `meshit-00af`). Saved numeric setup passwords, Bluetooth PINs, and home Wi-Fi credentials are retained by application-only firmware updates. Factory/full-erase installation removes saved credentials.
 
 The initial preset catalog covers US/Canada and EU 868 MHz, with Meshtastic LongFast, MeshCore narrow, and the user-supplied **MeshOregon: 918.5 MHz, BW125, SF8, CR4/5**. Meshtastic transport uses the standard public key and the preset’s built-in channel hash automatically; no channel name is entered during setup. All meshit rooms share one transport channel. Switching network or preset starts a fresh radio history.
 

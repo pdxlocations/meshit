@@ -6,7 +6,7 @@ namespace meshit {
 // The factory MAC suffix is independent of the rotating message sender ID.
 inline std::string setupRadioName(uint16_t macSuffix){
   const char* digits="0123456789abcdef";
-  std::string name="mesit-";
+  std::string name="meshit-";
   for(int shift=12;shift>=0;shift-=4)name+=digits[(macSuffix>>shift)&15];
   return name;
 }
