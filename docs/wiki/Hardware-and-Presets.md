@@ -35,3 +35,9 @@ Meshtastic uses its standard public transport key. MeshCore uses meshit's built-
 Next: [Installation](Installation.md) · [Connection and settings](Connection-and-Settings.md).
 
 [Wiki home](Home.md)
+
+## Transmit power
+
+Firmware selects the highest supported output within the preset ceiling: US 30 dBm, EU_868 27 dBm, and EU_433 10 dBm, following the [Meshtastic region definitions](https://github.com/meshtastic/firmware/blob/master/src/mesh/RadioInterface.cpp). Ordinary SX1262 targets (V3, all T-Decks, RAK4631, T114) use up to 22 dBm chip output. V4.2 and V4.3 use FEM gain curves to reach nominal 28 dBm antenna-port output in US presets, 27 dBm in EU_868, or 10 dBm in EU_433. Chip drive stays within the PA curve's supported range. Both V4 FEMs switch their transmit-control pin with TX/RX. All SX1262 targets use a 140 mA PA current limit.
+
+References: [Semtech SX1262](https://www.semtech.com/products/wireless-rf/lora-connect/sx1262), [Heltec V4 specifications](https://wiki.heltec.org/docs/devices/open-source-hardware/esp32-series/lora-32/wifi-lora-32-v4/), [FEM gain curves](https://github.com/meshtastic/firmware/blob/master/src/configuration.h), and [V4 FEM pin controls](https://github.com/meshtastic/firmware/blob/master/variants/esp32s3/heltec_v4/variant.h). Values are configured estimates; actual output requires RF measurement and depends on board revision, supply, and frequency.

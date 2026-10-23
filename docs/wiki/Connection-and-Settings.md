@@ -46,3 +46,5 @@ During Bluetooth pairing, the LCD shows the six-digit PIN before authentication 
 After the client disconnects (or Wi-Fi requests stop for 15 seconds), the setup/network screen returns.
 
 [Wiki home](Home.md)
+
+**Transmit enabled** saves immediately. Turn it off for receive-only operation; incoming messages remain available while outgoing traffic, including automatic recovery traffic, stops. Pending sends are retained and may resume when enabled again. The T-Deck exposes the same setting as **Transmit: On / Off** in Settings. Existing installations default to On.

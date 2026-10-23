@@ -9,6 +9,7 @@
 #include "../include/DeckChat.h"
 #include "../include/DeckScene.h"
 #include "../include/DeckRequest.h"
+#include "../include/RadioPower.h"
 #include <cassert>
 #include <iostream>
 using namespace meshit;
@@ -23,6 +24,17 @@ struct Memory {
 };
 std::string hexBytes(const Bytes& b){std::string s;char x[3];for(auto c:b){snprintf(x,3,"%02x",c);s+=x;}return s;}
 int main(){
+  for(auto profile:{RadioPowerProfile::Sx1262,RadioPowerProfile::Gc1109,RadioPowerProfile::Kct8103l}){
+    for(int ceiling=-9;ceiling<=30;++ceiling){const auto power=selectTxPower(profile,ceiling);
+      if(power.valid){assert(power.drive>=-9&&power.drive<=(profile==RadioPowerProfile::Sx1262?22:21));assert(power.output<=ceiling&&power.output<=maxTxPower(profile));}
+      for(int drive=-9;drive<=(profile==RadioPowerProfile::Sx1262?22:21);++drive){const int output=txOutputPower(profile,drive);if(output<=ceiling&&output<=maxTxPower(profile))assert(power.valid&&power.output>=output);}
+    }
+    assert(selectTxPower(profile,30).output==maxTxPower(profile));
+    assert(selectTxPower(profile,27).output==(profile==RadioPowerProfile::Sx1262?22:27));
+    assert(selectTxPower(profile,10).output==10);
+    assert(!selectTxPower(profile,-50).valid);
+  }
+
   {
     auto c=client(1);UnreadMessages unread;
     auto a=post(2,1),b=post(2,2);b.room="camp";
@@ -60,27 +72,74 @@ int main(){
     DeckChat deck;deck.sync(radio);auto rows=deck.rows(radio);assert(rows.size()==2&&rows[0].id==root.id&&rows[1].depth==1);
     const std::vector<DeckPreset> catalog={{"mt-us-longfast","meshtastic","US LongFast"},{"mc-eu-narrow","meshcore","EU narrow"}};
     auto key=[&](int k){return deck.key(k,radio,catalog,300);};
-    key(DeckMenu);assert(deck.menu.front()=="Back"&&deck.cursor==0);key('\r');assert(deck.page==DeckChat::Chat&&!deck.reply);
-    key(DeckMenu);key(DeckDown);key('\r');assert(deck.reply==root.id&&deck.page==DeckChat::Chat);
+    key('\r');assert(deck.menu.front()=="Back"&&deck.cursor==0);key('\r');assert(deck.page==DeckChat::Chat&&!deck.reply);
+    key('\r');key(DeckDown);key('\r');assert(deck.reply==root.id&&deck.page==DeckChat::Chat);
     for(char c:std::string("Keyboard reply"))key(c);
     auto action=key('\r');assert(action.op=="post"&&action.target==root.id&&action.text=="Keyboard reply");
     // An unsuccessful queue attempt leaves the draft and reply target intact.
     assert(deck.draft=="Keyboard reply"&&deck.reply==root.id);
     Event outgoing;outgoing.room=action.room;outgoing.ref=action.target;outgoing.text=action.text;assert(radio.submit(outgoing,100));
     deck.accepted(action,radio.pending.back().event.id);assert(deck.draft.empty()&&!deck.reply&&radio.find(deck.selected)->mine);
-    key(DeckMenu);deck.cursor=2;action=key('\r');assert(action.op=="vote"&&action.up&&action.target==deck.selected);
+    key('\r');deck.cursor=2;action=key('\r');assert(action.op=="vote"&&action.up&&action.target==deck.selected);
     radio.receive(vote(300,2,action.target),200,false);assert(deck.menuItems(radio,300)[2]=="Remove upvote");
-    key(DeckMenu);deck.cursor=2;action=key('\r');assert(!action.up);
-    key(DeckMenu);deck.cursor=3;action=key('\r');assert(action.op=="resend"&&action.target==deck.selected);
-    key(DeckMenu);deck.cursor=5;key('\r');for(char c:std::string("camp"))key(c);key('\r');assert(deck.room=="camp"&&!deck.reply);
-    key(DeckMenu);deck.cursor=8;key('\r');key(DeckDown);key(DeckDown);key('\r');assert(deck.page==DeckChat::Regions);key(DeckDown);key('\r');assert(deck.page==DeckChat::Presets);key(DeckDown);action=key('\r');assert(action.op=="settings"&&action.preset=="mc-eu-narrow"&&action.network=="meshcore");
+    key('\r');deck.cursor=2;action=key('\r');assert(!action.up);
+    key('\r');deck.cursor=3;action=key('\r');assert(action.op=="resend"&&action.target==deck.selected);
+    key(DeckMenu);deck.cursor=2;key('\r');for(char c:std::string("camp"))key(c);key('\r');assert(deck.room=="camp"&&!deck.reply);
+    key(DeckSettings);deck.cursor=2;key('\r');key(DeckDown);key(DeckDown);key('\r');assert(deck.page==DeckChat::Regions);key(DeckDown);key('\r');assert(deck.page==DeckChat::Presets);key(DeckDown);action=key('\r');assert(action.op=="settings"&&action.preset=="mc-eu-narrow"&&action.network=="meshcore");
     deck.accepted(action);assert(deck.page==DeckChat::Chat);
     for(unsigned i=0;i<170;++i)key('x');assert(deck.draft.size()==160);key(8);assert(deck.draft.size()==159);
     deck.draft="Hi 🙂";key(8);assert(deck.draft=="Hi ");
-    key(DeckMenu);deck.cursor=10;key('\r');assert(deck.page==DeckChat::Credentials);key('\r');assert(deck.page==DeckChat::Chat);
-    deck.room="general";deck.sync(radio);key(DeckMenu);deck.cursor=11;key('\r');assert(deck.page==DeckChat::Read);key(DeckDown);assert(deck.cursor==1);key('\r');assert(deck.page==DeckChat::Chat);
+    key(DeckSettings);deck.cursor=1;key('\r');assert(deck.page==DeckChat::Credentials);key('\r');assert(deck.page==DeckChat::Chat);
+    deck.room="general";deck.sync(radio);deck.draft.clear();key('\r');deck.cursor=4;key('\r');assert(deck.page==DeckChat::Read);key(DeckDown);assert(deck.cursor==1);key('\r');assert(deck.page==DeckChat::Chat);
   }
   {
+    for(bool touch:{false,true}){
+      DeckChat txChat;txChat.touchAvailable=touch;txChat.page=DeckChat::Settings;txChat.cursor=touch?7:6;
+      auto action=txChat.key('\r',Core(),{},1);assert(action.op=="txEnabled"&&!action.enabled);
+      JsonDocument request;deckRequest(request,action);assert(request["op"]=="txEnabled"&&request["enabled"]==false);
+      txChat.transmitEnabled=false;assert(txChat.settingsItems().back()=="Transmit: Off");
+      action=txChat.key('\r',Core(),{},1);assert(action.op=="txEnabled"&&action.enabled);
+      txChat.page=DeckChat::Chat;txChat.draft="Keep unsent";action=txChat.key('\r',Core(),{},1);assert(action.op.empty()&&txChat.draft=="Keep unsent"&&!txChat.error.empty());
+    }
+    // A held center button opens Settings without first sending Enter/posting.
+    DeckCenterButton button;assert(!button.update(true,100,'\r',DeckSettings));assert(!button.update(true,1299,'\r',DeckSettings));
+    assert(button.update(true,1300,'\r',DeckSettings)==DeckSettings);assert(!button.update(true,1600,'\r',DeckSettings));assert(!button.update(false,1700,'\r',DeckSettings));
+    assert(!button.update(true,1800,'\r',DeckSettings));assert(button.update(false,1900,'\r',DeckSettings)=='\r');
+    assert(!button.update(true,UINT32_MAX-500,'\r',DeckSettings));assert(button.update(true,699,'\r',DeckSettings)==DeckSettings);assert(!button.update(false,700,'\r',DeckSettings));
+    auto recoveryCore=client(490);auto recoveryMessage=post(491,1);recoveryCore.receive(recoveryMessage,0,false);
+    DeckChat recovery;recovery.touchAvailable=true;recovery.draft="Do not send";recovery.reply=recoveryMessage.id;
+    auto recoveryAction=recovery.key(DeckSettings,recoveryCore,{},490);assert(recoveryAction.op.empty()&&recovery.page==DeckChat::Settings&&recovery.cursor==6&&recovery.draft=="Do not send");
+    recovery.key('\r',recoveryCore,{},490);assert(recovery.page==DeckChat::Calibrate&&recovery.reply==recoveryMessage.id);
+    recovery.key('\r',recoveryCore,{},490);assert(recovery.page==DeckChat::Settings&&recovery.draft=="Do not send");
+    recovery.key(DeckMenu,recoveryCore,{},490);assert(recovery.page==DeckChat::Navigation);recovery.cursor=1;recovery.key('\r',recoveryCore,{},490);assert(recovery.page==DeckChat::Rooms);
+    assert((recovery.menu==std::vector<std::string>{"Back","Reply","Toggle upvote","Resend","Read full message"}));
+    // Calibration handles offsets, scale, swapped axes and skew, with an independent verification tap.
+    for(int transform=0;transform<4;++transform){
+      auto sensor=[&](std::pair<int,int> target){const int x=target.first,y=target.second;return transform==0?std::make_pair(x+19,y-13):transform==1?std::make_pair(2*y+12,2*x-20):transform==2?std::make_pair(x+y+7,y-9):std::make_pair(319-x,239-y);};
+      std::array<std::pair<int,int>,3> samples;for(size_t i=0;i<3;++i)samples[i]=sensor(DeckCalibration::target(i));
+      DeckCalibration calibration;assert(calibration.fit(samples)&&calibration.valid());
+      for(size_t i=0;i<4;++i){const auto target=DeckCalibration::target(i),raw=sensor(target);assert(calibration.map(raw.first,raw.second)==target);}
+      const auto center=sensor({160,120});assert(calibration.confirms(center.first,center.second));assert(!calibration.confirms(1000,1000));
+      // Calibrated swipes move chat and menu content with the finger, even for flipped axes.
+      for(int movement:{-40,40}){
+        const auto rawStart=sensor({140,160}),rawEnd=sensor({140,160+movement});
+        const auto start=calibration.map(rawStart.first,rawStart.second),end=calibration.map(rawEnd.first,rawEnd.second);
+        DeckGesture gesture;gesture.contact(start.first,start.second);const auto drag=gesture.contact(end.first,end.second);
+        DeckScene viewport;viewport.viewport={0,100,320,140};
+        for(auto page:{DeckChat::Chat,DeckChat::Settings}){DeckChat view;view.page=page;DeckScroll scroll;scroll.move(100,100);scroll.drag(deckTouchScrollDelta(view,viewport,drag),116);assert(scroll.position()==100-movement);gesture.release();}
+      }
+      const auto saved=calibration.coefficients;assert(!calibration.fit({{{1,1},{1,1},{2,2}}})&&calibration.coefficients==saved);
+    }
+    DeckCalibration invalid;invalid.coefficients.fill(0);assert(!invalid.valid());invalid.coefficients[0]=NAN;assert(!invalid.valid());
+    auto calibrationCore=client(480);auto calibrationMessage=post(481,1);calibrationCore.receive(calibrationMessage,0,false);
+    DeckChat calibrationChat;assert(calibrationChat.settingsItems().size()==6);calibrationChat.touchAvailable=true;assert(calibrationChat.settingsItems()[5]=="Calibrate touch");
+    calibrationChat.page=DeckChat::Settings;calibrationChat.cursor=6;calibrationChat.draft="Keep draft";calibrationChat.reply=calibrationMessage.id;
+    calibrationChat.key('\r',calibrationCore,{},1);assert(calibrationChat.page==DeckChat::Calibrate&&calibrationChat.cursor==0);
+    auto calibrationMeasure=[](const std::string& text,DeckFont){return int(text.size())*5;};
+    for(size_t step=0;step<4;++step){calibrationChat.cursor=step;auto screen=makeDeckScene(calibrationChat,Core(),{},true,"","",calibrationMeasure);assert(screen.hits.empty());
+      const auto target=DeckCalibration::target(step);assert(std::any_of(screen.paint.begin(),screen.paint.end(),[&](const DeckPaint& op){return op.shape==DeckShape::Line&&op.box.x==target.first-10&&op.box.y==target.second;}));}
+    calibrationChat.key('\r',calibrationCore,{},1);assert(calibrationChat.page==DeckChat::Settings&&calibrationChat.draft=="Keep draft"&&calibrationChat.reply==calibrationMessage.id);
+    calibrationChat.page=DeckChat::Calibrate;calibrationChat.key(27,calibrationCore,{},1);assert(calibrationChat.page==DeckChat::Settings);
     assert((deckTouchPoint(0,0,true)==std::make_pair(319,0)));
     assert((deckTouchPoint(239,319,true)==std::make_pair(0,239)));
     assert((deckTouchPoint(0,319,false)==std::make_pair(319,239)));
@@ -208,7 +267,7 @@ int main(){
     auto core=client(470);auto message=post(471,1);core.receive(message,0,false);
     const std::vector<DeckPreset> presets={{"mt-us","meshtastic","US","US","915 MHz"}};
     auto measure=[](const std::string& text,DeckFont f){return int(text.size())*(f==DeckFont::Small?5:8);};
-    for(const auto page:{DeckChat::Chat,DeckChat::Menu,DeckChat::Rooms,DeckChat::NewRoom,DeckChat::Presets,DeckChat::Nickname,DeckChat::Credentials,DeckChat::Read,DeckChat::Settings,DeckChat::Wifi,DeckChat::Ssid,DeckChat::WifiPassword,DeckChat::Appearance,DeckChat::Network,DeckChat::Regions}){
+    for(const auto page:{DeckChat::Chat,DeckChat::Menu,DeckChat::Navigation,DeckChat::Rooms,DeckChat::NewRoom,DeckChat::Presets,DeckChat::Nickname,DeckChat::Credentials,DeckChat::Read,DeckChat::Settings,DeckChat::Wifi,DeckChat::Ssid,DeckChat::WifiPassword,DeckChat::Appearance,DeckChat::Network,DeckChat::Regions}){
       DeckChat chat;chat.selected=message.id;chat.reply=message.id;chat.network="meshtastic";chat.page=page;
       if(chat.isEditor()){chat.page=DeckChat::Chat;chat.draft="Preserved draft";chat.edit(page,"Edited value",DeckChat::Rooms);}
       auto frame=makeDeckScene(chat,core,presets,true,"mesit-00af","12345678",measure);
@@ -255,8 +314,8 @@ int main(){
     DeckChat d;d.sync(c);const Id selected=d.selected;
     auto measure=[](const std::string& text,DeckFont f){return int(text.size())*(f==DeckFont::Small?5:8);};
     DeckScene touchScene;touchScene.viewport={0,130,320,110};DeckPointerEvent touchMove;touchMove.originY=75;touchMove.x=150;touchMove.dragY=40;
-    assert(deckTouchScrollDelta(d,touchScene,touchMove)==-40); // Chat scrolling also works when a swipe begins above the short feed viewport.
-    DeckScroll reverseScroll;reverseScroll.move(100,100);reverseScroll.drag(deckTouchScrollDelta(d,touchScene,touchMove),116);assert(reverseScroll.position()==140);
+    assert(deckTouchScrollDelta(d,touchScene,touchMove)==40); // Chat scrolling also works when a swipe begins above the short feed viewport.
+    DeckScroll reverseScroll;reverseScroll.move(100,100);reverseScroll.drag(deckTouchScrollDelta(d,touchScene,touchMove),116);assert(reverseScroll.position()==60);
     touchMove.dragY=-40;reverseScroll.drag(deckTouchScrollDelta(d,touchScene,touchMove),132);assert(reverseScroll.position()==100);
     touchMove.originY=10;assert(!deckTouchScrollDelta(d,touchScene,touchMove));
     d.page=DeckChat::Settings;touchMove.originY=150;assert(deckTouchScrollDelta(d,touchScene,touchMove)==-40);d.page=DeckChat::Chat;

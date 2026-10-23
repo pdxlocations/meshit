@@ -14,15 +14,16 @@ class Element {
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('post appears before RPC resolves; errors retain text with retry; acknowledgment replaces retry',async()=>{
   const elements=new Map(),get=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id);};
-  let feed=[],revision=1,resolvePost,rejectPost,poll,offline=false,waitState,waitMessages,churn=false,viewedIdsSupported=false;const viewed=[];let visibilityChanged;
+  let feed=[],revision=1,resolvePost,rejectPost,poll,offline=false,waitState,waitMessages,churn=false,viewedIdsSupported=false;const viewed=[];let visibilityChanged,txEnabled=true,failTxToggle=false;
   class Radio {
     constructor(){this.mode='wifi';this.devices=[];this.link={};this.generation=1;}
     async request(req){
+      if(req.op==='txEnabled'){if(failTxToggle)throw new Error('Could not save transmit setting');txEnabled=req.enabled;revision++;return {ok:true};}
       if(req.op==='viewed'){viewed.push(req);return {ok:true};}
       if(req.op==='state'&&waitState)await waitState;
       if(req.op==='messages'&&waitMessages)await waitMessages;
       if(req.op==='state'&&offline)throw new Error('Connection lost');
-      if(req.op==='state')return {viewedSupported:true,viewedIdsSupported,node:'test',ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester'},board:'Heltec V4.3',wifiSupported:true,presets:[]};
+      if(req.op==='state')return {viewedSupported:true,viewedIdsSupported,node:'test',ready:true,storageReady:true,identityReady:true,revision,count:feed.length,settings:{configured:true,nickname:'Tester',txEnabled},board:'Heltec V4.3',wifiSupported:true,presets:[]};
       if(req.op==='messages'){if(churn)revision++;return {revision,messages:feed.slice(req.offset,req.offset+8)};}
       if(req.op==='resend'){feed.find(m=>m.id===req.target).status='sending';revision++;return {ok:true};}
       if(req.op==='post')return new Promise((resolve,reject)=>{resolvePost=resolve;rejectPost=reject;});
@@ -35,6 +36,13 @@ test('post appears before RPC resolves; errors retain text with retry; acknowled
   assert.equal(get('wifi-settings').hidden,false,'V4 exposes Wi-Fi configuration');
   assert.equal(get('radio-connection').dataset.connected,'true');
   assert.equal(get('radio-connection')['aria-label'],'Radio connected via Wi-Fi');
+  assert.equal(get('tx-enabled').checked,true);
+  get('nickname').value='Unsaved name';get('message').value='Unsent draft';get('message').oninput();get('tx-enabled').checked=false;
+  await get('tx-enabled').onchange();assert.equal(get('tx-enabled').checked,false);assert.equal(get('send').disabled,true);assert.equal(get('message').value,'Unsent draft');assert.equal(get('nickname').value,'Unsaved name');
+  assert.equal(get('radio-connection').dataset.connected,'true');
+  get('tx-enabled').checked=true;await get('tx-enabled').onchange();assert.equal(get('send').disabled,false);
+  failTxToggle=true;get('tx-enabled').checked=false;await get('tx-enabled').onchange();assert.equal(get('tx-enabled').checked,true);assert.match(get('notice').textContent,/Could not save/);failTxToggle=false;
+  get('message').value='';get('message').oninput();
   assert.equal(get('message').placeholder,'Write something interesting...');
   assert.equal(get('message').style.height,'40px');
   get('message').scrollHeight=94;get('message').value='Long text';get('message').oninput();

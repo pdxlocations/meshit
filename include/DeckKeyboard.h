@@ -6,7 +6,7 @@
 #include <Adafruit_TCA8418.h>
 #endif
 class DeckKeyboard {
-  uint32_t next=0;bool boot=false;
+  uint32_t next=0;meshit::DeckCenterButton center;
 #if defined(MESHIT_TDECK_PRO)
   Adafruit_TCA8418 keypad;bool ready=false;bool shiftLeft=false,shiftRight=false,symbol=false,alt=false;
 #else
@@ -23,13 +23,12 @@ public:
   }
   int read(){
     const bool pressed=digitalRead(0)==LOW;
-    if(pressed&&!boot){boot=true;
 #if defined(MESHIT_TDECK_PRO)
-      return meshit::DeckMenu;
+    const int centerKey=center.update(pressed,millis(),meshit::DeckMenu,meshit::DeckSettings);
 #else
-      return '\r'; // Trackball center has the same action as keyboard Enter.
+    const int centerKey=center.update(pressed,millis(),'\r',meshit::DeckSettings);
 #endif
-    }boot=pressed;
+    if(centerKey)return centerKey;
     if(int32_t(millis()-next)<0)return 0;next=millis()+10;
 #if defined(MESHIT_TDECK_PRO)
     if(!ready)return 0;

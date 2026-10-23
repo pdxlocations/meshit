@@ -78,6 +78,10 @@ HTTP: POST `/api/rpc` with JSON. BLE: Nordic UART service `6e400001-b5a3-f393-e0
 
 Operations: `state`; `messages` with offset; `post` with room/text/parent; `vote` with target/up; and `settings` with network/preset/nickname and optional Wi-Fi credentials. Message pages contain a revision; clients discard torn multi-page reads and retry on the next refresh. Passwords are never included in state responses. HTTP browser requests must be same-origin. ESP32 BLE requires encrypted, authenticated pairing with a six-digit PIN derived from its setup password; Wi-Fi is paused during an authenticated BLE connection and resumes afterward. AP clients take priority over Bluetooth discovery. Local LAN and RAK BLE peers are trusted; application encryption does not authenticate a human operator or secure the local settings interface.
 
+The `txEnabled` operation accepts a Boolean `enabled` and saves it immediately without changing network settings or clearing history. `state.settings.txEnabled` defaults to true for existing installations. When false, the radio remains ready to receive but does not transmit posts, votes, retries, history requests, or responses. Locally requested posts, votes, and resends return `Transmit is disabled`; retained pending jobs may resume when enabled. Disabling also stops an in-progress RF transmission and drops its remaining fragments; the normal retry mechanism can repair that event later.
+
+`state.maxTxPowerDbm` is the nominal board maximum; `txPowerDbm` is the configured antenna-port estimate, and `radioDriveDbm` is the actual SX1262 setting. The preset's `power` is an antenna-port ceiling, not a raw chip setting. RF output has hardware tolerances and is not measured by firmware.
+
 ## Primary protocol references
 
 - [Meshtastic on-air header fields and flag masks](https://github.com/meshtastic/firmware/blob/develop/src/mesh/RadioInterface.h)

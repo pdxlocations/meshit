@@ -1,5 +1,6 @@
 #pragma once
 #include "DeckChat.h"
+#include "DeckCalibration.h"
 #include "RadioStats.h"
 #include <cmath>
 namespace meshit {
@@ -32,6 +33,18 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
   auto text=[&](int x,int y,const std::string& value,DeckFont f=DeckFont::Small,uint16_t color=0){draw(DeckShape::Text,{x,y,0,0},color?color:p.ink,value,f);};
   auto hit=[&](DeckTap a,DeckBox b,Id id=0,size_t index=0){s.hits.push_back({a,b,id,index});};
   draw(DeckShape::Fill,full,p.paper);draw(DeckShape::Fill,{0,0,320,29},p.header);
+  if(chat.page==DeckChat::Calibrate){
+    text(72,72,"Touch calibration",DeckFont::Bold);
+    text(60,94,chat.cursor<3?"Tap the crosshair center":"Tap center to verify and save");
+    text(92,158,"Step "+std::to_string(chat.cursor+1)+" / 4");
+    text(72,180,"Enter / Esc: cancel");
+    if(!chat.error.empty())text(25,202,deckFit(chat.error,270,DeckFont::Small,measure));
+    const auto point=DeckCalibration::target(chat.cursor);
+    draw(DeckShape::Line,{point.first-10,point.second,20,0},p.ink);
+    draw(DeckShape::Line,{point.first,point.second-10,0,20},p.ink);
+    draw(DeckShape::Outline,{point.first-4,point.second-4,9,9},p.ink);
+    return s;
+  }
   draw(DeckShape::Poop,{7,5,20,20},p.ink);hit(DeckTap::Chat,{0,0,102,30});text(108,18,"New "+std::to_string(unread),DeckFont::Small,unread?p.ink:p.muted);hit(DeckTap::Rooms,{103,0,60,30});hit(DeckTap::Chat,{163,0,42,30});text(33,19,"meshit",DeckFont::Bold);if(!battery.empty())text(165,18,battery,DeckFont::Small,p.muted);
   draw(DeckShape::Dot,{215,11,8,8},connected?0x2d2b:p.muted,connected?"on":"off");hit(DeckTap::Connection,{205,0,28,30});
   const bool settings=chat.page==DeckChat::Settings||chat.page==DeckChat::Presets||chat.page==DeckChat::Nickname||chat.page==DeckChat::Credentials||chat.page==DeckChat::Wifi||chat.page==DeckChat::Ssid||chat.page==DeckChat::WifiPassword||chat.page==DeckChat::Appearance||chat.page==DeckChat::Network||chat.page==DeckChat::Regions;
@@ -49,7 +62,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     else for(int i=0;i<count;++i)text(14,73+replyHeight+i*18,draft[draft.size()-count+i],DeckFont::Body);
     if(chat.focused){const std::string last=chat.draft.empty()?"":draft.back();const int caret=14+measure(last,DeckFont::Body);draw(DeckShape::Line,{std::min(caret,303),60+replyHeight+(count-1)*18,0,14},p.ink);}
     draw(DeckShape::Line,{14,composerBottom-19,290,0},p.line);text(14,composerBottom-5,std::to_string(chat.draft.size())+" / 160",DeckFont::Small,p.muted);
-    draw(DeckShape::Round,{264,composerBottom-17,41,14},chat.draft.empty()||!connected?p.selected:p.button);text(273,composerBottom-6,"Post",DeckFont::Small,chat.draft.empty()||!connected?p.muted:p.buttonInk);hit(DeckTap::Post,{255,composerBottom-22,58,22});
+    draw(DeckShape::Round,{264,composerBottom-17,41,14},chat.draft.empty()||!connected||!chat.transmitEnabled?p.selected:p.button);text(273,composerBottom-6,"Post",DeckFont::Small,chat.draft.empty()||!connected||!chat.transmitEnabled?p.muted:p.buttonInk);hit(DeckTap::Post,{255,composerBottom-22,58,22});
     const int feedTop=composerBottom+7,feedBottom=chat.error.empty()?240:220,viewport=std::max(0,feedBottom-feedTop);
     const auto rows=chat.rows(core);std::vector<int> heights;std::vector<std::vector<std::string>> bodies;int total=0,selectedTop=0,selectedHeight=0;
     for(const auto& row:rows){const auto* m=core.find(row.id);const int indent=std::min(row.depth,4u)*14;auto body=deckWrap(m->event.text,264-indent,DeckFont::Body,measure);
@@ -89,6 +102,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     else if(chat.page==DeckChat::Appearance){title="Appearance";items={"System","Light","Dark"};items[chat.appearance]+=" (selected)";}
     else if(chat.page==DeckChat::Network){title="Network";items={"Meshtastic","MeshCore"};}
     else if(chat.page==DeckChat::Regions){title="Region";items=chat.regions(presets);}
+    else if(chat.page==DeckChat::Navigation){title="Navigation";items=chat.navigationItems;}
     else if(chat.page==DeckChat::Menu){title="Message";items=chat.menuItems(core,identity);}
     else if(chat.page==DeckChat::Rooms){title="Rooms";items=chat.rooms(core);draw(DeckShape::Round,{244,35,68,23},p.selected);text(253,51,"+ New room");hit(DeckTap::NewRoom,{238,31,82,30});}
     else if(chat.page==DeckChat::Presets){title="Radio preset";for(const auto& preset:chat.filtered(presets))items.push_back(preset.label);}
@@ -138,6 +152,7 @@ inline DeckAction activateDeckHit(const DeckHit& hit,DeckChat& chat,const Core& 
   using T=DeckTap;chat.error.clear();DeckAction action;
   if((hit.action==T::Select||hit.action==T::Reply||hit.action==T::Vote||hit.action==T::Resend)&&!core.find(hit.target)){chat.error="Message no longer stored";return action;}
   if(chat.isEditor()&&(hit.action==T::Chat||hit.action==T::Settings||hit.action==T::Rooms||hit.action==T::Connection||hit.action==T::NewRoom))chat.leaveEditor();
+  if(!chat.transmitEnabled&&(hit.action==T::Vote||hit.action==T::Resend)){chat.error="Transmit is disabled";return action;}
   switch(hit.action){
     case T::Chat:chat.page=DeckChat::Chat;break;
     case T::Settings:chat.page=DeckChat::Settings;chat.cursor=0;break;
@@ -166,7 +181,8 @@ public:
 };
 struct DeckPointerEvent {bool tap=false;int x=0,y=0,swipe=0,dragY=0;bool released=false,pressed=false;int originY=0,swipeX=0;};
 inline int deckTouchScrollDelta(const DeckChat& chat,const DeckScene& scene,const DeckPointerEvent& event){
-  if(chat.page==DeckChat::Chat)return event.originY>=30?-event.dragY:0;
+  // Touch coordinates already follow the display after calibration.
+  if(chat.page==DeckChat::Chat)return event.originY>=30?event.dragY:0;
   return scene.viewport.contains(event.x,event.originY)?event.dragY:0;
 }
 class DeckGesture {

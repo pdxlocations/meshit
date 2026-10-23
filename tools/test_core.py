@@ -15,3 +15,5 @@ result = subprocess.run([str(out/'test-core')],check=True,capture_output=True,te
 (out/'vectors.json').write_text(result.stdout)
 subprocess.run(['node',str(root/'tests/vectors.mjs'),str(out/'vectors.json')],check=True)
 print('Core behavior, bounded history, recovery, snapshots, UTF-8, carriers and encryption passed (ASan/UBSan).')
+
+subprocess.run(["python3",str(root/"tools/test_radio_power.py")],check=True)

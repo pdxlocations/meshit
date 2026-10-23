@@ -2,27 +2,38 @@
 #include <Core.h>
 
 namespace meshit {
-enum DeckKey {DeckUp=256,DeckDown,DeckMenu,DeckBack,DeckLeft,DeckRight};
+enum DeckKey {DeckUp=256,DeckDown,DeckMenu,DeckBack,DeckLeft,DeckRight,DeckSettings};
+// Delay the short action until release so a long press never posts a draft.
+class DeckCenterButton {
+  bool held=false,longSent=false;uint32_t started=0;
+public:
+  int update(bool pressed,uint32_t now,int shortKey,int longKey){
+    if(pressed){if(!held){held=true;longSent=false;started=now;}if(!longSent&&uint32_t(now-started)>=1200){longSent=true;return longKey;}}
+    else if(held){held=false;if(!longSent)return shortKey;}return 0;
+  }
+};
 struct DeckPreset {std::string id,network,label,region,detail;};
-struct DeckAction {std::string op,text,room,network,preset,ssid,password;Id target=0;bool up=true;};
+struct DeckAction {std::string op,text,room,network,preset,ssid,password;Id target=0;bool up=true,enabled=true;};
 struct DeckRow {Id id;unsigned depth;};
 // Hardware-independent chat interaction; actions go through the same RPC as companions.
 class DeckChat {
 public:
-  enum Page {Chat,Menu,Rooms,NewRoom,Presets,Nickname,Credentials,Read,Settings,Wifi,Ssid,WifiPassword,Appearance,Network,Regions};
+  enum Page {Chat,Menu,Rooms,NewRoom,Presets,Nickname,Credentials,Read,Settings,Wifi,Ssid,WifiPassword,Appearance,Network,Regions,Calibrate,Navigation};
   Page page=Chat;std::string room="general",draft,error;Id selected=0,reply=0;bool top=true,dark=false,focused=true,systemDark=false;int appearance=0;std::string network,region;size_t cursor=0;
   std::string savedDraft,savedSsid,savedNickname,wifiSsid,wifiPassword;Id savedReply=0;Page editReturn=Chat;
+  bool touchAvailable=false,transmitEnabled=true;
   bool isEditor()const{return page==NewRoom||page==Nickname||page==Ssid||page==WifiPassword;}
   void edit(Page next,const std::string& value,Page back){savedDraft=draft;savedReply=reply;draft=value;editReturn=back;page=next;cursor=0;focused=true;}
   void leaveEditor(){draft=savedDraft;reply=savedReply;page=editReturn;cursor=0;}
-  void back(){error.clear();if(isEditor())leaveEditor();else{if(page==Presets&&!network.empty()){page=Regions;cursor=0;return;}if(page==Regions){page=Network;cursor=0;return;}page=page==Read||page==Menu||page==Rooms||page==Settings?Chat:Settings;cursor=0;}}
+  void back(){error.clear();if(isEditor())leaveEditor();else{if(page==Presets&&!network.empty()){page=Regions;cursor=0;return;}if(page==Regions){page=Network;cursor=0;return;}page=page==Read||page==Menu||page==Rooms||page==Settings||page==Navigation?Chat:Settings;cursor=0;}}
   void cancelReply(){reply=0;page=Chat;cursor=0;focused=false;error.clear();}
   bool hasBackRow()const{return page==Settings||page==Rooms||page==Presets||page==Appearance||page==Network||page==Regions||page==Wifi;}
   std::vector<DeckPreset> filtered(const std::vector<DeckPreset>& presets)const{std::vector<DeckPreset> out;for(const auto& p:presets)if((network.empty()||p.network==network)&&(region.empty()||p.region==region))out.push_back(p);return out;}
   std::vector<std::string> regions(const std::vector<DeckPreset>& presets)const{std::vector<std::string> out;for(const auto& p:presets)if(p.network==network&&std::find(out.begin(),out.end(),p.region)==out.end())out.push_back(p.region);return out;}
-  std::vector<std::string> settingsItems()const{return {"Radio connection","Network","Nickname","Appearance","Local Wi-Fi"};}
+  std::vector<std::string> settingsItems()const{auto items=std::vector<std::string>{"Radio connection","Network","Nickname","Appearance","Local Wi-Fi"};if(touchAvailable)items.push_back("Calibrate touch");items.push_back(transmitEnabled?"Transmit: On":"Transmit: Off");return items;}
   void swipe(int direction){if(!direction)return;if(isEditor())leaveEditor();error.clear();if(direction<0){if(page==Rooms)page=Chat;else page=Settings;}else{if(page==Chat)page=Rooms;else if(page!=Rooms)page=Chat;}cursor=0;}
-  const std::vector<std::string> menu={"Back","Reply","Toggle upvote","Resend","Rooms","New room","New post","New / Top","Radio preset","Nickname","Wi-Fi / Bluetooth","Read full message"};
+  const std::vector<std::string> menu={"Back","Reply","Toggle upvote","Resend","Read full message"};
+  const std::vector<std::string> navigationItems={"Back","Rooms","New room","New post","New / Top","Settings"};
   std::vector<std::string> rooms(const Core& core)const{
     std::vector<std::string> list{room};for(const auto& m:core.messages)if(std::find(list.begin(),list.end(),m.event.room)==list.end())list.push_back(m.event.room);
     std::sort(list.begin(),list.end());return list;
@@ -45,18 +56,20 @@ public:
   DeckAction key(int key,const Core& core,const std::vector<DeckPreset>& presets,uint32_t identity){
     sync(core);error.clear();DeckAction action;
     if(key==DeckLeft||key==DeckRight)return action;
-    if(key==DeckMenu||key==12){if(isEditor())leaveEditor();page=page==Menu?Chat:Menu;cursor=0;return action;}
+    if(key==DeckSettings){if(isEditor())leaveEditor();page=Settings;cursor=touchAvailable?6:0;return action;}
+    if(key==DeckMenu||key==12){if(isEditor())leaveEditor();page=page==Navigation?Chat:Navigation;cursor=0;return action;}
     if(key==DeckBack||key==27){if(page!=Chat)back();else cancelReply();return action;}
+    if(page==Calibrate){if(key=='\r'||key=='\n'){page=Settings;cursor=0;error.clear();}return action;}
     if(key==DeckUp||key==DeckDown){
       if(page==Read){if(key==DeckDown&&cursor<MAX_TEXT)++cursor;else if(key==DeckUp&&cursor)--cursor;return action;}
-      const bool down=key==DeckDown;size_t count=page==Menu?menu.size():page==Rooms?rooms(core).size():page==Presets?filtered(presets).size():page==Network?2:page==Regions?regions(presets).size():page==Appearance?3:page==Settings?settingsItems().size():page==Wifi?3:0;count+=hasBackRow()?1:0;
+      const bool down=key==DeckDown;size_t count=page==Navigation?navigationItems.size():page==Menu?menu.size():page==Rooms?rooms(core).size():page==Presets?filtered(presets).size():page==Network?2:page==Regions?regions(presets).size():page==Appearance?3:page==Settings?settingsItems().size():page==Wifi?3:0;count+=hasBackRow()?1:0;
       if(count){cursor=down?(cursor+1)%count:(cursor+count-1)%count;return action;}
       if(page==Chat){auto list=rows(core);for(size_t i=0;i<list.size();++i)if(list[i].id==selected){if(down&&i+1<list.size())selected=list[i+1].id;else if(!down&&i)selected=list[i-1].id;break;}}
       return action;
     }
     if(key=='\r'||key=='\n'){
       if(hasBackRow()&&cursor==0){back();return action;}const size_t option=hasBackRow()?cursor-1:cursor;
-      if(page==Settings){switch(option){case 0:page=Credentials;break;case 1:page=Network;break;case 2:edit(Nickname,savedNickname,Settings);break;case 3:page=Appearance;cursor=0;return action;case 4:wifiSsid=savedSsid;wifiPassword.clear();page=Wifi;break;}cursor=0;return action;}
+      if(page==Settings){if(option==(touchAvailable?6u:5u)){action.op="txEnabled";action.enabled=!transmitEnabled;return action;}switch(option){case 0:page=Credentials;break;case 1:page=Network;break;case 2:edit(Nickname,savedNickname,Settings);break;case 3:page=Appearance;cursor=0;return action;case 4:wifiSsid=savedSsid;wifiPassword.clear();page=Wifi;break;case 5:if(touchAvailable)page=Calibrate;break;}cursor=0;return action;}
       if(page==Appearance){appearance=int(option);dark=appearance==0?systemDark:appearance==2;action.op="deckAppearance";action.text=std::to_string(appearance);page=Settings;cursor=4;return action;}
       if(page==Network){network=option==0?"meshtastic":"meshcore";region.clear();page=Regions;cursor=0;return action;}
       if(page==Regions){auto list=regions(presets);if(option<list.size()){region=list[option];page=Presets;cursor=0;}return action;}
@@ -65,12 +78,14 @@ public:
         switch(cursor){
           case 0:page=Chat;break;
           case 1:if(selected){reply=selected;page=Chat;}break;
-          case 2:if(selected){action.op="vote";action.target=selected;action.up=!core.voted(selected,identity);page=Chat;}break;
-          case 3:if(selected){action.op="resend";action.target=selected;page=Chat;}break;
-          case 4:page=Rooms;break;case 5:edit(NewRoom,"",Rooms);break;
-          case 6:page=Chat;reply=0;break;case 7:top=!top;page=Chat;break;
-          case 8:page=Network;break;case 9:edit(Nickname,savedNickname,Chat);break;case 10:page=Credentials;break;case 11:if(selected)page=Read;break;
+          case 2:if(!transmitEnabled){error="Transmit is disabled";return action;}if(selected){action.op="vote";action.target=selected;action.up=!core.voted(selected,identity);page=Chat;}break;
+          case 3:if(!transmitEnabled){error="Transmit is disabled";return action;}if(selected){action.op="resend";action.target=selected;page=Chat;}break;
+          case 4:if(selected)page=Read;break;
         }cursor=0;return action;
+      }
+      if(page==Navigation){
+        switch(cursor){case 0:page=Chat;break;case 1:page=Rooms;break;case 2:edit(NewRoom,"",Rooms);break;case 3:page=Chat;reply=0;break;case 4:top=!top;page=Chat;break;case 5:page=Settings;break;}
+        cursor=0;return action;
       }
       if(page==Rooms){auto list=rooms(core);if(option<list.size()){room=list[option];selected=reply=0;draft.clear();page=Chat;sync(core);}return action;}
       if(page==Presets){auto list=filtered(presets);if(option<list.size()){const auto& p=list[option];action.op="settings";action.network=p.network;action.preset=p.id;}return action;}
@@ -82,7 +97,7 @@ public:
         for(char& c:draft)if(c>='A'&&c<='Z')c+=32;
         if(textValid(draft,MAX_ROOM,MAX_ROOM)&&draft.find('\n')==std::string::npos){room=draft;draft.clear();selected=reply=0;page=Chat;}else error="Room: 1-16 UTF-8 bytes";return action;}
       if(page==Nickname){if(textValid(draft,MAX_NICK,MAX_NICK,true)){action.op="nickname";action.text=draft;}else error="Nickname: up to 16 bytes";return action;}
-      if(page==Chat){if(draft.empty()){page=Menu;cursor=0;}else if(textValid(draft,MAX_TEXT,MAX_CHARS)){action.op="post";action.text=draft;action.room=room;action.target=reply;}else error="Use up to 160 characters";return action;}
+      if(page==Chat){if(draft.empty()){page=Menu;cursor=0;}else if(!transmitEnabled){error="Transmit is disabled";}else if(textValid(draft,MAX_TEXT,MAX_CHARS)){action.op="post";action.text=draft;action.room=room;action.target=reply;}else error="Use up to 160 characters";return action;}
     }
     if(page!=Chat&&!isEditor())return action;
     focused=true;

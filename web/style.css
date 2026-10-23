@@ -62,7 +62,7 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border
 .settings-card h2{margin:0 0 10px}
 .settings-card label,dialog label{margin-top:10px}
 /* Keep text controls at 16px so mobile focus does not trigger input zoom. */
-input:not([type=radio]),select{font-size:16px;display:block;width:100%;border:1px solid var(--line);border-radius:6px;padding:8px;margin-top:7px;color:var(--ink);background:var(--white)}
+input:not([type=radio]):not([type=checkbox]),select{font-size:16px;display:block;width:100%;border:1px solid var(--line);border-radius:6px;padding:8px;margin-top:7px;color:var(--ink);background:var(--white)}
 .hint{color:var(--muted);font-weight:400;font-size:12px;line-height:1.7}
 .network-options{display:flex;gap:12px;flex-wrap:wrap}
 .network-options label{padding:9px;border:1px solid var(--line);border-radius:8px;flex:1;margin-bottom:0;white-space:nowrap}
@@ -108,3 +108,5 @@ nav{margin-left:auto}
 }
 
 .delivery{padding:0 3px;font-size:15px;line-height:1.2;color:var(--muted)}
+
+#tx-enabled{width:22px;height:22px;margin:0 8px 0 0;vertical-align:middle;accent-color:var(--accent)}
