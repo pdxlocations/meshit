@@ -63,10 +63,10 @@ public:
         case S::Line:surface.drawLine(x,y,x+w,y+h,c);break;
         case S::Text:label(x,y,op.text,op.font,c);break;
         case S::Radio:{
-          surface.drawLine(x+5,y+5,x+5,y+16,c);surface.drawLine(x+1,y+1,x+5,y+5,c);surface.drawLine(x+5,y+5,x+9,y+1,c);surface.drawLine(x+1,y+17,x+9,y+17,c);
-          if(op.text=="tx"){surface.drawLine(x+15,y+16,x+15,y+3,c);surface.drawLine(x+11,y+7,x+15,y+3,c);surface.drawLine(x+15,y+3,x+19,y+7,c);}
-          else if(op.text=="rx"){surface.drawLine(x+15,y+3,x+15,y+16,c);surface.drawLine(x+11,y+12,x+15,y+16,c);surface.drawLine(x+15,y+16,x+19,y+12,c);}
-          else surface.drawCircle(x+15,y+10,3,c);
+          if(op.text=="tx"){surface.drawLine(x+10,y+17,x+10,y+3,c);surface.drawLine(x+5,y+8,x+10,y+3,c);surface.drawLine(x+10,y+3,x+15,y+8,c);}
+          else if(op.text=="rx"){surface.drawLine(x+10,y+3,x+10,y+17,c);surface.drawLine(x+5,y+12,x+10,y+17,c);surface.drawLine(x+10,y+17,x+15,y+12,c);}
+          else if(op.text=="disconnected")surface.drawCircle(x+10,y+10,5,c);
+          else surface.fillCircle(x+10,y+10,5,c);
           break;}
         case S::Dot:if(op.text=="on")surface.fillCircle(x+w/2,y+h/2,w/2,c);else surface.drawCircle(x+w/2,y+h/2,w/2,c);break;
         case S::Chat:surface.drawRoundRect(x,y,w,h-3,3,c);surface.drawLine(x+4,y+h-4,x+1,y+h,c);surface.drawLine(x+1,y+h,x+8,y+h-4,c);break;

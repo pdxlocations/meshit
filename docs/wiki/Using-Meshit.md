@@ -24,4 +24,4 @@ Companions keep local drafts and a bounded cached feed while disconnected; sendi
 
 [Wiki home](Home.md)
 
-The header antenna icon shows standby, receiving (down arrow), or transmitting (up arrow). Standby means listening with no recent packet activity. The download indicator appears for the initial history load after connection or a node switch; background updates remain quiet.
+The header shows a green circle for connected standby, a down arrow while receiving, or an up arrow while transmitting. An outlined muted circle means disconnected. Standby means listening with no recent packet activity. The download indicator appears for the initial history load after connection or a node switch; background updates remain quiet.

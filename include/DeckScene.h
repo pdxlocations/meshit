@@ -46,7 +46,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     return s;
   }
   draw(DeckShape::Poop,{7,5,20,20},p.ink);hit(DeckTap::Chat,{0,0,102,30});text(108,18,"New "+std::to_string(unread),DeckFont::Small,unread?p.ink:p.muted);hit(DeckTap::Rooms,{103,0,60,30});hit(DeckTap::Chat,{163,0,42,30});text(33,19,"meshit",DeckFont::Bold);if(!battery.empty())text(165,18,battery,DeckFont::Small,p.muted);
-  draw(DeckShape::Radio,{208,5,21,20},connected?p.ink:p.muted,radioActivityName(activity));hit(DeckTap::Connection,{205,0,28,30});
+  draw(DeckShape::Radio,{208,5,21,20},connected?(activity==RadioActivity::Standby?0x260b:p.ink):p.muted,connected?radioActivityName(activity):"disconnected");hit(DeckTap::Connection,{205,0,28,30});
   const bool settings=chat.page==DeckChat::Settings||chat.page==DeckChat::Presets||chat.page==DeckChat::Nickname||chat.page==DeckChat::Credentials||chat.page==DeckChat::Wifi||chat.page==DeckChat::Ssid||chat.page==DeckChat::WifiPassword||chat.page==DeckChat::Appearance||chat.page==DeckChat::Network||chat.page==DeckChat::Regions;
   draw(DeckShape::Round,{237,2,34,25},settings?p.header:p.selected);draw(DeckShape::Chat,{245,7,17,15},p.ink);hit(DeckTap::Chat,{233,0,42,30});
   draw(DeckShape::Round,{278,2,34,25},settings?p.selected:p.header);draw(DeckShape::Gear,{287,7,17,17},p.ink);hit(DeckTap::Settings,{277,0,43,30});
