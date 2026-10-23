@@ -80,7 +80,7 @@ Operations: `state`; `messages` with offset; `post` with room/text/parent; `vote
 
 The `txEnabled` operation accepts a Boolean `enabled` and saves it immediately without changing network settings or clearing history. `state.settings.txEnabled` defaults to true for existing installations. When false, the radio remains ready to receive but does not transmit posts, votes, retries, history requests, or responses. Locally requested posts, votes, and resends return `Transmit is disabled`; retained pending jobs may resume when enabled. Disabling also stops an in-progress RF transmission and drops its remaining fragments; the normal retry mechanism can repair that event later.
 
-`state.maxTxPowerDbm` is the nominal board maximum; `txPowerDbm` is the configured antenna-port estimate, and `radioDriveDbm` is the actual SX1262 setting. The preset's `power` is an antenna-port ceiling, not a raw chip setting. RF output has hardware tolerances and is not measured by firmware.
+`state.maxTxPowerDbm` is the configured profile ceiling (the chip-drive ceiling for unamplified targets); `txPowerDbm` is the configured antenna-port estimate, and `radioDriveDbm` is the actual SX1262 setting. The preset's `power` is an antenna-port ceiling, not a raw chip setting. RF output has hardware tolerances and is not measured by firmware.
 
 ## Primary protocol references
 
