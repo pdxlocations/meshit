@@ -80,7 +80,11 @@ public:
         case S::Up:surface.drawLine(x+w/2,y+2,x+w/2,y+h,c);surface.drawLine(x+1,y+6,x+w/2,y+1,c);surface.drawLine(x+w/2,y+1,x+w-1,y+6,c);break;
         case S::Reply:surface.drawLine(x,y,x,y+h-3,c);surface.drawLine(x,y+h-3,x+w,y+h-3,c);surface.drawLine(x+w-3,y+h-6,x+w,y+h-3,c);surface.drawLine(x+w,y+h-3,x+w-3,y+h,c);break;
         case S::Check:surface.drawLine(x+1,y+7,x+5,y+11,c);surface.drawLine(x+5,y+11,x+12,y+2,c);surface.drawLine(x+1,y+8,x+5,y+12,c);surface.drawLine(x+5,y+12,x+13,y+2,c);break;
-        case S::Retry:surface.drawCircle(x+7,y+7,5,c);surface.fillTriangle(x+11,y+1,x+14,y+6,x+8,y+6,c);break;
+        case S::Retry:{
+          // Open arc leaves a visible gap between the arrowhead and lower-right tail.
+          const int points[][2]={{12,11},{9,12},{6,12},{3,10},{2,7},{3,4},{6,2},{9,2},{12,5}};
+          for(size_t i=1;i<9;++i)surface.drawLine(x+points[i-1][0],y+points[i-1][1],x+points[i][0],y+points[i][1],c);
+          surface.fillTriangle(x+13,y+7,x+13,y+1,x+8,y+6,c);break;}
         case S::Pending:for(int i=0;i<3;++i)surface.fillCircle(x+2+i*5,y+8,1,c);break;
         case S::Poop:{const uint16_t brown=0x8ac7;surface.fillRoundRect(x+1,y+13,19,6,3,brown);surface.fillRoundRect(x+3,y+8,15,7,3,brown);surface.fillCircle(x+10,y+6,5,brown);surface.fillTriangle(x+8,y+5,x+9,y,x+14,y+7,brown);surface.fillCircle(x+7,y+12,2,0xffff);surface.fillCircle(x+13,y+12,2,0xffff);surface.drawPixel(x+7,y+12,0);surface.drawPixel(x+13,y+12,0);surface.drawLine(x+8,y+16,x+12,y+16,0xffff);break;}
       }
