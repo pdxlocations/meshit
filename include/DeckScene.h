@@ -115,9 +115,10 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
         if(chat.page!=DeckChat::Credentials&&chat.page!=DeckChat::Read)hit(DeckTap::MenuItem,{7,std::max(63,y),306,std::min(bottom,y+27)-std::max(63,y)},0,i);
       }
       if(chat.page==DeckChat::Read&&chat.selected){
-        text(13,226,"Reply");hit(DeckTap::Reply,{5,207,90,33},chat.selected);
-        text(112,226,"Upvote");hit(DeckTap::Vote,{99,207,90,33},chat.selected);
-        const auto* m=core.find(chat.selected);if(m&&m->mine&&!m->acked){text(224,226,"Resend");hit(DeckTap::Resend,{206,207,109,33},chat.selected);}
+        text(13,226,"Back");hit(DeckTap::Back,{0,207,80,33});
+        text(92,226,"Reply");hit(DeckTap::Reply,{80,207,80,33},chat.selected);
+        text(172,226,"Upvote");hit(DeckTap::Vote,{160,207,80,33},chat.selected);
+        const auto* m=core.find(chat.selected);if(m&&m->mine&&!m->acked){text(252,226,"Resend");hit(DeckTap::Resend,{240,207,80,33},chat.selected);}
       }
     }
     if(chat.page==DeckChat::Presets){const auto list=chat.filtered(presets);if(chat.cursor<list.size())text(8,215,deckFit(list[chat.cursor].detail,304,DeckFont::Small,measure),DeckFont::Small,p.muted);text(8,234,"Changing preset clears history",DeckFont::Small,p.muted);}

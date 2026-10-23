@@ -23,7 +23,13 @@ public:
   }
   int read(){
     const bool pressed=digitalRead(0)==LOW;
-    if(pressed&&!boot){boot=true;return meshit::DeckMenu;}boot=pressed;
+    if(pressed&&!boot){boot=true;
+#if defined(MESHIT_TDECK_PRO)
+      return meshit::DeckMenu;
+#else
+      return '\r'; // Trackball center has the same action as keyboard Enter.
+#endif
+    }boot=pressed;
     if(int32_t(millis()-next)<0)return 0;next=millis()+10;
 #if defined(MESHIT_TDECK_PRO)
     if(!ready)return 0;

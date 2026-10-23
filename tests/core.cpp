@@ -41,23 +41,24 @@ int main(){
     DeckChat deck;deck.sync(radio);auto rows=deck.rows(radio);assert(rows.size()==2&&rows[0].id==root.id&&rows[1].depth==1);
     const std::vector<DeckPreset> catalog={{"mt-us-longfast","meshtastic","US LongFast"},{"mc-eu-narrow","meshcore","EU narrow"}};
     auto key=[&](int k){return deck.key(k,radio,catalog,300);};
-    key(DeckMenu);key('\r');assert(deck.reply==root.id&&deck.page==DeckChat::Chat);
+    key(DeckMenu);assert(deck.menu.front()=="Back"&&deck.cursor==0);key('\r');assert(deck.page==DeckChat::Chat&&!deck.reply);
+    key(DeckMenu);key(DeckDown);key('\r');assert(deck.reply==root.id&&deck.page==DeckChat::Chat);
     for(char c:std::string("Keyboard reply"))key(c);
     auto action=key('\r');assert(action.op=="post"&&action.target==root.id&&action.text=="Keyboard reply");
     // An unsuccessful queue attempt leaves the draft and reply target intact.
     assert(deck.draft=="Keyboard reply"&&deck.reply==root.id);
     Event outgoing;outgoing.room=action.room;outgoing.ref=action.target;outgoing.text=action.text;assert(radio.submit(outgoing,100));
     deck.accepted(action,radio.pending.back().event.id);assert(deck.draft.empty()&&!deck.reply&&radio.find(deck.selected)->mine);
-    key(DeckMenu);deck.cursor=1;action=key('\r');assert(action.op=="vote"&&action.up&&action.target==deck.selected);
-    radio.receive(vote(300,2,action.target),200,false);key(DeckMenu);deck.cursor=1;action=key('\r');assert(!action.up);
-    key(DeckMenu);deck.cursor=2;action=key('\r');assert(action.op=="resend"&&action.target==deck.selected);
-    key(DeckMenu);deck.cursor=4;key('\r');for(char c:std::string("camp"))key(c);key('\r');assert(deck.room=="camp"&&!deck.reply);
-    key(DeckMenu);deck.cursor=7;key('\r');key(DeckDown);key('\r');assert(deck.page==DeckChat::Regions);key('\r');assert(deck.page==DeckChat::Presets);action=key('\r');assert(action.op=="settings"&&action.preset=="mc-eu-narrow"&&action.network=="meshcore");
+    key(DeckMenu);deck.cursor=2;action=key('\r');assert(action.op=="vote"&&action.up&&action.target==deck.selected);
+    radio.receive(vote(300,2,action.target),200,false);key(DeckMenu);deck.cursor=2;action=key('\r');assert(!action.up);
+    key(DeckMenu);deck.cursor=3;action=key('\r');assert(action.op=="resend"&&action.target==deck.selected);
+    key(DeckMenu);deck.cursor=5;key('\r');for(char c:std::string("camp"))key(c);key('\r');assert(deck.room=="camp"&&!deck.reply);
+    key(DeckMenu);deck.cursor=8;key('\r');key(DeckDown);key('\r');assert(deck.page==DeckChat::Regions);key('\r');assert(deck.page==DeckChat::Presets);action=key('\r');assert(action.op=="settings"&&action.preset=="mc-eu-narrow"&&action.network=="meshcore");
     deck.accepted(action);assert(deck.page==DeckChat::Chat);
     for(unsigned i=0;i<170;++i)key('x');assert(deck.draft.size()==160);key(8);assert(deck.draft.size()==159);
     deck.draft="Hi 🙂";key(8);assert(deck.draft=="Hi ");
-    key(DeckMenu);deck.cursor=9;key('\r');assert(deck.page==DeckChat::Credentials);key('\r');assert(deck.page==DeckChat::Chat);
-    deck.room="general";deck.sync(radio);key(DeckMenu);deck.cursor=10;key('\r');assert(deck.page==DeckChat::Read);key(DeckDown);assert(deck.cursor==1);key('\r');assert(deck.page==DeckChat::Chat);
+    key(DeckMenu);deck.cursor=10;key('\r');assert(deck.page==DeckChat::Credentials);key('\r');assert(deck.page==DeckChat::Chat);
+    deck.room="general";deck.sync(radio);key(DeckMenu);deck.cursor=11;key('\r');assert(deck.page==DeckChat::Read);key(DeckDown);assert(deck.cursor==1);key('\r');assert(deck.page==DeckChat::Chat);
   }
   {
     assert((deckTouchPoint(0,0,true)==std::make_pair(319,0)));
@@ -131,7 +132,8 @@ int main(){
     auto tap=[&](DeckTap kind){for(const auto& hit:frame.hits)if(hit.action==kind)return activateDeckHit(hit,d,c,{},450);assert(false);return DeckAction{};};
     d.focused=false;tap(DeckTap::Focus);assert(d.focused);
     d.page=DeckChat::Read;frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);
-    tap(DeckTap::Reply);assert(d.page==DeckChat::Chat&&d.reply==selected);
+    tap(DeckTap::Back);assert(d.page==DeckChat::Chat);
+    d.page=DeckChat::Read;frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);tap(DeckTap::Reply);assert(d.page==DeckChat::Chat&&d.reply==selected);
     d.draft="Draft kept while editing settings";d.savedNickname="Old nickname";
     d.page=DeckChat::Settings;d.cursor=2;d.key('\r',c,{},450);assert(d.page==DeckChat::Nickname);
     d.draft="New nickname";frame=makeDeckScene(d,c,{},true,"mesit-00af","12345678",measure);

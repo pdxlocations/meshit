@@ -35,14 +35,14 @@ The Plus display now uses landscape rotation 3 to correct the reported upside-do
 | Action | Original / Plus | Pro / Pro Max |
 | --- | --- | --- |
 | Move through messages and menus | Roll trackball up/down; Plus also accepts vertical swipes | Hold **Alt + E / X** |
-| Open or close menu | Trackball center, microphone key, or Enter with an empty composer | **$** key, **Alt + T**, BOOT, or Enter with an empty composer |
-| Select menu item | Enter | Enter |
+| Open or close menu | Microphone key, or Enter / trackball press with an empty composer | **$** key, **Alt + T**, BOOT, or Enter with an empty composer |
+| Select menu item | Enter or trackball press | Enter |
 | Return / cancel reply | Menu → New post | **Alt + Q**, or Menu → New post |
 | Write a post | Type, then Enter | Type, then Enter |
 
-On Plus, swipe left from chat to open Settings and swipe right to open Rooms. Swipe in the opposite direction to return to chat, or tap the header controls. Horizontal trackball movement does not navigate; up/down movement still selects messages. While replying, tap the large **Cancel reply** button above the text field to return to a new post without deleting your draft. The menu offers **Reply**, **Toggle upvote**, **Resend**, **Rooms**, **New room**, **New post**, **New / Top**, **Radio preset**, **Nickname**, **Wi-Fi / Bluetooth**, and **Read full message**. Actions apply to the selected message, shown with `>`. Posts default to Top sorting; replies remain below their parents.
+On Plus, swipe left from chat to open Settings and swipe right to open Rooms. Swipe in the opposite direction to return to chat, or tap the header controls. Horizontal trackball movement does not navigate; up/down movement still selects messages. While replying, tap the large **Cancel reply** button above the text field to return to a new post without deleting your draft. The menu starts with **Back** to return to the message list, followed by **Reply**, **Toggle upvote**, **Resend**, **Rooms**, **New room**, **New post**, **New / Top**, **Radio preset**, **Nickname**, **Wi-Fi / Bluetooth**, and **Read full message**. Actions apply to the selected message, shown with `>`. Posts default to Top sorting; replies remain below their parents.
 
-Choose **Reply**, type, and press Enter to post to that message. Failed queue attempts retain your draft. **Resend** queues the original outgoing message without creating another post; it is available only when the radio permits a resend. `[ok]` means a matching rebroadcast was heard, `[...]` means queued, and `[retry]` means no acknowledgment is currently pending.
+The trackball center acts exactly like Enter: select the highlighted menu option, save an editor, or post the current draft. Choose **Reply**, type, and press Enter to post to that message. Failed queue attempts retain your draft. **Resend** queues the original outgoing message without creating another post; it is available only when the radio permits a resend. `[ok]` means a matching rebroadcast was heard, `[...]` means queued, and `[retry]` means no acknowledgment is currently pending.
 
 **Read full message** opens a scrolling view so long posts remain readable; use up/down and Enter to return. The device uses a limited glyph set and displays unsupported Unicode as `?`; stored and transmitted text keeps its original UTF-8. Phone/browser clients retain full text and emoji rendering.
 

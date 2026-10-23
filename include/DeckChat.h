@@ -20,7 +20,7 @@ public:
   std::vector<std::string> regions(const std::vector<DeckPreset>& presets)const{std::vector<std::string> out;for(const auto& p:presets)if(p.network==network&&std::find(out.begin(),out.end(),p.region)==out.end())out.push_back(p.region);return out;}
   std::vector<std::string> settingsItems()const{return {"Radio connection","Network","Nickname","Appearance","Local Wi-Fi"};}
   void swipe(int direction){if(!direction)return;if(isEditor())leaveEditor();error.clear();if(direction<0){if(page==Rooms)page=Chat;else page=Settings;}else{if(page==Chat)page=Rooms;else if(page!=Rooms)page=Chat;}cursor=0;}
-  const std::vector<std::string> menu={"Reply","Toggle upvote","Resend","Rooms","New room","New post","New / Top","Radio preset","Nickname","Wi-Fi / Bluetooth","Read full message"};
+  const std::vector<std::string> menu={"Back","Reply","Toggle upvote","Resend","Rooms","New room","New post","New / Top","Radio preset","Nickname","Wi-Fi / Bluetooth","Read full message"};
   std::vector<std::string> rooms(const Core& core)const{
     std::vector<std::string> list{room};for(const auto& m:core.messages)if(std::find(list.begin(),list.end(),m.event.room)==list.end())list.push_back(m.event.room);
     std::sort(list.begin(),list.end());return list;
@@ -57,12 +57,13 @@ public:
       if(page==Wifi){if(cursor==0)edit(Ssid,wifiSsid,Wifi);else if(cursor==1)edit(WifiPassword,wifiPassword,Wifi);else{action.op="wifi";action.ssid=wifiSsid;action.password=wifiPassword;}return action;}
       if(page==Menu){
         switch(cursor){
-          case 0:if(selected){reply=selected;page=Chat;}break;
-          case 1:if(selected){action.op="vote";action.target=selected;action.up=!core.voted(selected,identity);page=Chat;}break;
-          case 2:if(selected){action.op="resend";action.target=selected;page=Chat;}break;
-          case 3:page=Rooms;break;case 4:edit(NewRoom,"",Rooms);break;
-          case 5:page=Chat;reply=0;break;case 6:top=!top;page=Chat;break;
-          case 7:page=Network;break;case 8:edit(Nickname,savedNickname,Chat);break;case 9:page=Credentials;break;case 10:if(selected)page=Read;break;
+          case 0:page=Chat;break;
+          case 1:if(selected){reply=selected;page=Chat;}break;
+          case 2:if(selected){action.op="vote";action.target=selected;action.up=!core.voted(selected,identity);page=Chat;}break;
+          case 3:if(selected){action.op="resend";action.target=selected;page=Chat;}break;
+          case 4:page=Rooms;break;case 5:edit(NewRoom,"",Rooms);break;
+          case 6:page=Chat;reply=0;break;case 7:top=!top;page=Chat;break;
+          case 8:page=Network;break;case 9:edit(Nickname,savedNickname,Chat);break;case 10:page=Credentials;break;case 11:if(selected)page=Read;break;
         }cursor=0;return action;
       }
       if(page==Rooms){auto list=rooms(core);if(cursor<list.size()){room=list[cursor];selected=reply=0;draft.clear();page=Chat;sync(core);}return action;}

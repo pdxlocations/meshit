@@ -125,7 +125,7 @@ public:
 #if defined(MESHIT_TDECK_PRO)
       lines.push_back("$: menu  Alt+E/X: move");
 #else
-      lines.push_back("Enter: post  Ball: menu");
+      lines.push_back("Enter / ball press: select or post");
 #endif
     }
     if(!keyboardReady)chat.error="Keyboard unavailable; use companion";
