@@ -18,5 +18,10 @@ def build_info(root=None):
     return {'version': version, 'commit': result.stdout.strip() if own_checkout and result.returncode == 0 else 'unknown'}
 
 
+def android_apk_name(info):
+    version = info['version'].removeprefix('v')
+    return f"meshit-android-v{version}-{info['commit'][:7]}-debug.apk"
+
+
 if __name__ == '__main__':
     print(json.dumps(build_info()))

@@ -10,7 +10,7 @@ Verified on October 21, 2026. No radio was flashed and no RF or physical-phone t
 - **Carrier and fragment bounds:** maximal 160-character four-byte Unicode messages fit the bounded fragment count. Tests round-trip both network carriers and exercise relay evidence, channel mismatch, and out-of-order assembly.
 - **Companion protocol tests:** first-run network/preset selection, posts, rooms, replies, votes and removals, simulated implicit checks, HTTP error propagation, serialized BLE RPCs, disconnect rejection, and UTF-8 split across single-byte notifications. The simulator shares the firmware's C++ core; its echoes are simulated, not RF measurements.
 - **Mobile assets:** bundled successfully with esbuild; all UI assets are local. Native Bluetooth and HTTP adapters are included.
-- **Android:** Gradle `assembleDebug --offline` passed with Android Studio's Java runtime and the installed SDK. APK: `dist/companions/meshit-android-debug.apk`.
+- **Android:** Gradle `assembleDebug --offline` passed with Android Studio's Java runtime and the installed SDK. APK: `dist/companions/meshit-android-v<version>-<commit>-debug.apk`.
 - **iOS:** Xcode built the app and generated Bluetooth adapter for the generic iOS Simulator destination, with signing disabled. Project: `ios/App/App.xcodeproj`. This is a compilation result, not a signed phone release or simulator runtime test.
 - **Firmware packaging:** RAK UF2 conversion verifies family `0xADA52840`, the S140-specific application start, and no overlap with reserved history flash. SHA-256 hashes accompany all packaged images.
 

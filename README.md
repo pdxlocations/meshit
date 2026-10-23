@@ -74,7 +74,7 @@ npm run build:android
 npm run package:release
 ```
 
-This uses the packaged firmware above and creates `dist/meshit-release.zip`, its SHA-256 checksum, and the standalone Android APK/checksum. The ZIP contains `esp32/`, `nrf52/`, and the uploadable `webflasher/`. iOS builds are local-only in Xcode; GitHub Actions does not build or upload an iOS app. Signing an iPhone release requires separate provisioning.
+This uses the packaged firmware above and creates `dist/meshit-release.zip`, its SHA-256 checksum, and the standalone versioned Android APK/checksum (`meshit-android-v<version>-<commit>-debug.apk`). The ZIP contains `esp32/`, `nrf52/`, and the uploadable `webflasher/`. iOS builds are local-only in Xcode; GitHub Actions does not build or upload an iOS app. Signing an iPhone release requires separate provisioning.
 
 ## Connect
 

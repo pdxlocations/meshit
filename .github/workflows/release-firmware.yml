@@ -108,7 +108,7 @@ jobs:
           npm run webflasher:prepare
           python3 tools/package_release.py --require-android
           cd dist
-          sha256sum --check meshit-release.zip.sha256 meshit-android-debug.apk.sha256
+          sha256sum --check meshit-release.zip.sha256 meshit-android-*.apk.sha256
       - uses: actions/upload-artifact@v7
         with:
           name: meshit-release
@@ -116,8 +116,8 @@ jobs:
             dist/release/
             dist/meshit-release.zip
             dist/meshit-release.zip.sha256
-            dist/meshit-android-debug.apk
-            dist/meshit-android-debug.apk.sha256
+            dist/meshit-android-*.apk
+            dist/meshit-android-*.apk.sha256
           if-no-files-found: error
       - name: Create or resume a draft beta release
         if: github.event_name == 'workflow_dispatch'
@@ -143,7 +143,7 @@ jobs:
         run: >-
           gh release upload "$RELEASE_TAG"
           dist/meshit-release.zip dist/meshit-release.zip.sha256
-          dist/meshit-android-debug.apk dist/meshit-android-debug.apk.sha256 --clobber
+          dist/meshit-android-*.apk dist/meshit-android-*.apk.sha256 --clobber
       - name: Publish the completed beta
         if: github.event_name == 'workflow_dispatch'
         run: gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --draft=false --prerelease --latest=false

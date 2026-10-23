@@ -102,12 +102,12 @@ jobs:
         run: npm run build:android
       - name: Verify APK checksum
         working-directory: dist/companions
-        run: sha256sum --check meshit-android-debug.apk.sha256
+        run: sha256sum --check meshit-android-*.apk.sha256
       - uses: actions/upload-artifact@v7
         with:
           name: meshit-android
           path: |
-            dist/companions/meshit-android-debug.apk
-            dist/companions/meshit-android-debug.apk.sha256
+            dist/companions/meshit-android-*.apk
+            dist/companions/meshit-android-*.apk.sha256
             dist/companions/build-info.json
           if-no-files-found: error

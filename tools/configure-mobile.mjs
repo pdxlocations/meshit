@@ -11,6 +11,9 @@ if(existsSync(manifest)){
   const strings='android/app/src/main/res/values/strings.xml';let labels=await readFile(strings,'utf8');
   labels=labels.replace(/(<string name="(?:app_name|title_activity_main)">)[^<]*(<\/string>)/g,'$1meshit$2');await writeFile(strings,labels);
   const variables='android/variables.gradle';let vars=await readFile(variables,'utf8');vars=vars.replace(/minSdkVersion\s*=\s*\d+/,'minSdkVersion = 31');await writeFile(variables,vars);
+  const info=JSON.parse(execFileSync('python3',['tools/build_info.py'],{encoding:'utf8'}));
+  const gradle='android/app/build.gradle';let build=await readFile(gradle,'utf8');
+  build=build.replace(/versionName\s+"[^"]*"/,`versionName ${JSON.stringify(info.version)}`);await writeFile(gradle,build);
   console.log('Android Bluetooth permissions configured; minimum Android 12.');
 }
 const plist='ios/App/App/Info.plist';

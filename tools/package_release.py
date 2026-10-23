@@ -7,7 +7,7 @@ from pathlib import Path
 import shutil
 import tempfile
 from zipfile import ZipFile, ZIP_DEFLATED
-from build_info import build_info
+from build_info import build_info, android_apk_name
 from check_firmware_targets import check
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,10 +82,12 @@ def package(root=ROOT, require_android=False):
             if bundle.testzip() is not None:
                 raise ValueError('Invalid release ZIP')
         if require_android:
-            apk = dist/'companions/meshit-android-debug.apk'
+            apk = dist/'companions'/android_apk_name(info)
             if not apk.is_file() or json.loads((apk.parent/'build-info.json').read_text()) != info:
                 raise ValueError('Build the matching Android companion before releasing')
             shutil.copyfile(apk, dist/apk.name)
+            for legacy in ('meshit-android-debug.apk', 'meshit-android-debug.apk.sha256'):
+                (dist/legacy).unlink(missing_ok=True)
             (dist/(apk.name+'.sha256')).write_text(f'{hashlib.sha256(apk.read_bytes()).hexdigest()}  {apk.name}\n')
         output = dist/'release'
         if output.exists():
