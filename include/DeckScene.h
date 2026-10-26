@@ -113,7 +113,7 @@ inline DeckScene makeDeckScene(DeckChat& chat,const Core& core,const std::vector
     else if(chat.isEditor()){title=chat.page==DeckChat::NewRoom?"New room":chat.page==DeckChat::Nickname?"Nickname":chat.page==DeckChat::Ssid?"Network name":"Wi-Fi password";}
 
     else {title="# "+chat.room;if(const auto* m=core.find(chat.selected)){items=deckWrap(m->event.text,294,DeckFont::Body,measure);}}
-    text(10,50,"Back",DeckFont::Small);hit(DeckTap::Back,{0,30,60,30});text(65,51,deckFit(title,chat.page==DeckChat::Rooms?150:243,DeckFont::Bold,measure),DeckFont::Bold);
+    text(10,51,deckFit(title,chat.page==DeckChat::Rooms?205:303,DeckFont::Bold,measure),DeckFont::Bold);
     if(chat.isEditor()){
       draw(DeckShape::Round,{8,68,304,56},p.card);draw(DeckShape::Outline,{8,68,304,56},chat.focused?p.muted:p.line);
       std::string value=chat.page==DeckChat::WifiPassword?std::string(chat.draft.size(),'*'):chat.draft;

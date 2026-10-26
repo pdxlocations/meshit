@@ -291,11 +291,16 @@ int main(){
     for(const auto page:{DeckChat::Settings,DeckChat::Rooms,DeckChat::Presets,DeckChat::Network,DeckChat::Regions,DeckChat::Appearance,DeckChat::Wifi}){
       d.page=page;d.cursor=0;auto menuFrame=makeDeckScene(d,c,regional,true,"meshit-00af","12345678",measure);
       assert(std::any_of(menuFrame.paint.begin(),menuFrame.paint.end(),[](const DeckPaint& p){return p.text=="Back"&&p.box.y==81;}));
+      assert(!deckHitAt(menuFrame,25,45));
       const auto* backRow=deckHitAt(menuFrame,25,75);assert(backRow&&backRow->action==DeckTap::MenuItem&&backRow->index==0);
       auto backAction=activateDeckHit(*backRow,d,c,regional,400);assert(backAction.op.empty()&&d.page!=page);
       d.page=page;d.cursor=0;d.key(DeckUp,c,regional,400);assert(d.cursor>0);d.key(DeckDown,c,regional,400);assert(d.cursor==0);
       backAction=d.key('\r',c,regional,400);assert(backAction.op.empty()&&d.page!=page);
+      d.page=page;backAction=d.key(' ',c,regional,400);assert(backAction.op.empty()&&d.page!=page);
     }
+    for(const auto page:{DeckChat::Menu,DeckChat::Navigation,DeckChat::Credentials}){d.page=page;d.key(' ',c,regional,400);assert(d.page!=page);}
+    d.page=DeckChat::Chat;d.draft="hello";d.key(' ',c,regional,400);assert(d.page==DeckChat::Chat&&d.draft=="hello ");
+    for(const auto page:{DeckChat::NewRoom,DeckChat::Nickname,DeckChat::Ssid,DeckChat::WifiPassword}){d.edit(page,"a",DeckChat::Settings);d.key(' ',c,regional,400);assert(d.page==page&&d.draft=="a ");d.leaveEditor();}
     c.messages.clear();action=activateDeckHit(replyHit,d,c,catalog,400);assert(action.op.empty()&&!d.error.empty()); // Stale frames cannot target evicted posts.
   }
   {
@@ -373,7 +378,7 @@ int main(){
     d.cursor=1;d.key('\r',c,{},450);assert(d.page==DeckChat::Ssid);d.draft="New wifi";d.key('\r',c,{},450);assert(d.page==DeckChat::Wifi&&d.wifiSsid=="New wifi");
     d.cursor=2;d.key('\r',c,{},450);d.draft="secret123";frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure);
     assert(std::none_of(frame.paint.begin(),frame.paint.end(),[](const DeckPaint& op){return op.text.find("secret123")!=std::string::npos;}));
-    tap(DeckTap::Back);assert(d.page==DeckChat::Wifi&&d.wifiPassword.empty());
+    tap(DeckTap::CancelEditor);assert(d.page==DeckChat::Wifi&&d.wifiPassword.empty());
     d.cursor=3;action=d.key('\r',c,{},450);JsonDocument request;deckRequest(request,action);
     assert(request["op"]=="settings"&&request["ssid"]=="New wifi"&&request["password"].isNull());
     d.page=DeckChat::Chat;d.draft="A real reply";frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure);
@@ -382,7 +387,7 @@ int main(){
     Event e;e.room=request["room"].as<std::string>();e.text=request["text"].as<std::string>();e.ref=fromHex(request["parent"]|"");assert(c.submit(e,100));
     assert(c.find(c.pending.back().event.id)->event.ref==selected); // Existing threading behavior stays intact.
     d.edit(DeckChat::NewRoom,"unused",DeckChat::Rooms);frame=makeDeckScene(d,c,{},true,"meshit-00af","12345678",measure);
-    tap(DeckTap::Back);assert(d.page==DeckChat::Rooms&&d.draft=="A real reply");
+    tap(DeckTap::CancelEditor);assert(d.page==DeckChat::Rooms&&d.draft=="A real reply");
   }
   assert(!plausibleBatteryVoltage(0));assert(!plausibleBatteryVoltage(5000));
   assert(batteryBars(3400)==0&&batteryBars(3600)==1&&batteryBars(3800)==2&&batteryBars(4000)==3&&batteryBars(4200)==4);

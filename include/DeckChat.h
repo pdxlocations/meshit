@@ -77,6 +77,7 @@ public:
     if(key==DeckSettings){if(isEditor())leaveEditor();page=Settings;cursor=touchAvailable?5:0;return action;}
     if(key==DeckMenu||key==12){if(isEditor())leaveEditor();page=page==Navigation?Chat:Navigation;cursor=0;return action;}
     if(key==DeckBack||key==27){if(page!=Chat)back();else cancelReply();return action;}
+    if(key==' '&&(hasBackRow()||page==Menu||page==Navigation||page==Credentials)){back();return action;}
     if(page==Calibrate){if(key=='\r'||key=='\n'){page=Settings;cursor=0;error.clear();}return action;}
     if(key==DeckUp||key==DeckDown){
       if(page==Read){if(key==DeckDown&&cursor<MAX_TEXT)++cursor;else if(key==DeckUp&&cursor)--cursor;return action;}
